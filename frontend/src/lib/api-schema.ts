@@ -934,8 +934,9 @@ export interface paths {
          * Run Settings
          * @description How long runs are kept (``history.retention``) and the default stage time limit.
          *
-         *     Read from ``testosterone.yaml``; change them there. The server reads retention
-         *     when it starts, so restart it after an edit.
+         *     Read from ``testosterone.yaml``, with ``TESTO_RETENTION_DAYS`` /
+         *     ``TESTO_RETENTION_RUNS_PER_CYCLE`` on top (they also work without a file). The
+         *     server reads retention when it starts, so restart it after an edit.
          */
         get: operations["run_settings_api_v1_run_settings_get"];
         put?: never;

@@ -10251,7 +10251,7 @@
     },
     "/api/v1/run-settings": {
       "get": {
-        "description": "How long runs are kept (``history.retention``) and the default stage time limit.\n\nRead from ``testosterone.yaml``; change them there. The server reads retention\nwhen it starts, so restart it after an edit.",
+        "description": "How long runs are kept (``history.retention``) and the default stage time limit.\n\nRead from ``testosterone.yaml``, with ``TESTO_RETENTION_DAYS`` /\n``TESTO_RETENTION_RUNS_PER_CYCLE`` on top (they also work without a file). The\nserver reads retention when it starts, so restart it after an edit.",
         "operationId": "run_settings_api_v1_run_settings_get",
         "responses": {
           "200": {
