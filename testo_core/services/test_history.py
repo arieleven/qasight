@@ -79,6 +79,9 @@ class TestSummary:
     # Recent median minus the median before; set only when that is more than noise.
     slowdown_ms: int | None
     slowdown_pct: float | None
+    # The slowest runs (95th percentile of passing and failing runs alike); far above the
+    # median means unstable timing, the next timeout or flake.
+    p95_duration_ms: int | None = None
     # From the latest run: what the test is about ({name, value}) and its issue links.
     labels: tuple[dict[str, str], ...] = ()
     links: tuple[dict[str, str], ...] = ()
@@ -173,6 +176,9 @@ def _summarise(key: str, observed: list[tuple[CompletedRunView, dict[str, Any]]]
         median_duration_ms=int(median(durations)) if durations else None,
         slowdown_ms=slowdown_ms,
         slowdown_pct=slowdown_pct,
+        p95_duration_ms=sorted(durations)[max(0, -(-len(durations) * 95 // 100) - 1)]
+        if durations
+        else None,
         labels=tuple(latest.get("labels") or ()),
         links=tuple(latest.get("links") or ()),
     )

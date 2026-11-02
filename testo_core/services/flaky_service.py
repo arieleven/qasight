@@ -24,7 +24,7 @@ snapshot once and stored), so this works on every database backend. The CLI (``t
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from testo_core.history.cases import cases_for_run
@@ -62,6 +62,10 @@ class FlakyTest:
     reasons: tuple[str, ...] = ()
     # Runs in which it failed and then passed on a retry.
     retried: int = 0
+    # What it cost in the window: red runs it alone (with other flaky tests) made red,
+    # and minutes of CI spent on its retries plus its share of those red runs.
+    red_runs: int = 0
+    cost_minutes: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -222,6 +226,68 @@ def _cases_for_run(run: CompletedRunView) -> dict[str, dict[str, Any]]:
     return cases_for_run(run)
 
 
+@dataclass(frozen=True)
+class FlakyCost:
+    """What one flaky test cost over some runs (see :func:`flaky_costs`)."""
+
+    retries: int = 0
+    retry_ms: int = 0
+    red_runs: int = 0
+    red_run_ms: float = 0.0
+    # Branches of the red runs it caused (pull requests it held up), sorted.
+    branches: tuple[str, ...] = ()
+
+    @property
+    def minutes(self) -> float:
+        return round((self.retry_ms + self.red_run_ms) / 60000, 1)
+
+
+def flaky_red(
+    run: CompletedRunView, cases: dict[str, dict[str, Any]], flaky: set[str]
+) -> list[str]:
+    """The flaky tests that made ``run`` red, when nothing else failed in it; else ``[]``."""
+    if run.returncode == 0:
+        return []
+    failing = [key for key, case in cases.items() if str(case.get("status")) in _FAIL]
+    return failing if failing and all(key in flaky for key in failing) else []
+
+
+def flaky_costs(
+    runs: list[tuple[CompletedRunView, dict[str, dict[str, Any]]]],
+    flaky: set[str],
+    *,
+    not_flaky_runs: frozenset[str] = frozenset(),
+) -> dict[str, FlakyCost]:
+    """Cost per flaky test over ``runs``: its retries' time, and red runs only flaky tests caused.
+
+    A red run whose failures are all flaky tests would have been green without them,
+    so its wall time (the CI job someone reran) is shared among those tests.
+    ``not_flaky_runs`` are run ids known to be red for another reason (a marked
+    product bug, say), which no flaky test is charged for.
+    """
+    retries: dict[str, list[int]] = {}
+    red: dict[str, list[tuple[float, str]]] = {}
+    for run, cases in runs:
+        for key, case in cases.items():
+            if key in flaky and case.get("retried") and str(case.get("status")) == _PASS:
+                ms = case.get("duration_ms")
+                retries.setdefault(key, []).append(ms if isinstance(ms, int) else 0)
+        culprits = [] if run.run_id in not_flaky_runs else flaky_red(run, cases, flaky)
+        for key in culprits:
+            red.setdefault(key, []).append((run.wall_duration_ms / len(culprits), run.branch or ""))
+    return {
+        key: FlakyCost(
+            retries=len(retries.get(key, [])),
+            retry_ms=sum(retries.get(key, [])),
+            red_runs=len(red.get(key, [])),
+            red_run_ms=sum(ms for ms, _ in red.get(key, [])),
+            branches=tuple(sorted({b for _, b in red.get(key, []) if b})),
+        )
+        for key in flaky
+        if key in retries or key in red
+    }
+
+
 def _cycle_runs(cycle: str, *, limit: int | None = None) -> list[CompletedRunView]:
     """``cycle``'s recorded runs, newest first (at most ``limit``)."""
     return list_cycle_runs(cycle) if limit is None else list_cycle_runs(cycle, limit=limit)
@@ -230,17 +296,24 @@ def _cycle_runs(cycle: str, *, limit: int | None = None) -> list[CompletedRunVie
 def _report(cycle: str, runs: list[CompletedRunView], window: int) -> FlakyReport:
     """Score the tests in ``runs`` (newest first, already cut to the window)."""
     per_test: dict[str, list[dict[str, Any]]] = {}
-    analyzed = 0
+    with_cases: list[tuple[CompletedRunView, dict[str, dict[str, Any]]]] = []
     for run in reversed(runs):  # oldest first, so flips are counted in order
         cases = _cases_for_run(run)
         if not cases:
             continue
-        analyzed += 1
+        with_cases.append((run, cases))
         for key, case in cases.items():
             per_test.setdefault(key, []).append(observation(run, case))
+    analyzed = len(with_cases)
 
-    flaky = [t for key, obs in per_test.items() if (t := classify(key, obs)) is not None]
-    flaky.sort(key=lambda t: (-t.retried, -t.flip_rate, -t.flips, t.name))
+    found = {key: t for key, obs in per_test.items() if (t := classify(key, obs)) is not None}
+    costs = flaky_costs(with_cases, set(found))
+    flaky = [
+        replace(t, red_runs=c.red_runs, cost_minutes=c.minutes) if (c := costs.get(key)) else t
+        for key, t in found.items()
+    ]
+    # Most costly first: that is what to fix (or quarantine) first.
+    flaky.sort(key=lambda t: (-t.cost_minutes, -t.red_runs, -t.retried, -t.flip_rate, t.name))
     broken_tests = [b for key, obs in per_test.items() if (b := broken(key, obs)) is not None]
     broken_tests.sort(key=lambda b: (-b.failing_runs, b.name))
     return FlakyReport(

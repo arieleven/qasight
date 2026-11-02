@@ -494,6 +494,10 @@ class FlakyTestItem(ApiModel):
     reasons: list[str] = Field(default_factory=list)
     # Runs in which it failed and then passed on a retry.
     retried: int = 0
+    # Red runs only flaky tests caused that this one was in, and the CI minutes of its
+    # retries plus its share of those runs (services/flaky_service.flaky_costs).
+    red_runs: int = 0
+    cost_minutes: float = 0.0
     # Matches the cycle's quarantine: the list kept on the server, or testosterone.yaml when it is readable.
     quarantined: bool = False
     # The stored entry it matches exactly, which the UI can release (null for config rules and globs).
@@ -537,6 +541,7 @@ class TestSummaryItem(ApiModel):
     # Recent median minus the earlier one, only when that is more than timing noise.
     slowdown_ms: int | None = None
     slowdown_pct: float | None = None
+    p95_duration_ms: int | None = None
     # From the test's latest run.
     labels: list[TestLabelItem] = Field(default_factory=list)
     links: list[TestLinkItem] = Field(default_factory=list)
@@ -1064,6 +1069,8 @@ class ReportTrendPoint(ApiModel):
     runs: int
     green: int
     pass_rate: float | None
+    median_duration_ms: int | None = None
+    ci_minutes: float = 0.0
 
 
 class ReportCycleRow(ApiModel):
@@ -1091,6 +1098,206 @@ class ReportFinding(ApiModel):
     detail: str
 
 
+class DeliveryAgeBucket(ApiModel):
+    label: str
+    count: int
+
+
+class DeliveryOpenFailure(ApiModel):
+    cycle: str
+    name: str
+    since: float
+    age_s: float
+    runs: int
+    key: str = ""
+
+
+class DeliveryCycleRow(ApiModel):
+    cycle: str
+    fixes: int
+    median_fix_s: float | None
+    prev_median_fix_s: float | None
+    open_failures: int
+    suite_median_ms: int | None
+    suite_p90_ms: int | None
+    prev_suite_median_ms: int | None
+    ci_minutes: float
+    prev_ci_minutes: float
+    grown_stage: str | None
+    grown_stage_before_ms: int | None
+    grown_stage_after_ms: int | None
+    red_pct: float | None
+    prev_red_pct: float | None
+    longest_red_s: float | None
+    first_try_green_pct: float | None
+    first_try_commits: int
+
+
+class DeliveryResponse(ApiModel):
+    """Time to fix failing tests, suite and CI time, and how often the default branch was red.
+
+    See ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no
+    run recorded a branch; then every run counts as the default branch.
+    """
+
+    default_branch: str | None
+    fixes: int
+    median_fix_s: float | None
+    prev_median_fix_s: float | None
+    open_failures: int
+    open_by_age: list[DeliveryAgeBucket]
+    oldest_open: list[DeliveryOpenFailure]
+    ci_minutes: float
+    prev_ci_minutes: float
+    red_pct: float | None
+    prev_red_pct: float | None
+    longest_red_s: float | None
+    first_try_green_pct: float | None
+    prev_first_try_green_pct: float | None
+    first_try_commits: int
+    cycles: list[DeliveryCycleRow]
+
+
+class SignalCause(ApiModel):
+    cause: Literal[
+        "product_bug", "test_bug", "environment", "other", "unmarked", "flaky", "no_tests"
+    ]
+    label: str
+    runs: int
+
+
+class CostlyFlakyTest(ApiModel):
+    cycle: str
+    key: str
+    name: str
+    cost_minutes: float
+    retries: int
+    red_runs: int
+    branches: list[str]
+
+
+class SignalResponse(ApiModel):
+    """What the red runs were (real bugs vs noise) and what flaky tests cost.
+
+    See ``testo_core/services/failure_signal.py``.
+    """
+
+    red_runs: int
+    prev_red_runs: int
+    by_cause: list[SignalCause]
+    real_pct: float | None
+    noise_pct: float | None
+    unmarked_pct: float | None
+    prev_real_pct: float | None
+    prev_noise_pct: float | None
+    flaky_minutes: float
+    prev_flaky_minutes: float
+    flaky_red_runs: int
+    flaky_branches: int
+    costly: list[CostlyFlakyTest]
+
+
+class OwnerRow(ApiModel):
+    owner: str
+    tests: int
+    failing: int
+    flaky: int
+    flaky_minutes: float
+    fixes: int
+    median_fix_s: float | None
+    open_failures: int
+    oldest_open_s: float | None
+
+
+class TeamsResponse(ApiModel):
+    """Each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``)."""
+
+    owners_known: bool
+    rows: list[OwnerRow]
+
+
+class NamedCycleTest(ApiModel):
+    cycle: str
+    name: str
+    detail: str
+
+
+class CycleSize(ApiModel):
+    cycle: str
+    tests: int
+    prev_tests: int | None
+    added: int
+    removed: int
+
+
+class HygieneResponse(ApiModel):
+    """Suite size, added and removed tests, always-skipped and slow never-failing tests.
+
+    See ``services/suite_hygiene.py``.
+    """
+
+    tests: int
+    prev_tests: int | None
+    added: int
+    removed: int
+    cycles: list[CycleSize]
+    added_tests: list[NamedCycleTest]
+    removed_tests: list[NamedCycleTest]
+    always_skipped: list[NamedCycleTest]
+    always_skipped_count: int
+    slow_never_failed: list[NamedCycleTest]
+    slow_never_failed_ms: int
+
+
+class CountedTest(ApiModel):
+    cycle: str
+    name: str
+    count: int
+    detail: str
+
+
+class RepeatedError(ApiModel):
+    message: str
+    count: int
+    tests: int
+
+
+class RunSlice(ApiModel):
+    label: str
+    runs: int
+    red: int
+
+
+class PatternDay(ApiModel):
+    day: str
+    retried: int
+    executed: int
+    retry_pct: float | None
+    coverage_pct: float | None
+
+
+class PatternsResponse(ApiModel):
+    """Failure concentration, repeated errors, retry rate, unstable timing, when failures
+    happen, tests that catch bugs and coverage by day (``services/failure_patterns.py``)."""
+
+    failures: int
+    top_tests: list[CountedTest]
+    top_share_pct: float | None
+    repeated_errors: list[RepeatedError]
+    retried: int
+    executed: int
+    retry_pct: float | None
+    prev_retry_pct: float | None
+    unstable_timing: list[CountedTest]
+    by_hour: list[RunSlice]
+    by_weekday: list[RunSlice]
+    by_environment: list[RunSlice]
+    when_findings: list[str]
+    caught_bugs: list[CountedTest]
+    only_noise: list[CountedTest]
+    days: list[PatternDay]
+
+
 class ManagerReportResponse(ApiModel):
     """How testing went over a period: the ``/report`` page and every ``testo export`` format."""
 
@@ -1110,6 +1317,11 @@ class ManagerReportResponse(ApiModel):
     fixed: list[ReportTest]
     slower: list[ReportTest]
     findings: list[ReportFinding]
+    delivery: DeliveryResponse
+    signal: SignalResponse
+    teams: TeamsResponse
+    hygiene: HygieneResponse
+    patterns: PatternsResponse
 
 
 class ReleaseSummaryItem(BaseModel):

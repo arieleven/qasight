@@ -62,6 +62,7 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/dashboard/overview") return "dashboard/overview.json";
   if (path === "/dashboard/runs/recent") return "dashboard/recent-runs.json";
   if (path === "/dashboard/attention") return "dashboard/attention.json";
+  if (path === "/dashboard/delivery") return "dashboard/delivery.json";
   if (path === "/resources") return "resources.json";
   if (path === "/releases") return "releases.json";
   if (path === "/report") {

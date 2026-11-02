@@ -57,6 +57,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/dashboard/overview.json           GET /api/v1/dashboard/overview
     data/dashboard/recent-runs.json        GET /api/v1/dashboard/runs/recent
     data/dashboard/attention.json          GET /api/v1/dashboard/attention
+    data/dashboard/delivery.json           GET /api/v1/dashboard/delivery?days=7
     data/project-health/all.json           GET /api/v1/project-health
     data/project-health/cycles/<name>.json GET /api/v1/project-health?cycle={name}
     data/project-health/skills.json        GET /api/v1/project-health/skills
@@ -312,6 +313,7 @@ class Exporter:
             self._write("dashboard/overview.json", self._absolutize_report_links(overview))
         self._dump("/api/v1/dashboard/runs/recent?limit=8", "dashboard/recent-runs.json")
         self._dump("/api/v1/dashboard/attention", "dashboard/attention.json")
+        self._dump("/api/v1/dashboard/delivery?days=7", "dashboard/delivery.json")
         self._dump("/api/v1/project-health", "project-health/all.json")
         self._dump("/api/v1/project-health/skills", "project-health/skills.json")
         self._dump("/api/v1/project-health/ai-review", "project-health/ai-review.json")

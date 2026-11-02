@@ -128,3 +128,12 @@ export function passRateLine(runs: { returncode?: number | null }[]): string {
   const pct = formatPercent((passed / finished.length) * 100);
   return `Passed ${passed} of the last ${countLabel(finished.length, "run")} (${pct}).`;
 }
+
+/** A short span of time for headlines: "45m", "5h", "2.5d", "12d"; "–" when unknown. Matches `delivery_metrics.span`. */
+export function formatSpan(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds)) return "–";
+  if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))}m`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+  const days = seconds / 86400;
+  return days >= 10 ? `${Math.round(days)}d` : `${days.toFixed(1)}d`;
+}

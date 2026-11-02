@@ -140,3 +140,124 @@ export function RunsChart({ points }: { points: Point[] }) {
     </svg>
   );
 }
+
+function minutesLabel(ms: number): string {
+  const min = ms / 60000;
+  if (min >= 10) return `${Math.round(min)}m`;
+  if (min >= 1) return `${min.toFixed(1)}m`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+/** Median wall time of each day's runs as bars, so a suite that creeps slower shows. */
+export function SuiteTimeChart({ points }: { points: Point[] }) {
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const known = points.filter((p) => p.median_duration_ms != null);
+  const top = Math.max(1, ...known.map((p) => p.median_duration_ms as number));
+  const slot = innerW / Math.max(1, points.length);
+  const bar = Math.max(2, Math.min(36, slot * 0.6));
+  const y = (v: number) => PAD.top + innerH - (v / top) * innerH;
+  const step = labelStep(points.length);
+  const first = known[0];
+  const last = known[known.length - 1];
+  return (
+    <svg
+      data-chart
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label={
+        known.length
+          ? `Median suite time per day, from ${minutesLabel(first.median_duration_ms as number)} on ${first.day} to ${minutesLabel(last.median_duration_ms as number)} on ${last.day}`
+          : "Median suite time per day: no runs in this period"
+      }
+      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+    >
+      {[0, top].map((t) => (
+        <g key={t}>
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke={PAPER.rule} strokeWidth={1} />
+          <text x={PAD.left - 6} y={y(t)} fill={PAPER.muted} fontSize={12} textAnchor="end" dominantBaseline="middle">
+            {t ? minutesLabel(t) : "0"}
+          </text>
+        </g>
+      ))}
+      {points.map((p, i) => {
+        const cx = PAD.left + slot * i + slot / 2;
+        const ms = p.median_duration_ms;
+        return (
+          <g key={p.day}>
+            {ms ? <rect x={cx - bar / 2} y={y(ms)} width={bar} height={y(0) - y(ms)} fill={PAPER.brand} rx={2} /> : null}
+            {i % step === 0 || i === points.length - 1 ? (
+              <text x={cx} y={H - 8} fill={PAPER.muted} fontSize={12} textAnchor={i === points.length - 1 && points.length > 7 ? "end" : "middle"}>
+                {dayLabel(p.day, points.length > 14)}
+              </text>
+            ) : null}
+          </g>
+        );
+      })}
+      {!known.length ? (
+        <text x={W / 2} y={H / 2} fill={PAPER.faint} fontSize={13} textAnchor="middle">
+          No runs in this period
+        </text>
+      ) : null}
+    </svg>
+  );
+}
+
+type Day = ManagerReport["patterns"]["days"][number];
+
+/** A percentage per day as a line (coverage, retry rate), on an axis fitted to the values. */
+export function DailyPercentChart({ points, field, label }: { points: Day[]; field: "coverage_pct" | "retry_pct"; label: string }) {
+  const known = points.filter((p) => p[field] != null);
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const values = known.map((p) => p[field] as number);
+  const lo = values.length ? Math.max(0, Math.floor(Math.min(...values) - 2)) : 0;
+  const hi = values.length ? Math.min(100, Math.ceil(Math.max(...values) + 2)) : 100;
+  const x = (i: number) => PAD.left + (points.length <= 1 ? innerW / 2 : (i * innerW) / (points.length - 1));
+  const y = (v: number) => PAD.top + innerH - ((v - lo) / (hi - lo || 1)) * innerH;
+  const line = points
+    .map((p, i) => (p[field] == null ? null : `${x(i).toFixed(1)},${y(p[field] as number).toFixed(1)}`))
+    .filter(Boolean)
+    .join(" ");
+  const step = labelStep(points.length);
+  const first = known[0];
+  const last = known[known.length - 1];
+  return (
+    <svg
+      data-chart
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label={
+        known.length
+          ? `${label} per day, from ${first[field]}% on ${first.day} to ${last[field]}% on ${last.day}`
+          : `${label} per day: nothing recorded in this period`
+      }
+      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+    >
+      {[lo, hi].map((t) => (
+        <g key={t}>
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke={PAPER.rule} strokeWidth={1} />
+          <text x={PAD.left - 6} y={y(t)} fill={PAPER.muted} fontSize={12} textAnchor="end" dominantBaseline="middle">
+            {t}%
+          </text>
+        </g>
+      ))}
+      {line ? <polyline points={line} fill="none" stroke={PAPER.brand} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" /> : null}
+      {points.map((p, i) => (p[field] == null ? null : <circle key={p.day} cx={x(i)} cy={y(p[field] as number)} r={points.length > 31 ? 2 : 3.5} fill={PAPER.brand} />))}
+      {points.map((p, i) =>
+        i % step === 0 || i === points.length - 1 ? (
+          <text key={`l-${p.day}`} x={x(i)} y={H - 8} fill={PAPER.muted} fontSize={12} textAnchor={points.length > 1 && i === points.length - 1 ? "end" : i === 0 && points.length > 1 ? "start" : "middle"}>
+            {dayLabel(p.day, points.length > 14)}
+          </text>
+        ) : null
+      )}
+      {!known.length ? (
+        <text x={W / 2} y={H / 2} fill={PAPER.faint} fontSize={13} textAnchor="middle">
+          Nothing recorded in this period
+        </text>
+      ) : null}
+    </svg>
+  );
+}

@@ -52,6 +52,13 @@ def test_weekly_report_numbers_trend_and_lists(report_history: list[CompletedRun
     assert report.findings[0].title == "api is red"
     assert report.to_dict()["kpis"]["runs"] == 3
 
+    # Delivery: test_login failed 13 days ago and passed 6 days ago; test_flip is flaky.
+    d = report.delivery
+    assert (d.fixes, d.median_fix_s, d.open_failures) == (1, 7 * DAY, 0)
+    assert d.ci_minutes == pytest.approx(0.1)  # three one-second runs, rounded
+    assert "Failing tests were fixed in a median of 7.0d, over 1 fix." in report.summary
+    assert busy[0].median_duration_ms == 1000
+
 
 def test_empty_period_and_bad_period(report_history: list[CompletedRunView]) -> None:
     report = manager_report.build_report(period="day", now=NOW - 2 * DAY)

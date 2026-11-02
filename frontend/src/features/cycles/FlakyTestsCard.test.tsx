@@ -34,6 +34,8 @@ describe("FlakyTestsCard", () => {
           flip_rate: 1,
           last_status: "failed",
           history: ["passed", "failed", "passed", "failed"],
+          red_runs: 2,
+          cost_minutes: 14.4,
           owners: ["@org/api"],
           issue_url: "https://github.com/acme/shop/issues/new?title=Flaky+test%3A+test_flaky_route"
         }
@@ -49,6 +51,7 @@ describe("FlakyTestsCard", () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/analytics/flaky?cycle=fake-api");
     expect(screen.getByText("Flaky tests (1)")).toBeInTheDocument();
     expect(screen.getByText("3 flips in 4 runs")).toBeInTheDocument();
+    expect(screen.getByText("cost 14 min · 2 red runs")).toBeInTheDocument();
     expect(screen.getByLabelText("History, oldest first: passed, failed, passed, failed")).toBeInTheDocument();
   });
 
