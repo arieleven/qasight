@@ -112,3 +112,10 @@ export const HelpIcon = () => (
     <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01" />
   </Icon>
 );
+
+export const ReportIcon = () => (
+  <Icon>
+    <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" />
+    <path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-4" />
+  </Icon>
+);

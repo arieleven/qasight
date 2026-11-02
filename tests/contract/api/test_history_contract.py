@@ -351,3 +351,27 @@ def test_run_reports_for_a_run_older_than_the_recent_list(monkeypatch, tmp_path)
     payload = resp.json()
     assert payload["artifact_links"] == ["unit/run.log"]
     assert payload["artifacts_url"] == "history/old-run/artifacts"
+
+
+def test_run_markdown_drops_the_comment_marker(monkeypatch) -> None:  # noqa: ANN001
+    from testo_core.services import run_summary_markdown as rsm
+
+    monkeypatch.setattr(
+        rsm, "load_run_summary", lambda run_id: object() if run_id == "run-1" else None
+    )
+    monkeypatch.setattr(
+        rsm,
+        "render_markdown",
+        lambda summary: (
+            "<!-- testo-summary:api -->\n### ✅ Testosterone: `api` passed\n\nRan in 1s"
+        ),  # noqa: ARG005
+    )
+
+    client = TestClient(create_app())
+    resp = client.get("/api/v1/runs/run-1/markdown")
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "run_id": "run-1",
+        "markdown": "### ✅ Testosterone: `api` passed\n\nRan in 1s",
+    }
+    assert client.get("/api/v1/runs/missing/markdown").status_code == 404

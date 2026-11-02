@@ -586,6 +586,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report
+         * @description How testing went over the last ``period``, against the period before, for every cycle or ``cycle``.
+         */
+        get: operations["get_report_api_v1_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Report
+         * @description The report as a file: the same as ``testo export FORMAT`` on this server's history.
+         *
+         *     PDF and PNG need the ``export`` extra and Chromium on the server; PowerPoint and
+         *     Excel need the ``export`` extra; HTML needs the built UI (bundled in released wheels).
+         */
+        get: operations["export_report_api_v1_report_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources": {
         parameters: {
             query?: never;
@@ -853,6 +896,29 @@ export interface paths {
          * @description The run's failing tests: message, stage, how long each has been failing, flaky or not.
          */
         get: operations["get_run_failures_api_v1_runs__run_id__failures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Markdown
+         * @description The run as Markdown (headline, stages, failing tests, changes since its baseline).
+         *
+         *     The same text as ``testo report markdown --run-id``, so the UI's "Copy summary"
+         *     pastes into a pull request, Confluence, Notion or Jira the way the CLI's does.
+         */
+        get: operations["get_run_markdown_api_v1_runs__run_id__markdown_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1949,6 +2015,46 @@ export interface components {
             value: string;
         };
         /**
+         * ManagerReportResponse
+         * @description How testing went over a period: the ``/report`` page and every ``testo export`` format.
+         */
+        ManagerReportResponse: {
+            /** Cycles */
+            cycles: components["schemas"]["ReportCycleRow"][];
+            /** Days */
+            days: number;
+            /** End */
+            end: number;
+            /** Findings */
+            findings: components["schemas"]["ReportFinding"][];
+            /** Fixed */
+            fixed: components["schemas"]["ReportTest"][];
+            /** Generated At */
+            generated_at: number;
+            kpis: components["schemas"]["ReportKpis"];
+            /** Newly Flaky */
+            newly_flaky: components["schemas"]["ReportTest"][];
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "week" | "month" | "quarter";
+            /** Scope */
+            scope: string[];
+            /** Slower */
+            slower: components["schemas"]["ReportTest"][];
+            /** Start */
+            start: number;
+            /** Still Failing */
+            still_failing: components["schemas"]["ReportTest"][];
+            /** Summary */
+            summary: string[];
+            /** Title */
+            title: string;
+            /** Trend */
+            trend: components["schemas"]["ReportTrendPoint"][];
+        };
+        /**
          * ProjectHealthResponse
          * @description A repeatable 0-100 score of the project under test, from its recorded runs.
          */
@@ -2069,6 +2175,92 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /** ReportCycleRow */
+        ReportCycleRow: {
+            /** Cycle */
+            cycle: string;
+            /** Failing */
+            failing: number;
+            /** Fixed */
+            fixed: number;
+            /** Green */
+            green: number;
+            /** Health Score */
+            health_score: number | null;
+            /** Newly Flaky */
+            newly_flaky: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Prev Pass Rate */
+            prev_pass_rate: number | null;
+            /** Runs */
+            runs: number;
+            /** Slower */
+            slower: number;
+        };
+        /** ReportFinding */
+        ReportFinding: {
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /** Title */
+            title: string;
+        };
+        /** ReportKpis */
+        ReportKpis: {
+            /** Coverage Pct */
+            coverage_pct: number | null;
+            /** Cycles */
+            cycles: number;
+            /** Failing Tests */
+            failing_tests: number;
+            /** Fixed */
+            fixed: number;
+            /** Green */
+            green: number;
+            /** Health Grade */
+            health_grade: string | null;
+            /** Health Score */
+            health_score: number | null;
+            /** Newly Flaky */
+            newly_flaky: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Prev Coverage Pct */
+            prev_coverage_pct: number | null;
+            /** Prev Green */
+            prev_green: number;
+            /** Prev Pass Rate */
+            prev_pass_rate: number | null;
+            /** Prev Runs */
+            prev_runs: number;
+            /** Runs */
+            runs: number;
+        };
+        /** ReportTest */
+        ReportTest: {
+            /** Cycle */
+            cycle: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Name */
+            name: string;
+        };
+        /** ReportTrendPoint */
+        ReportTrendPoint: {
+            /** Day */
+            day: string;
+            /** Green */
+            green: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Runs */
+            runs: number;
         };
         /** ResourceActionItem */
         ResourceActionItem: {
@@ -2546,6 +2738,16 @@ export interface components {
             items: components["schemas"]["RunListItem"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /**
+         * RunMarkdownResponse
+         * @description A run as GitHub-flavored Markdown, the same text as ``testo report markdown``.
+         */
+        RunMarkdownResponse: {
+            /** Markdown */
+            markdown: string;
+            /** Run Id */
+            run_id: string;
         };
         /** RunPyramidResponse */
         RunPyramidResponse: {
@@ -3794,6 +3996,80 @@ export interface operations {
             };
         };
     };
+    get_report_api_v1_report_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "quarter";
+                /** @description Cycles to include; repeat. All when left out. */
+                cycle?: string[] | null;
+                title?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_report_api_v1_report_export_get: {
+        parameters: {
+            query?: {
+                format?: "pdf" | "png" | "html" | "pptx" | "xlsx" | "csv" | "json";
+                period?: "day" | "week" | "month" | "quarter";
+                cycle?: string[] | null;
+                title?: string | null;
+                brand?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report file, as an attachment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description This server can't make that format (the message says what to install). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_resources_api_v1_resources_get: {
         parameters: {
             query?: {
@@ -4252,6 +4528,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunFailuresResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_markdown_api_v1_runs__run_id__markdown_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMarkdownResponse"];
                 };
             };
             /** @description Validation Error */

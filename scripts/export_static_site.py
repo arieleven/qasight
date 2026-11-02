@@ -50,12 +50,15 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/runs/<run_id>/pyramid.json        GET /api/v1/runs/{id}/pyramid
     data/runs/<run_id>/failures.json       GET /api/v1/runs/{id}/failures
     data/runs/<run_id>/ai-summary.json     GET /api/v1/runs/{id}/ai-summary
+    data/runs/<run_id>/markdown.json       GET /api/v1/runs/{id}/markdown
     data/dashboard/overview.json           GET /api/v1/dashboard/overview
     data/dashboard/recent-runs.json        GET /api/v1/dashboard/runs/recent
     data/dashboard/attention.json          GET /api/v1/dashboard/attention
     data/project-health/all.json           GET /api/v1/project-health
     data/project-health/cycles/<name>.json GET /api/v1/project-health?cycle={name}
     data/project-health/skills.json        GET /api/v1/project-health/skills
+    data/report/<period>.json              GET /api/v1/report?period={period}
+    data/report/<period>/<name>.json       GET /api/v1/report?period={period}&cycle={name}
     data/project-health/ai-review.json     GET /api/v1/project-health/ai-review
     data/project-health/ai-review/<name>.json  GET /api/v1/project-health/ai-review?cycle={name}
     data/delta/<current>__<baseline>/comparison.json
@@ -79,6 +82,8 @@ from urllib.parse import quote
 # Anthropic provider sends a sampling temperature and reads the first content
 # block, so it needs a model without always-on thinking.
 DEFAULT_DEMO_AI_MODEL = "claude-haiku-4-5"
+# The Report page's period picker; each one is exported for every cycle and for all of them.
+REPORT_PERIODS = ("day", "week", "month", "quarter")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -205,6 +210,7 @@ class Exporter:
             self._dump(f"/api/v1/runs/{run_id}/pyramid", f"{base}/pyramid.json")
             self._dump(f"/api/v1/runs/{run_id}/failures", f"{base}/failures.json")
             self._dump(f"/api/v1/runs/{run_id}/ai-summary", f"{base}/ai-summary.json")
+            self._dump(f"/api/v1/runs/{run_id}/markdown", f"{base}/markdown.json")
         return items
 
     def generate_ai_summaries(self, run_ids: list[str]) -> None:
@@ -264,6 +270,11 @@ class Exporter:
             self._dump(
                 f"/api/v1/project-health/ai-review{query}", f"project-health/ai-review/{name}.json"
             )
+            for period in REPORT_PERIODS:
+                self._dump(
+                    f"/api/v1/report?period={period}&cycle={quote(name, safe='')}",
+                    f"report/{period}/{name}.json",
+                )
 
     def export_tests(self, cycle: str) -> None:
         """The cycle's test list, and one history file per test for the per-test page."""
@@ -292,6 +303,8 @@ class Exporter:
         self._dump("/api/v1/project-health", "project-health/all.json")
         self._dump("/api/v1/project-health/skills", "project-health/skills.json")
         self._dump("/api/v1/project-health/ai-review", "project-health/ai-review.json")
+        for period in REPORT_PERIODS:
+            self._dump(f"/api/v1/report?period={period}", f"report/{period}.json")
 
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
         """Export the run pairs the UI can ask for.

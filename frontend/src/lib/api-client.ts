@@ -24,6 +24,9 @@ export type StageHealth = Schemas["StageHealth"];
 export type RunDetailResponse = Schemas["RunDetailResponse"];
 export type RunReportsResponse = Schemas["RunReportsResponse"];
 export type RunPyramidResponse = Schemas["RunPyramidResponse"];
+export type RunMarkdownResponse = Schemas["RunMarkdownResponse"];
+export type ManagerReport = Schemas["ManagerReportResponse"];
+export type ReportPeriod = ManagerReport["period"];
 export type RunFailuresResponse = Schemas["RunFailuresResponse"];
 export type FailingTestItem = Schemas["FailingTestItem"];
 export type TriageItem = Schemas["TriageItem"];
@@ -142,6 +145,21 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return (await resp.json()) as T;
 }
 
+/** A file from the API (a report export): its bytes and the name the server suggested. */
+async function apiFile(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const token = apiToken();
+  const resp = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!resp.ok) {
+    const body = (await resp.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new ApiError(body?.error?.message ?? `API error ${resp.status}`, resp.status);
+  }
+  const disposition = resp.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+  return { blob: await resp.blob(), filename };
+}
+
+export type ReportFormat = "pdf" | "png" | "html" | "pptx" | "xlsx" | "csv" | "json";
+
 export const apiClient = {
   createCycleExecution(cycle: string, payload: CycleExecutionRequest): Promise<CycleExecutionAccepted> {
     return api<CycleExecutionAccepted>(`/api/v1/cycles/${encodeURIComponent(cycle)}/executions`, {
@@ -205,6 +223,17 @@ export const apiClient = {
   },
   getRunFailures(runId: string): Promise<RunFailuresResponse> {
     return api<RunFailuresResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/failures`);
+  },
+  getReport(period: ReportPeriod, cycle?: string): Promise<ManagerReport> {
+    const params = new URLSearchParams({ period, ...(cycle ? { cycle } : {}) });
+    return api<ManagerReport>(`/api/v1/report?${params}`);
+  },
+  downloadReport(format: ReportFormat, period: ReportPeriod, cycle?: string): Promise<{ blob: Blob; filename: string | null }> {
+    const params = new URLSearchParams({ format, period, ...(cycle ? { cycle } : {}) });
+    return apiFile(`/api/v1/report/export?${params}`);
+  },
+  getRunMarkdown(runId: string): Promise<RunMarkdownResponse> {
+    return api<RunMarkdownResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/markdown`);
   },
   getRunPyramid(runId: string): Promise<RunPyramidResponse> {
     return api<RunPyramidResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/pyramid`);

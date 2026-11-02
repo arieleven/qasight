@@ -5,7 +5,7 @@
  */
 export function BackgroundArt() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden text-brand-400">
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden text-brand-400 print:hidden">
       <Molecule className="absolute -bottom-6 -right-10 w-[300px] -rotate-6 opacity-[0.16] sm:w-[440px] lg:bottom-8 lg:right-8 lg:w-[540px]" />
       <VialsAndSyringe className="absolute -right-12 top-28 w-[220px] rotate-12 opacity-[0.12] sm:w-[280px] lg:bottom-6 lg:left-[20rem] lg:right-auto lg:top-auto lg:w-[320px] lg:-rotate-6" />
     </div>

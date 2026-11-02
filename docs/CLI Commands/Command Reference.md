@@ -409,11 +409,14 @@ testo notify --to slack --cycle nightly                      # only when it need
 testo notify --to slack --to teams --cycle nightly --when change --run-url "$CI_JOB_URL"
 testo notify --to teams --cycle nightly --dry-run            # print the payload, send nothing
 testo notify --to slack --digest week --run-url https://testo.example.com   # weekly digest (cron)
+testo notify --to email --digest week --email-to cto@acme.com --attach pdf  # the manager report by email
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--to` | required | `slack` or `teams`; repeat for both. URLs come from `TESTO_SLACK_WEBHOOK_URL` and `TESTO_TEAMS_WEBHOOK_URL` |
+| `--to` | required | `slack` or `teams`; repeat for both. URLs come from `TESTO_SLACK_WEBHOOK_URL` and `TESTO_TEAMS_WEBHOOK_URL`. With `--digest` also `email`: the [manager report](#testo-export) for the period, summarised in the email and attached as a file, sent over SMTP (`TESTO_SMTP_*` below) |
+| `--email-to` | `TESTO_REPORT_EMAIL_TO` | With `--to email`: a recipient; repeat for several |
+| `--attach` | `pdf` | With `--to email`: the file to attach, `pdf`, `pptx`, `xlsx`, `html`, `png` or `none` (needs what [`testo export`](#testo-export) needs for that format) |
 | `--cycle` / `--run-id` | latest run | Which recorded run to send |
 | `--when` | `failure` | `failure`: the run failed or made a test flaky. `change`: the run's result flipped, or a test regressed, got fixed or became flaky. `always`: every run |
 | `--title` | cycle name | Name in the message |
@@ -421,7 +424,31 @@ testo notify --to slack --digest week --run-url https://testo.example.com   # we
 | `--dry-run` | off | Print the JSON payloads instead of posting |
 | `--digest` | none | `week` or `day`: instead of one run, a digest of every cycle (or `--cycle`) over that period against the one before: runs, green builds, test pass rate, line coverage, tests that turned flaky, still fail, got fixed or got slower. `--run-url` becomes the "Open Testosterone" link; `--when` and `--run-id` don't apply. Run it from cron or a scheduled CI job; a period with no runs sends nothing |
 
-Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a missing webhook variable or no recorded run, `3` when a webhook rejects the message or can't be reached (the error never includes the URL). The `slack` and `teams` [reporters](#reporter-types-reporters----reporter) send the same message right after `testo run`. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
+Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a missing webhook variable, missing SMTP settings or recipients, or no recorded run, `3` when a webhook or the mail server rejects the message or can't be reached (the error never includes the URL), or the attachment can't be made. The `slack` and `teams` [reporters](#reporter-types-reporters----reporter) send the same message right after `testo run`. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
+
+---
+
+## `testo export`
+
+Write the manager report, the same as the UI's Report page (`/report`), as a file to email, attach or present: test health score, pass rate and green builds against the period before, a written summary, pass-rate and runs-per-day charts, one row per cycle, and what is failing, turned flaky, got fixed or got slower.
+
+```bash
+testo export pdf                                   # weekly-test-report-2026-11-01.pdf
+testo export pptx --period month --brand "Acme QA" # slides with editable charts
+testo export xlsx --period quarter --cycle api --cycle web -o q4.xlsx
+testo export json -o -                             # the numbers on stdout
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `FORMAT` | required | `pdf` (A4), `png` (the whole report as one image), `html` (one file that opens offline), `pptx` (6 slides: title, headline numbers, trend charts, cycles, what needs attention, fixed and what to fix first; native charts and tables), `xlsx` (Summary, Trend with a chart, Cycles, Tests and Findings sheets), `csv` (the cycles table), `json` (the whole report) |
+| `--period` | `week` | `day`, `week`, `month` (30 days) or `quarter` (90 days), each compared with the one before |
+| `--cycle` | every cycle | Only this cycle; repeat for several |
+| `--title` | "Weekly test report" … | Report title |
+| `--brand` | `Testosterone` | Name above the title (your team or product) |
+| `--out`, `-o` | `<title>-<date>.<format>` | File to write; `-` for stdout |
+
+`pdf`, `png`, `pptx` and `xlsx` need the export extra: `pip install 'testo-core[export]'`, plus `playwright install chromium` once for `pdf` and `png` (or `TESTO_CHROMIUM` pointing at a Chrome or Chromium). `html`, `pdf` and `png` draw the report with the built web UI, which released wheels include. The server offers the same files at `GET /api/v1/report/export?format=pdf&period=week` and on the Report page's Download menu. Exit `0` when written, `2` for a bad format or period, or when the format needs something that isn't installed (the message says what). See [Exporting Results - 2026-11-01](../Specs%20&%20ADRs/Exporting%20Results%20-%202026-11-01.md).
 
 ---
 
@@ -912,6 +939,9 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | `TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL` | Webhooks for `testo notify` and the `slack` / `teams` reporters |
+| `TESTO_SMTP_HOST`, `TESTO_SMTP_PORT`, `TESTO_SMTP_SECURITY`, `TESTO_SMTP_USER`, `TESTO_SMTP_PASSWORD`, `TESTO_SMTP_FROM` | Mail server for `testo notify --to email` (`TESTO_SMTP_SECURITY`: `starttls` default, `ssl` or `none`; port 587, or 465 with `ssl`) |
+| `TESTO_REPORT_EMAIL_TO` | Comma-separated recipients for `testo notify --to email` without `--email-to` |
+| `TESTO_CHROMIUM` | A Chrome or Chromium for `testo export pdf` / `png`, instead of Playwright's own download |
 | `TESTO_ISSUES` | `github`: after every recorded run, open an issue per newly flaky test and close fixed ones ([`testo issues sync`](#testo-issues-sync)) |
 | `TESTO_GITHUB_TOKEN`, `GITHUB_TOKEN` | Token for those issues (`issues: write`); the first one set wins |
 | `TESTO_ISSUES_REPO` | `owner/name` for the issues, instead of the repository the runs recorded |

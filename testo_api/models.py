@@ -230,6 +230,13 @@ class RunPyramidResponse(ApiModel):
     message: str
 
 
+class RunMarkdownResponse(ApiModel):
+    """A run as GitHub-flavored Markdown, the same text as ``testo report markdown``."""
+
+    run_id: str
+    markdown: str
+
+
 class TriageItem(ApiModel):
     cycle: str
     # The failure message with numbers, ids and quoted values blanked: what later failures match on.
@@ -975,3 +982,73 @@ class AskResponse(ApiModel):
     error_code: str | None = None
     error_message: str | None = None
     context_stats: dict[str, int] = Field(default_factory=dict)
+
+
+class ReportKpis(ApiModel):
+    health_score: int | None
+    health_grade: str | None
+    pass_rate: float | None
+    prev_pass_rate: float | None
+    runs: int
+    prev_runs: int
+    green: int
+    prev_green: int
+    coverage_pct: float | None
+    prev_coverage_pct: float | None
+    cycles: int
+    failing_tests: int
+    newly_flaky: int
+    fixed: int
+
+
+class ReportTrendPoint(ApiModel):
+    day: str
+    runs: int
+    green: int
+    pass_rate: float | None
+
+
+class ReportCycleRow(ApiModel):
+    cycle: str
+    runs: int
+    green: int
+    pass_rate: float | None
+    prev_pass_rate: float | None
+    failing: int
+    newly_flaky: int
+    fixed: int
+    slower: int
+    health_score: int | None
+
+
+class ReportTest(ApiModel):
+    cycle: str
+    name: str
+    detail: str = ""
+
+
+class ReportFinding(ApiModel):
+    cycle: str
+    title: str
+    detail: str
+
+
+class ManagerReportResponse(ApiModel):
+    """How testing went over a period: the ``/report`` page and every ``testo export`` format."""
+
+    title: str
+    period: Literal["day", "week", "month", "quarter"]
+    days: int
+    start: float
+    end: float
+    generated_at: float
+    scope: list[str]
+    summary: list[str]
+    kpis: ReportKpis
+    trend: list[ReportTrendPoint]
+    cycles: list[ReportCycleRow]
+    still_failing: list[ReportTest]
+    newly_flaky: list[ReportTest]
+    fixed: list[ReportTest]
+    slower: list[ReportTest]
+    findings: list[ReportFinding]

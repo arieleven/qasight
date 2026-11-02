@@ -427,13 +427,12 @@ def no_bundled_ui(
     """Tests see the API without a UI unless they set one up.
 
     A checkout where ``scripts/build_ui_bundle.sh`` ran has ``testo_api/ui_dist/``,
-    which ``testo_api.ui.ui_dir()`` would otherwise serve at ``/`` in every app.
+    which ``testo_core.ui_bundle.ui_dir()`` would otherwise serve at ``/`` in every app.
     """
-    try:
-        import testo_api.ui as ui_mod
-    except ModuleNotFoundError:  # the [api] extra isn't installed
-        return
-    monkeypatch.setattr(ui_mod, "BUNDLED_UI_DIR", tmp_path_factory.getbasetemp() / "no-ui-bundle")
+    from testo_core import ui_bundle
+
+    missing = tmp_path_factory.getbasetemp() / "no-ui-bundle"
+    monkeypatch.setattr(ui_bundle, "bundled_ui_dir", lambda: missing)
 
 
 @pytest.fixture(autouse=True)

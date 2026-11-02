@@ -5,6 +5,7 @@ import { RouterProvider } from "react-router-dom";
 
 import { router } from "./app/routes";
 import { StaticBuildBanner } from "./components/StaticBuildBanner";
+import { StandaloneReport, embeddedReport } from "./features/report/standalone";
 import { shouldRetry } from "./lib/api-client";
 import { installStaticBackend } from "./lib/static-backend";
 import "./styles.css";
@@ -16,11 +17,18 @@ installStaticBackend();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: shouldRetry } } });
 
+// `testo export` bakes a report into the page: render just that document.
+const embedded = embeddedReport();
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <StaticBuildBanner />
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    {embedded ? (
+      <StandaloneReport embedded={embedded} />
+    ) : (
+      <QueryClientProvider client={queryClient}>
+        <StaticBuildBanner />
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    )}
   </React.StrictMode>
 );

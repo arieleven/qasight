@@ -233,6 +233,7 @@ schema and every flag are in [Command Reference](https://taltal-beep.github.io/t
 | `testo mcp` | The run history as an MCP server for coding agents over stdio (needs the `mcp` extra; `--allow-writes` for triage) |
 | `testo demo` | Record eight sample runs with a flaky test, a new failure and a slower test, then open the UI on them |
 | `testo badge --cycle <name>` | A README badge for a cycle's latest run (SVG or shields.io endpoint JSON) |
+| `testo export pdf\|pptx\|xlsx\|png\|html\|csv\|json` | The manager report (the UI's Report page) as a file; `--period day\|week\|month\|quarter` (PDF, PNG, slides and Excel need the `export` extra) |
 | `testo lease …` | Resource pools: give each parallel worker its own VM, device or test account |
 | `testo doctor` | Check config, database and tools on PATH |
 
@@ -254,7 +255,8 @@ Details: [Troubleshooting and Error Codes](https://taltal-beep.github.io/testost
 | Cycles | `GET /cycles`, `GET /cycles/{cycle}` |
 | Executions | `POST /cycles/{cycle}/executions`, `POST /adhoc-executions`, `GET /cycle-executions/{id}`, `GET /cycle-executions/{id}/events` (SSE) |
 | Ingest | `POST /ingest` (JUnit XML upload from `testo ingest --server`) |
-| Runs | `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/reports`, `GET /runs/{id}/pyramid` |
+| Runs | `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/reports`, `GET /runs/{id}/pyramid`, `GET /runs/{id}/markdown` |
+| Report | `GET /report` (`?period=&cycle=`), `GET /report/export?format=pdf\|pptx\|xlsx\|png\|html\|csv\|json` |
 | Analytics | `GET /analytics/delta`, `GET /analytics/delta/cases`, `GET /analytics/flaky`, `GET /dashboard/overview`, `GET /dashboard/runs/recent` |
 | AI (bring your own key) | `GET /ai/config/status`, `PUT /ai/config`, `GET /runs/{id}/ai-summary`, `POST /runs/{id}/ai-summary:generate`, `POST /ask` |
 | Badge | `GET /badge.svg`, `GET /badge.json` (`?cycle=`) |

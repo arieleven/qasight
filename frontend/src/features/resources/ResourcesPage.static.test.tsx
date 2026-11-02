@@ -54,6 +54,8 @@ describe("ResourcesPage in the read-only demo", () => {
     await waitFor(() => expect(screen.getAllByTestId("resource-key")[0]).toHaveTextContent("taken 7m ago · last heartbeat 10s ago"));
     expect(screen.getByTestId("resources-snapshot-note")).toHaveTextContent("made up");
     expect(screen.getByTestId("resources-snapshot-note")).toHaveTextContent(new Date(SNAPSHOT_AT * 1000).toUTCString());
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    // Only the cards' Copy menus: no lease or pool actions in the demo.
+    const actions = screen.queryAllByRole("button").filter((b) => !b.getAttribute("aria-label")?.startsWith("Copy or export"));
+    expect(actions).toHaveLength(0);
   });
 });

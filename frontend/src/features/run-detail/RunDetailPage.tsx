@@ -6,6 +6,7 @@ import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid, buttonClasses } from "../../components/ui";
 import { countLabel, describeExitCode, formatDuration, formatPercent, formatRunLabel } from "../../lib/format";
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
+import { CopySummaryButton } from "./CopySummaryButton";
 import { CrashBadge } from "./CrashBadge";
 import { FailingTestsCard } from "./FailingTestsCard";
 
@@ -179,9 +180,12 @@ export function RunDetailPage() {
           </>
         }
         actions={
-          <Link to="/runs" className={buttonClasses("secondary", "sm")}>
-            Back to runs
-          </Link>
+          <>
+            <CopySummaryButton runId={runId} />
+            <Link to="/runs" className={buttonClasses("secondary", "sm")}>
+              Back to runs
+            </Link>
+          </>
         }
       />
 

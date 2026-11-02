@@ -41,10 +41,19 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TESTO_UI_DIR=/app/ui \
     TESTO_API_HOST=0.0.0.0 \
     TESTO_PROTECT_READS=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
     TESTO_API_PORT=8000
 
+# The Report page's Download menu: PowerPoint and Excel always (two small libraries).
+# PDF and PNG need Chromium (~400 MB), so only with --build-arg TESTO_REPORT_PDF=1.
+ARG TESTO_REPORT_PDF=0
 COPY --from=builder /dist/*.whl /tmp/
-RUN WHEEL="$(ls /tmp/*.whl)" && python -m pip install "${WHEEL}[api,db]" && rm -f /tmp/*.whl && \
+RUN WHEEL="$(ls /tmp/*.whl)" && python -m pip install "${WHEEL}[api,db]" "python-pptx>=1.0.0" "openpyxl>=3.1.0" && \
+    if [ "${TESTO_REPORT_PDF}" = "1" ]; then \
+      python -m pip install "playwright>=1.48.0" && \
+      PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python -m playwright install --with-deps chromium; \
+    fi && \
+    rm -f /tmp/*.whl && \
     useradd --create-home --uid 10001 testo && \
     mkdir -p /data/artifacts /repos && chown testo:testo /data /data/artifacts /repos
 COPY --from=ui /ui/dist /app/ui

@@ -4,31 +4,22 @@ The UI is a ``npm run build`` output built with ``VITE_API_BASE_URL=""`` so it
 calls the API on its own origin. Released wheels carry one in
 ``testo_api/ui_dist/`` (the publish workflow builds it, see
 ``scripts/build_ui_bundle.sh``); ``TESTO_UI_DIR`` points at another build and
-wins over the bundled one. The UI is mounted at ``/``, after every API route,
+wins over the bundled one (the lookup is :mod:`testo_core.ui_bundle`, shared with
+``testo export``). The UI is mounted at ``/``, after every API route,
 and unknown paths fall back to ``index.html`` so client-side routes like
 ``/runs/<id>`` load on refresh.
 """
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
 
-UI_DIR_ENV = "TESTO_UI_DIR"
-# Where a released wheel carries the built UI (empty in a source checkout).
-BUNDLED_UI_DIR = Path(__file__).resolve().parent / "ui_dist"
+from testo_core.ui_bundle import UI_DIR_ENV, ui_dir
 
-
-def ui_dir() -> Path | None:
-    """The UI build to serve: ``TESTO_UI_DIR`` if set, else the bundled one, else None."""
-    raw = (os.environ.get(UI_DIR_ENV) or "").strip()
-    path = Path(raw).expanduser().resolve() if raw else BUNDLED_UI_DIR
-    return path if (path / "index.html").is_file() else None
+__all__ = ["UI_DIR_ENV", "SpaStaticFiles", "ui_dir"]
 
 
 class SpaStaticFiles(StaticFiles):
