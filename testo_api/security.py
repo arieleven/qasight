@@ -13,7 +13,12 @@ The API starts test runs, i.e. it runs commands on the host by design. It binds
 - ``TESTO_AUTH=accounts`` (with a token): people sign in with their own
   username and password (:mod:`testo_core.accounts`), reads are protected, writes
   need the ``runner`` role and server settings ``admin``. The token stays an
-  admin credential for CI and signs the session cookies. Default ``token``.
+  admin credential for CI and signs the session cookies (or ``TESTO_SESSION_KEY``
+  does, when set). Default ``token``.
+- ``TESTO_API_TOKEN_PREVIOUS``: an old token still accepted while CI secrets are
+  moved to a new ``TESTO_API_TOKEN``; remove it when the rotation is done.
+- ``TESTO_SESSION_KEY``: signs account cookies and report tickets instead of the
+  token, so rotating the token doesn't sign people out. See :func:`signing_key`.
 - ``TESTO_CORS_ORIGINS``: comma-separated browser origins allowed to call the
   API. Defaults to the Vite dev and preview servers. A mutating request that
   carries any other ``Origin`` is refused even without a token, because CORS
@@ -88,6 +93,44 @@ def api_token() -> str:
     return os.getenv("TESTO_API_TOKEN", "").strip()
 
 
+def previous_api_token() -> str:
+    """``TESTO_API_TOKEN_PREVIOUS``: still accepted during a rotation (only with a token set)."""
+    previous = os.getenv("TESTO_API_TOKEN_PREVIOUS", "").strip()
+    return previous if api_token() and previous != api_token() else ""
+
+
+def accepted_tokens() -> list[str]:
+    """The tokens a bearer header or the token login may carry: current first, then previous."""
+    return [t for t in (api_token(), previous_api_token()) if t]
+
+
+def token_matches(supplied: str) -> bool:
+    """``supplied`` is the current token or, during a rotation, the previous one."""
+    value = supplied.strip().encode()
+    # Compare against every accepted token, so the time taken doesn't say which matched.
+    results = [hmac.compare_digest(value, t.encode()) for t in accepted_tokens()]
+    return any(results)
+
+
+def signing_key() -> str:
+    """The key account cookies and report tickets are signed with.
+
+    ``TESTO_SESSION_KEY`` when set, so a new ``TESTO_API_TOKEN`` (someone left, a CI
+    secret leaked) keeps people signed in; otherwise the token, as before.
+    """
+    return os.getenv("TESTO_SESSION_KEY", "").strip() or api_token()
+
+
+def verification_keys() -> list[str]:
+    """Keys a signed cookie or ticket may carry: :func:`signing_key`, plus the previous
+    token while one is set and no separate session key is, so a rotation signs nobody out."""
+    keys = [signing_key()]
+    previous = previous_api_token()
+    if previous and not os.getenv("TESTO_SESSION_KEY", "").strip():
+        keys.append(previous)
+    return [k for k in keys if k]
+
+
 def auth_mode() -> AuthMode:
     raw = os.getenv("TESTO_AUTH", "token").strip().lower() or "token"
     return "accounts" if raw == "accounts" else "token"
@@ -134,15 +177,23 @@ def account_session_value(token: str, account: Account, *, now: float | None = N
     return base64.urlsafe_b64encode(payload).decode().rstrip("=") + "." + sig
 
 
-def _account_from_cookie(token: str, cookie: str) -> Principal | None:
+def _account_from_cookie(keys: list[str], cookie: str) -> Principal | None:
     encoded, _, sig = cookie.partition(".")
     try:
         payload = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
         username, version, expires = payload.decode().split(":")
     except (ValueError, UnicodeDecodeError):
         return None
-    expected = hmac.new(token.encode(), b"testo-account-v1:" + payload, hashlib.sha256)
-    if not hmac.compare_digest(sig.encode(), expected.hexdigest().encode()):
+    signed = [
+        hmac.compare_digest(
+            sig.encode(),
+            hmac.new(key.encode(), b"testo-account-v1:" + payload, hashlib.sha256)
+            .hexdigest()
+            .encode(),
+        )
+        for key in keys
+    ]
+    if not any(signed):
         return None
     if int(expires) < time.time():
         return None
@@ -171,23 +222,23 @@ def current_principal(request: Request) -> Principal | None:
 
 
 def _resolve_principal(request: Request) -> Principal | None:
-    expected = api_token()
-    if not expected:
+    if not api_token():
         return None
     scheme, _, supplied = request.headers.get("Authorization", "").partition(" ")
-    if scheme.lower() == "bearer" and hmac.compare_digest(
-        supplied.strip().encode(), expected.encode()
-    ):
+    if scheme.lower() == "bearer" and token_matches(supplied):
         return TOKEN_PRINCIPAL
     cookie = request.cookies.get(SESSION_COOKIE, "")
     if not cookie:
         return None
-    if hmac.compare_digest(cookie.encode(), session_value(expected).encode()):
+    token_cookies = [
+        hmac.compare_digest(cookie.encode(), session_value(t).encode()) for t in accepted_tokens()
+    ]
+    if any(token_cookies):
         return TOKEN_PRINCIPAL
     if not accounts_enabled():
         return None
     try:
-        return _account_from_cookie(expected, cookie)
+        return _account_from_cookie(verification_keys(), cookie)
     except Exception:
         # Broad on purpose: a database error means nobody can be verified, not a 500 page.
         logger.warning("could not check the session against the accounts", exc_info=True)

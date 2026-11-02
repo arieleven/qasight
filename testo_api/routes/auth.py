@@ -9,7 +9,6 @@ HTML from the API so it works before, and without, the React UI.
 
 from __future__ import annotations
 
-import hmac
 import logging
 from datetime import datetime
 from html import escape
@@ -35,6 +34,8 @@ from testo_api.security import (
     current_principal,
     safe_next,
     session_value,
+    signing_key,
+    token_matches,
 )
 
 logger = logging.getLogger(__name__)
@@ -144,8 +145,8 @@ def login(
             return _page(target, "That username and password don't match.", 401)
         login_throttle.succeeded(name)
         _audit(account.username, request, 303)
-        cookie = account_session_value(expected, account)
-    elif hmac.compare_digest(token.strip().encode(), expected.encode()):
+        cookie = account_session_value(signing_key(), account)
+    elif token_matches(token):
         if accounts:
             login_throttle.succeeded(name)
             _audit("token", request, 303)

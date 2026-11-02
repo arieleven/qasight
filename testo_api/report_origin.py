@@ -12,7 +12,8 @@ pointed at the same server):
   reports on that host. Its origin is not the API's, so the API's Origin check
   refuses any write a report page tries.
 
-Tickets and cookies are signed with ``TESTO_API_TOKEN``. Without a token, reads
+Tickets and cookies are signed with ``TESTO_SESSION_KEY``, or ``TESTO_API_TOKEN``
+when that isn't set (see :func:`testo_api.security.signing_key`). Without a token, reads
 are open anyway, so the redirect carries no ticket.
 """
 
@@ -36,6 +37,8 @@ from testo_api.security import (
     reads_protected,
     safe_next,
     session_tag,
+    signing_key,
+    verification_keys,
 )
 
 REPORTS_ORIGIN_ENV = "TESTO_REPORTS_ORIGIN"
@@ -61,15 +64,24 @@ def _sign(token: str, kind: str, payload: str) -> str:
     return f"{encoded}.{sig.hexdigest()}"
 
 
-def _unsign(token: str, kind: str, value: str) -> list[str] | None:
-    """The ``:``-separated fields of a value signed by `_sign`, if valid and unexpired."""
+def _unsign(keys: list[str], kind: str, value: str) -> list[str] | None:
+    """The ``:``-separated fields of a value signed by `_sign` with one of ``keys``,
+    if valid and unexpired."""
     encoded, _, sig = value.partition(".")
     try:
         payload = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode()
     except (ValueError, UnicodeDecodeError):
         return None
-    expected = hmac.new(token.encode(), f"testo-{kind}-v1:{payload}".encode(), hashlib.sha256)
-    if not hmac.compare_digest(sig.encode(), expected.hexdigest().encode()):
+    signed = [
+        hmac.compare_digest(
+            sig.encode(),
+            hmac.new(key.encode(), f"testo-{kind}-v1:{payload}".encode(), hashlib.sha256)
+            .hexdigest()
+            .encode(),
+        )
+        for key in keys
+    ]
+    if not any(signed):
         return None
     fields = payload.split(":")
     try:
@@ -104,7 +116,7 @@ def route_report_request(request: Request) -> Response | None:
         return None
     path = request.url.path
     on_reports_host = request.headers.get("host", "") == urlsplit(origin).netloc
-    token = api_token()
+    token = signing_key() if api_token() else ""
 
     if on_reports_host:
         if path == TICKET_PATH:
@@ -112,7 +124,9 @@ def route_report_request(request: Request) -> Response | None:
         if not path.startswith("/history/") or request.method not in ("GET", "HEAD"):
             return PlainTextResponse("Not found", status_code=404)
         if reads_protected():
-            fields = _unsign(token, "reports", request.cookies.get(REPORTS_COOKIE, ""))
+            fields = _unsign(
+                verification_keys(), "reports", request.cookies.get(REPORTS_COOKIE, "")
+            )
             if fields is None or len(fields) != 3 or not _still_valid(fields[0], fields[1]):
                 return PlainTextResponse(
                     "Open this report from the Testosterone UI to sign in.", status_code=401
@@ -144,7 +158,7 @@ def _exchange_ticket(request: Request, token: str) -> Response:
         target = "/history/"
     if not token:
         return RedirectResponse(target, status_code=303)
-    fields = _unsign(token, "ticket", request.query_params.get("ticket", ""))
+    fields = _unsign(verification_keys(), "ticket", request.query_params.get("ticket", ""))
     if fields is None or len(fields) != 3 or not _still_valid(fields[0], fields[1]):
         return PlainTextResponse(
             "This report link has expired. Open it again from the Testosterone UI.",
