@@ -19,7 +19,7 @@ The comparison ranked five gaps, and Taltal chose to build all of them in waves:
 | N2 | Environments per run, pass and flake rate split by environment | Built (this note) |
 | N3 | Run a chosen set of tests | Built (this note) |
 | N4 | Releases: runs tagged with an app version, a release page | Built (this note) |
-| N5 | Which issues have red tests | Planned |
+| N5 | Which issues have red tests | Built (this note) |
 
 Manual test case management stays out of scope, as the [comparison page](../Compared%20With%20Other%20Tools.md) says.
 
@@ -57,11 +57,17 @@ Manual test case management stays out of scope, as the [comparison page](../Comp
 - **Compared with the release before.** Each release's page lists its failing tests, marking the ones that passed (or did not run) in the previous release's latest run of the same cycle as new, and the tests the previous release failed and this one passes as fixed.
 - **UI and API.** `GET /api/v1/releases` and `GET /api/v1/releases/{release}`, `release` on run items and the run detail. A Releases page in the navigation lists them; a release page shows pass rate, failing and flaky counts, the change from the release before, each cycle's latest run, and the failing and fixed tests. The run page links its release. The static demo export writes `releases.json` and `releases/<name>.json`.
 
+### N5: which issues have red tests
+
+- **Built on N1.** `services/test_issues.py` groups a cycle's tests by the issue they point at: issue links (`type` `issue` or `tms`: Allure links, Playwright `issue` annotations, a JUnit `issue`/`jira` property holding a URL) and `issue` labels without a URL (`record_property("jira", "PAY-8")`). A link and a label with the same name (case-insensitive) are one issue, keeping the link's URL. Plain `link` links (docs, dashboards) are not issues.
+- **State from the latest run.** An issue is *failing* when one of its tests failed in its latest run, else *flaky* when one of them is flaky, else *passing*. Failing issues come first. The tracker is never called: nothing here needs a Jira or GitHub token, and an issue's own open/closed state stays in the tracker.
+- **UI and API.** `GET /api/v1/analytics/issues?cycle=` and an "Issues" card on the cycle page ("2 issues have red tests"), each issue linking to the tracker and its failing tests to their test page. Hidden when no test points at an issue. The static demo export writes `issues/<cycle>.json`.
+
 ## Consequences
 
 - A suite that already uses Allure, Playwright tags or JUnit properties gets the breakdown with no config change. A plain pytest JUnit file has no labels until tests call `record_property("feature", "Checkout")` or use allure-pytest.
 - `test_result` rows are a little larger (two small JSON values per test).
-- N5 builds directly on the `issue` labels and links stored here.
+- N5 builds directly on the `issue` labels and links stored here; a suite that names no issues sees no Issues card.
 - A run of chosen tests is a run like any other in the history. Its absent tests are simply absent: flaky detection and per-test history skip runs a test isn't in, and Compare lists them as not run.
 - A release page is only as complete as the runs tagged with it: a cycle that never ran with `--release 2.3` is not part of 2.3.
 - Environments split flaky lanes only when runs record one. A team that sets `TESTO_ENV` on some jobs and not others gets an extra "not set" lane until every job sets it.
