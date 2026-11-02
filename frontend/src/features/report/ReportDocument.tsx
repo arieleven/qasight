@@ -192,9 +192,6 @@ export function ReportDocument({ report, brand = "Testosterone", copy = true }: 
         )}
       </section>
 
-      <DeliverySection report={report} copy={copy} />
-      <SignalSection report={report} copy={copy} />
-
       <Section copy={copy} title="Summary">
         <ul className="list-disc space-y-1 pl-5 text-[15px] leading-relaxed" style={{ color: PAPER.ink }}>
           {report.summary.map((line) => (
@@ -202,6 +199,9 @@ export function ReportDocument({ report, brand = "Testosterone", copy = true }: 
           ))}
         </ul>
       </Section>
+
+      <DeliverySection report={report} copy={copy} />
+      <SignalSection report={report} copy={copy} />
 
       <div className="grid gap-x-8 md:grid-cols-2">
         <Section copy={copy} title="Pass rate by day">
@@ -263,9 +263,6 @@ export function ReportDocument({ report, brand = "Testosterone", copy = true }: 
       </Section>
 
       <DeliveryByCycle report={report} copy={copy} />
-      <TeamsSection report={report} copy={copy} />
-      <HygieneSection report={report} copy={copy} />
-      <PatternsSection report={report} copy={copy} />
 
       <Section copy={copy} title="Still failing" note={report.still_failing.length ? `${report.still_failing.length} shown` : undefined}>
         <TestList items={report.still_failing} empty="Nothing is failing in the latest runs." />
@@ -301,6 +298,10 @@ export function ReportDocument({ report, brand = "Testosterone", copy = true }: 
           </ol>
         </Section>
       ) : null}
+
+      <TeamsSection report={report} copy={copy} />
+      <HygieneSection report={report} copy={copy} />
+      <PatternsSection report={report} copy={copy} />
 
       <footer className="mt-10 border-t pt-3 text-[11px]" style={{ borderColor: PAPER.rule, color: PAPER.faint }}>
         Pass rate counts passed tests out of passed, failed and broken ones. Green builds are runs that exited 0. The health score is the same
