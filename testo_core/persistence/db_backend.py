@@ -25,6 +25,8 @@ class DbBackend:
 
     def __init__(self, artifacts_root: Path) -> None:
         self._artifacts_root = artifacts_root
+        # Per run: files left out of the history copy, or why the copy failed.
+        self._snapshot_notes: dict[str, dict[str, Any]] = {}
 
     def _local_snapshot_dir(self, plan_name: str) -> str | None:
         """Path of this plan's artifacts relative to ``paths.ORCHESTRATOR_ROOT`` (the data root).
@@ -50,12 +52,37 @@ class DbBackend:
         plan_dir = plan_artifacts_dir(self._artifacts_root, plan_name)
         if not plan_dir.is_dir():
             return None
+        from testo_core.config.history_section import max_history_file_bytes
+
+        limit = max_history_file_bytes()
+        skipped: list[str] = []
+
+        def _too_big(folder: str, names: list[str]) -> set[str]:
+            # The cycle lock (and the run marker in it) is not a result.
+            out: set[str] = {n for n in names if n == ".lock" and Path(folder) == plan_dir}
+            if limit is None:
+                return out
+            for name in names:
+                path = Path(folder) / name
+                try:
+                    if path.is_file() and path.stat().st_size > limit:
+                        out.add(name)
+                        skipped.append(path.relative_to(plan_dir).as_posix())
+                except OSError:
+                    continue
+            return out
+
         dest = paths.STATIC_HISTORY_ROOT / run_id / "artifacts"
         try:
-            shutil.copytree(plan_dir, dest, dirs_exist_ok=True)
+            shutil.copytree(plan_dir, dest, dirs_exist_ok=True, ignore=_too_big)
+            self._snapshot_notes[run_id] = {"snapshot_skipped_files": skipped} if skipped else {}
             return dest.relative_to(paths.ORCHESTRATOR_ROOT).as_posix()
-        except (OSError, ValueError):
-            logger.debug("could not snapshot artifacts for run %s", run_id, exc_info=True)
+        except (OSError, ValueError) as exc:
+            # A full disk lands here: say so, drop the half copy, and note it on the run
+            # so Compare and flaky detection missing it isn't a mystery.
+            logger.warning("could not copy run %s's results into the history: %s", run_id, exc)
+            shutil.rmtree(paths.STATIC_HISTORY_ROOT / run_id, ignore_errors=True)
+            self._snapshot_notes[run_id] = {"snapshot_error": str(exc)[:300]}
             return None
 
     def _record_test_results(self, run_id: str, plan_name: str) -> None:
@@ -74,10 +101,12 @@ class DbBackend:
     def _record_run_snapshot(self, repo: Any, run_id: str, plan_name: str) -> None:
         """Point the run record at its own copy; it keeps the shared path otherwise."""
         snapshot_dir = self._snapshot_run_artifacts(run_id, plan_name)
-        if not snapshot_dir:
+        notes = self._snapshot_notes.pop(run_id, {})
+        if not snapshot_dir and not notes:
             return
+        patch = {**notes, **({"snapshot_dir": snapshot_dir} if snapshot_dir else {})}
         try:
-            repo.merge_run_metadata(run_id, {"snapshot_dir": snapshot_dir})
+            repo.merge_run_metadata(run_id, patch)
         except Exception:
             # Broad on purpose: the run row already exists; losing this pointer must not lose its id.
             logger.warning("could not record snapshot for run %s", run_id, exc_info=True)

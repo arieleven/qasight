@@ -126,18 +126,35 @@ def _clean_history(
 ) -> None:
     from testo_core.cli.ui.console import default_console
     from testo_core.config.errors import ConfigError
-    from testo_core.config.history_section import HistoryRetention
+    from testo_core.config.history_section import (
+        HistoryConfig,
+        HistoryRetention,
+        with_env_overrides,
+    )
     from testo_core.config.loader import discover_and_load
-    from testo_core.history.retention import prune_history
+    from testo_core.history.retention import prune_history, prune_report_archives
 
     console = default_console()
-    retention = HistoryRetention()
+    history = HistoryConfig()
+    config_error: ConfigError | None = None
     try:
-        retention = discover_and_load(config_path=config).history.retention
+        history = discover_and_load(config_path=config).history
     except ConfigError as exc:
-        if keep_days is None and keep_runs is None:
-            console.print(f"[fail]Could not load config: {exc}[/]")
-            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from None
+        config_error = exc
+    try:
+        # TESTO_RETENTION_DAYS / TESTO_RETENTION_RUNS_PER_CYCLE, as the server applies them.
+        retention = with_env_overrides(history).retention
+    except ConfigError as exc:
+        console.print(f"[fail]{exc}[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from None
+    if (
+        config_error is not None
+        and keep_days is None
+        and keep_runs is None
+        and not retention.enabled
+    ):
+        console.print(f"[fail]Could not load config: {config_error}[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     if keep_days is not None or keep_runs is not None:
         retention = HistoryRetention(
             days=keep_days if keep_days is not None else retention.days,
@@ -146,7 +163,7 @@ def _clean_history(
     if not retention.enabled:
         console.print(
             "[fail]Nothing to prune by: set history.retention.days or runs_per_cycle in "
-            "testosterone.yaml, or pass --keep-days / --keep-runs.[/]"
+            "testosterone.yaml (or TESTO_RETENTION_DAYS), or pass --keep-days / --keep-runs.[/]"
         )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     if not yes and not dry_run:
@@ -163,6 +180,7 @@ def _clean_history(
     console.print(f"[muted]Retention: runs {' or '.join(limits)}.[/]")
 
     report = prune_history(retention, dry_run=dry_run)
+    archives = prune_report_archives(retention, dry_run=dry_run)
     if dry_run:
         if report.run_ids:
             console.print(f"[warn]{report.runs_selected} run(s) would be deleted:[/]")
@@ -170,7 +188,13 @@ def _clean_history(
                 console.print(f"  {run_id}")
         else:
             console.print("[ok]No run has expired.[/]")
+        if archives.archive_ids:
+            console.print(
+                f"[warn]{len(archives.archive_ids)} report archive(s) would be deleted.[/]"
+            )
         raise typer.Exit(code=0)
+    if archives.archives_deleted:
+        console.print(f"[ok]Deleted {archives.archives_deleted} report archive(s).[/]")
     if not report.run_ids:
         console.print("[ok]No run has expired.[/]")
     else:

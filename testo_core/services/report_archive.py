@@ -82,10 +82,18 @@ def build_cycle_zip_bytes(
     if not plan_dir.is_dir():
         raise FileNotFoundError(f"plan artifacts not found: {plan_dir}")
 
+    from testo_core.config.history_section import max_history_file_bytes
+
+    # history.max_file_mb: videos and traces bigger than this stay out of the archive.
+    limit = max_history_file_bytes()
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for path in sorted(plan_dir.rglob("*")):
             if path.is_file():
+                if path.parent == plan_dir and path.name == ".lock":
+                    continue  # the cycle lock, not a result
+                if limit is not None and path.stat().st_size > limit:
+                    continue
                 arc = path.relative_to(plan_dir).as_posix()
                 zf.write(path, arcname=arc)
 

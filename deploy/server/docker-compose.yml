@@ -28,6 +28,16 @@ services:
       # With accounts and none yet: this admin is created at start (`testo server init` sets them).
       TESTO_ADMIN_USER: ${TESTO_ADMIN_USER:-}
       TESTO_ADMIN_PASSWORD: ${TESTO_ADMIN_PASSWORD:-}
+      # During a token rotation: the old token, still accepted until CI secrets are moved.
+      TESTO_API_TOKEN_PREVIOUS: ${TESTO_API_TOKEN_PREVIOUS:-}
+      # Signs sign-in cookies instead of the token, so rotating the token keeps people signed in.
+      TESTO_SESSION_KEY: ${TESTO_SESSION_KEY:-}
+      # Delete runs and report archives older than this many days (empty or 0: keep all).
+      TESTO_RETENTION_DAYS: ${TESTO_RETENTION_DAYS:-}
+      # Keep at most this many runs per cycle (empty or 0: no limit).
+      TESTO_RETENTION_RUNS_PER_CYCLE: ${TESTO_RETENTION_RUNS_PER_CYCLE:-}
+      # Files bigger than this many MB aren't kept in a run's history copy (empty: keep all).
+      TESTO_HISTORY_MAX_FILE_MB: ${TESTO_HISTORY_MAX_FILE_MB:-}
       # db: runs waiting for a worker are kept in Postgres and survive a restart.
       TESTO_RUN_QUEUE: ${TESTO_RUN_QUEUE:-memory}
       DATABASE_URL: postgresql+psycopg://testo:${POSTGRES_PASSWORD:-testo}@postgres:5432/testo

@@ -140,3 +140,33 @@ def report_open_archived(
             inject_history=False,
         )
     raise typer.Exit(code=int(exit_code))
+
+
+def report_delete_archived(
+    report_id: list[str] = typer.Option(
+        ..., "--id", help="Archive id from `testo report list` (repeat for more)."
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Required to confirm the delete."),
+) -> None:
+    """Delete archived reports from the database. Old ones also go by ``history.retention``."""
+    from testo_core.cli.ui.console import default_console
+    from testo_core.repository.db import get_report_archive_repository
+
+    console = default_console()
+    if not yes:
+        console.print("[fail]Refusing to delete without --yes (or -y).[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    try:
+        deleted = get_report_archive_repository().delete(report_id)
+    except Exception as exc:
+        # Broad on purpose: any DB/driver error maps to exit 3 with its message.
+        logger.debug("deleting archived reports failed", exc_info=True)
+        console.print(f"[fail]could not delete reports:[/] {exc}")
+        raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE)) from exc
+    if not deleted:
+        console.print("[warn]No archived report has that id.[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    missing = len(set(report_id)) - deleted
+    note = f" ({missing} id(s) not found)" if missing > 0 else ""
+    console.print(f"[ok]Deleted {deleted} archived report(s){note}.[/]")
+    raise typer.Exit(code=0)

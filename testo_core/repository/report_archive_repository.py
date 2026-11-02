@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
@@ -88,3 +90,30 @@ class SQLReportArchiveRepository:
             for r in rows:
                 session.expunge(r)
             return rows
+
+    def list_keys(self) -> list[tuple[str, str, datetime]]:
+        """``(id, cycle_name, created_at)`` of every archive, newest first, without the blobs."""
+        stmt = select(
+            ReportArchive.id, ReportArchive.cycle_name, ReportArchive.created_at
+        ).order_by(col(ReportArchive.created_at).desc())
+        with Session(self._engine) as session:
+            return [(str(rid), cycle, created) for rid, cycle, created in session.exec(stmt).all()]
+
+    def delete(self, report_ids: list[str]) -> int:
+        """Delete these archives; return how many went. Ids that aren't archives are skipped."""
+        ids: list[uuid.UUID] = []
+        for report_id in report_ids:
+            try:
+                ids.append(uuid.UUID(str(report_id)))
+            except ValueError:
+                continue
+        deleted = 0
+        with Session(self._engine) as session:
+            for start in range(0, len(ids), 500):
+                chunk = ids[start : start + 500]
+                result = session.exec(  # type: ignore[call-overload]
+                    sa_delete(ReportArchive).where(col(ReportArchive.id).in_(chunk))
+                )
+                deleted += int(result.rowcount or 0)
+            session.commit()
+        return deleted

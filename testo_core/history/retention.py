@@ -3,7 +3,8 @@
 A run that expires loses its ``runrecord`` row, its ``test_result`` rows and its
 report copy under ``static/history/<run_id>/``, together, oldest first. Runs still
 ``RUNNING`` are never touched. Report archives (``testo report list``) are a
-separate store with their own ids and are not affected.
+separate store with their own ids; :func:`prune_report_archives` applies the same
+limits to them, and the callers run both.
 
 Used by ``testo clean --history`` and by the API server on a timer
 (:func:`testo_api.main._lifespan`). Without a ``history:`` section in
@@ -19,7 +20,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from testo_core import paths
-from testo_core.config.history_section import HistoryRetention
+from testo_core.config.history_section import HistoryConfig, HistoryRetention, with_env_overrides
 from testo_core.repository.db import get_repository, get_test_result_store
 from testo_core.repository.models import RunStatus
 
@@ -130,3 +131,55 @@ def prune_history(retention: HistoryRetention, *, dry_run: bool = False) -> Prun
         snapshots_deleted=snapshots,
         errors=tuple(errors),
     )
+
+
+def effective_history(config_path: Path | None = None) -> HistoryConfig:
+    """The ``history:`` settings in force: ``testosterone.yaml`` (when there is one) with
+    the ``TESTO_RETENTION_*`` / ``TESTO_HISTORY_MAX_FILE_MB`` variables on top.
+
+    A server started without a config file (the Docker team server) still gets its
+    limits from the environment. A config file that fails to load counts as absent
+    here; ``testo run`` and ``testo clean`` report that error themselves.
+    """
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.loader import discover_and_load
+
+    try:
+        history = discover_and_load(config_path=config_path).history
+    except ConfigError:
+        history = HistoryConfig()
+    return with_env_overrides(history)
+
+
+@dataclass(frozen=True)
+class ArchivePruneReport:
+    """What :func:`prune_report_archives` did (or, with ``dry_run``, would do)."""
+
+    archive_ids: tuple[str, ...] = ()
+    archives_deleted: int = 0
+
+
+def prune_report_archives(
+    retention: HistoryRetention, *, dry_run: bool = False
+) -> ArchivePruneReport:
+    """Delete the report archives (``testo report list``) that break ``retention``.
+
+    The same rules as runs: older than ``days``, or beyond each cycle's newest
+    ``runs_per_cycle``. Archives are zips of a whole cycle folder stored in the
+    database, so they are what grows fastest.
+    """
+    if not retention.enabled:
+        return ArchivePruneReport()
+    from testo_core.repository.db import get_report_archive_repository
+
+    repo = get_report_archive_repository()
+    keys: list[tuple[str, str | None, datetime | None, RunStatus]] = [
+        (archive_id, cycle, created, RunStatus.COMPLETED)
+        for archive_id, cycle, created in repo.list_keys()
+    ]
+    expired = expired_run_ids(keys, retention)
+    if not expired or dry_run:
+        return ArchivePruneReport(archive_ids=tuple(expired))
+    deleted = repo.delete(expired)
+    logger.info("history retention deleted %s report archive(s)", deleted)
+    return ArchivePruneReport(archive_ids=tuple(expired), archives_deleted=deleted)

@@ -13,7 +13,11 @@ from typing import Any
 
 import typer
 
-from testo_core.cli.commands.report_archive import report_list_archived, report_open_archived
+from testo_core.cli.commands.report_archive import (
+    report_delete_archived,
+    report_list_archived,
+    report_open_archived,
+)
 from testo_core.engine.exit_codes import EngineExitCode
 
 logger = logging.getLogger(__name__)
@@ -247,6 +251,9 @@ report_app.command("list", help="List archived cycle reports stored in the datab
 )
 report_app.command("open", help="Re-open an archived report from the database (Allure path).")(
     report_open_archived
+)
+report_app.command("delete", help="Delete archived reports from the database by id.")(
+    report_delete_archived
 )
 
 

@@ -124,18 +124,24 @@ RETENTION_INTERVAL_S = 6 * 60 * 60
 
 
 def _start_retention_timer() -> Callable[[], None]:
-    """Prune expired history on a daemon thread; returns a function that stops it."""
+    """Prune expired history on a daemon thread; returns a function that stops it.
+
+    The limits are ``history.retention`` in ``testosterone.yaml`` with
+    ``TESTO_RETENTION_DAYS`` / ``TESTO_RETENTION_RUNS_PER_CYCLE`` on top, so a server
+    without a config file (the Docker team server) is limited by its environment.
+    """
     from testo_core.config.errors import ConfigError
-    from testo_core.config.loader import discover_and_load
+    from testo_core.history.retention import effective_history
 
     try:
-        retention = discover_and_load().history.retention
+        retention = effective_history().retention
     except ConfigError:
-        return lambda: None  # no config here (ingest-only server) means no retention
+        logger.warning("history retention off: bad TESTO_RETENTION_* value", exc_info=True)
+        return lambda: None
     if not retention.enabled:
         return lambda: None
 
-    from testo_core.history.retention import prune_history
+    from testo_core.history.retention import prune_history, prune_report_archives
 
     stop = threading.Event()
 
@@ -145,6 +151,7 @@ def _start_retention_timer() -> Callable[[], None]:
                 report = prune_history(retention)
                 if report.runs_deleted:
                     logger.info("history retention deleted %s run(s)", report.runs_deleted)
+                prune_report_archives(retention)
             except Exception:
                 # Broad on purpose: a DB hiccup must not kill the timer or the server.
                 logger.warning("history retention run failed", exc_info=True)

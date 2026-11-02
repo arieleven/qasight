@@ -91,13 +91,31 @@ def override_yaml() -> str:
 
 
 def env_file(
-    *, domain: str | None, admin: str | None, token: str, db_password: str, admin_password: str
+    *,
+    domain: str | None,
+    admin: str | None,
+    token: str,
+    db_password: str,
+    admin_password: str,
+    session_key: str = "",
 ) -> str:
     lines = [
         "# Written by `testo server init`. Secrets: keep this file private (mode 600).",
-        "# CI uploads with TESTO_API_TOKEN (add it as a CI secret).",
+        "# CI uploads with TESTO_API_TOKEN (add it as a CI secret). To rotate it, move the",
+        "# old value to TESTO_API_TOKEN_PREVIOUS until every CI secret has the new one.",
         f"TESTO_API_TOKEN={token}",
         f"POSTGRES_PASSWORD={db_password}",
+    ]
+    if session_key:
+        lines += [
+            "# Signs sign-in cookies, so a new TESTO_API_TOKEN doesn't sign people out.",
+            f"TESTO_SESSION_KEY={session_key}",
+        ]
+    lines += [
+        "# Runs (and report archives) older than this many days are deleted; 0 keeps all.",
+        "TESTO_RETENTION_DAYS=180",
+        "# Files bigger than this (videos, traces) aren't kept in a run's history copy.",
+        "TESTO_HISTORY_MAX_FILE_MB=100",
     ]
     if admin:
         lines += [
@@ -138,6 +156,7 @@ def write_server_files(
             token=secrets.token_hex(32),
             db_password=secrets.token_hex(16),
             admin_password=secrets.token_urlsafe(18),
+            session_key=secrets.token_hex(32),
         ),
     }
     if domain:

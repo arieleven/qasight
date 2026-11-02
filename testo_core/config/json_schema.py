@@ -366,8 +366,9 @@ def build_json_schema() -> dict[str, Any]:
             },
             "history": {
                 "type": "object",
-                "description": "How long run history is kept. Without it nothing is deleted. "
-                "Applied by `testo clean --history` and by the API server on a timer.",
+                "description": "How long run history and report archives are kept. Without it "
+                "nothing is deleted. Applied by `testo clean --history` and by the API server on "
+                "a timer; TESTO_RETENTION_DAYS / TESTO_RETENTION_RUNS_PER_CYCLE override it.",
                 "properties": {
                     "retention": {
                         "type": "object",
@@ -388,7 +389,13 @@ def build_json_schema() -> dict[str, Any]:
                             },
                         },
                         "additionalProperties": False,
-                    }
+                    },
+                    "max_file_mb": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Files bigger than this many MB (videos, traces) are left "
+                        "out of a run's history copy and its report archive.",
+                    },
                 },
                 "additionalProperties": False,
             },
