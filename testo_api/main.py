@@ -62,6 +62,16 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         # Broad on purpose: DB URL, driver and connection errors must not block API startup.
         logger.warning("orphaned-run cleanup skipped (DB unavailable?)", exc_info=True)
 
+    # A run this server (or a CLI on this machine) was executing when it died left its
+    # marker in the cycle's lock file; record it as failed rather than lose it.
+    try:
+        n = _recover_unfinished_runs()
+        if n:
+            logger.warning("Recorded %s run(s) that stopped without finishing.", n)
+    except Exception:
+        # Broad on purpose: like the cleanup above, a DB or disk problem must not block startup.
+        logger.warning("unfinished-run recovery skipped", exc_info=True)
+
     # With TESTO_RUN_QUEUE=db, runs that were still waiting when the last process
     # stopped are queued again (no-op with the default in-memory queue).
     from testo_api.dependencies import get_cycle_execution_manager
@@ -93,6 +103,18 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         stop_retention()
+
+
+def _recover_unfinished_runs() -> int:
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.loader import discover_and_load
+    from testo_core.history.maintenance import recover_unfinished_runs
+
+    try:
+        artifacts_root = discover_and_load().defaults.artifacts_root
+    except ConfigError:
+        return 0  # no config here (ingest-only server): this server runs nothing
+    return recover_unfinished_runs(artifacts_root)
 
 
 # How often the server applies history.retention. Pruning is cheap when nothing

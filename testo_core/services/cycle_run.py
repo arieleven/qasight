@@ -24,13 +24,14 @@ import logging
 import re
 import shutil
 import threading
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 from uuid import UUID
 
 if TYPE_CHECKING:
+    from testo_core.engine.cycle_lock import RunMarker
     from testo_core.services.test_selection import Selection
 
 from testo_core import plugins
@@ -172,7 +173,22 @@ class CycleRunService:
         from testo_core.engine.orchestrator import run_plan
 
         # One run of a cycle at a time per artifacts folder: they share its stage folders.
-        with cycle_lock(artifacts_root, effective_plan.name, on_wait=self._say_waiting):
+        # A run that died holding the lock (kill -9, a crashed server) is recorded first.
+        on_unfinished: Callable[[RunMarker], None] | None = None
+        if opts.persist:
+            from testo_core.history.maintenance import record_unfinished_run
+
+            def _record(marker: RunMarker) -> None:
+                record_unfinished_run(marker)
+
+            on_unfinished = _record
+
+        with cycle_lock(
+            artifacts_root,
+            effective_plan.name,
+            on_wait=self._say_waiting,
+            on_unfinished=on_unfinished,
+        ):
             result = run_plan(
                 plan=effective_plan,
                 renderer=renderer,

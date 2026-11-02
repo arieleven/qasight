@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from testo_core.engine.cycle_lock import CycleLockTimeout, cycle_lock
+from testo_core.engine.cycle_lock import CycleLockTimeout, RunMarker, cycle_lock, take_unfinished
 
 pytestmark = [pytest.mark.unit, pytest.mark.tier_fast]
 
@@ -83,3 +83,67 @@ def test_another_process_holding_the_lock_blocks_until_it_exits(tmp_path: Path) 
         if proc.poll() is None:
             proc.kill()
             proc.wait(10)
+
+
+def _killed_holder(tmp_path: Path) -> None:
+    """Start a process that takes the 'web' lock, then kill -9 it while it holds it."""
+    script = (
+        "import sys, time\n"
+        "from pathlib import Path\n"
+        "from testo_core.engine.cycle_lock import cycle_lock\n"
+        "with cycle_lock(Path(sys.argv[1]), 'web'):\n"
+        "    print('held', flush=True)\n"
+        "    time.sleep(30)\n"
+    )
+    proc = subprocess.Popen(
+        [sys.executable, "-c", script, str(tmp_path)], stdout=subprocess.PIPE, text=True
+    )
+    try:
+        assert proc.stdout is not None and proc.stdout.readline().strip() == "held"
+    finally:
+        proc.kill()
+        proc.wait(10)
+
+
+def test_a_run_that_ends_normally_leaves_nothing_behind(tmp_path: Path) -> None:
+    seen: list[RunMarker] = []
+    with pytest.raises(ValueError):
+        with cycle_lock(tmp_path, "web"):
+            raise ValueError("a failing run still ends")
+    with cycle_lock(tmp_path, "web", on_unfinished=seen.append):
+        pass
+    assert seen == []
+    assert take_unfinished(tmp_path, "web") is None
+
+
+def test_a_killed_run_is_reported_to_the_next_holder_once(tmp_path: Path) -> None:
+    _killed_holder(tmp_path)
+    seen: list[RunMarker] = []
+    with cycle_lock(tmp_path, "web", on_unfinished=seen.append):
+        pass
+    assert len(seen) == 1
+    assert seen[0].cycle == "web" and seen[0].pid > 0 and seen[0].started_at > 0
+    with cycle_lock(tmp_path, "web", on_unfinished=seen.append):
+        pass
+    assert len(seen) == 1
+
+
+def test_take_unfinished_reads_and_clears_a_left_marker(tmp_path: Path) -> None:
+    _killed_holder(tmp_path)
+    marker = take_unfinished(tmp_path, "web")
+    assert marker is not None and marker.cycle == "web"
+    assert take_unfinished(tmp_path, "web") is None
+
+
+def test_take_unfinished_skips_a_run_that_is_still_going(tmp_path: Path) -> None:
+    with cycle_lock(tmp_path, "web"):
+        assert take_unfinished(tmp_path, "web") is None
+
+
+def test_a_lock_file_from_before_markers_is_not_a_crash(tmp_path: Path) -> None:
+    (tmp_path / "web").mkdir()
+    (tmp_path / "web" / ".lock").write_text("12345")
+    seen: list[RunMarker] = []
+    with cycle_lock(tmp_path, "web", on_unfinished=seen.append):
+        pass
+    assert seen == []
