@@ -6,6 +6,7 @@ import { Badge, Card, EmptyState, KeyValue, PageHeader, Spinner } from "../../co
 import { MuscleShrug } from "../../components/mascot";
 import { CycleRunsCard } from "./CycleRunsCard";
 import { CycleTestsCard } from "./CycleTestsCard";
+import { CycleLabelsCard } from "../labels/CycleLabelsCard";
 import { FlakyTestsCard } from "./FlakyTestsCard";
 import { RunPanel } from "./RunPanel";
 
@@ -61,6 +62,8 @@ export function CycleDetailPage() {
       <CycleRunsCard cycle={cycle.name} />
 
       <FlakyTestsCard cycle={cycle.name} />
+
+      <CycleLabelsCard cycle={cycle.name} />
 
       <CycleTestsCard cycle={cycle.name} />
 

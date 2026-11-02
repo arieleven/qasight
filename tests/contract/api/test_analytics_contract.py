@@ -402,7 +402,9 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
     )
     seen: dict[str, object] = {}
 
-    def fake_list(cycle: str, *, window: int, query: str | None) -> th.CycleTests:
+    def fake_list(
+        cycle: str, *, window: int, query: str | None, label: str | None = None
+    ) -> th.CycleTests:
         seen.update(cycle=cycle, window=window, query=query)
         return th.CycleTests(cycle=cycle, runs_considered=4, tests=(summary,))
 

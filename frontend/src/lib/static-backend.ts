@@ -92,6 +92,11 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
     return name ? `tests/${name}.json` : null;
   }
 
+  if (path === "/analytics/labels") {
+    const name = search.get("cycle");
+    return name ? `labels/${name}.json` : null;
+  }
+
   if (path === "/analytics/test-history") {
     const name = search.get("cycle");
     const key = search.get("key");

@@ -31,6 +31,8 @@ def _case(status: str, **extra: object) -> dict[str, object]:
         "framework": "pytest",
         "crash": "",
         "retried": False,
+        "labels": [],
+        "links": [],
     }
     case.update(extra)
     return case
@@ -42,9 +44,15 @@ def test_rows_round_trip_as_the_case_map(tmp_path: Path) -> None:
         "a": _case("passed"),
         "b": _case("failed", name="test_b", message="boom", crash="stack_overflow"),
         "c": _case("passed", name="test_c", retried=True),
+        "d": _case(
+            "passed",
+            name="test_d",
+            labels=[{"name": "feature", "value": "Checkout"}],
+            links=[{"name": "PROJ-1", "url": "https://jira.example/PROJ-1", "type": "issue"}],
+        ),
     }
 
-    assert store.replace("run-1", cases) == 3
+    assert store.replace("run-1", cases) == 4
 
     assert store.cases("run-1") == cases
     assert store.has_rows("run-1")

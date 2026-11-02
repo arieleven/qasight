@@ -46,6 +46,10 @@ export type FlakyTestItem = Schemas["FlakyTestItem"];
 export type FlakyTestsResponse = Schemas["FlakyTestsResponse"];
 export type TestSummaryItem = Schemas["TestSummaryItem"];
 export type CycleTestsResponse = Schemas["CycleTestsResponse"];
+export type TestLabelItem = Schemas["TestLabelItem"];
+export type TestLinkItem = Schemas["TestLinkItem"];
+export type CycleLabelsResponse = Schemas["CycleLabelsResponse"];
+export type LabelCountItem = Schemas["LabelCountItem"];
 export type TestPointItem = Schemas["TestPointItem"];
 export type TestHistoryResponse = Schemas["TestHistoryResponse"];
 export type AttachmentItem = Schemas["AttachmentItem"];
@@ -226,6 +230,10 @@ export const apiClient = {
   getCycleTests(cycle: string): Promise<CycleTestsResponse> {
     const params = new URLSearchParams({ cycle });
     return api<CycleTestsResponse>(`/api/v1/analytics/tests?${params.toString()}`);
+  },
+  getCycleLabels(cycle: string): Promise<CycleLabelsResponse> {
+    const params = new URLSearchParams({ cycle });
+    return api<CycleLabelsResponse>(`/api/v1/analytics/labels?${params.toString()}`);
   },
   getTestHistory(cycle: string, key: string): Promise<TestHistoryResponse> {
     const params = new URLSearchParams({ cycle, key });

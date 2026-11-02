@@ -39,6 +39,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/cycles/<name>.json                GET /api/v1/cycles/{name}
     data/flaky/<name>.json                 GET /api/v1/analytics/flaky?cycle={name}
     data/tests/<name>.json                 GET /api/v1/analytics/tests?cycle={name}
+    data/labels/<name>.json                GET /api/v1/analytics/labels?cycle={name}
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
                                            (<id> is test_history.stable_id(key))
     data/resources.json                    GET /api/v1/resources (with --demo-resources:
@@ -270,6 +271,9 @@ class Exporter:
 
         listing = self._dump(
             f"/api/v1/analytics/tests?cycle={quote(cycle, safe='')}", f"tests/{cycle}.json"
+        )
+        self._dump(
+            f"/api/v1/analytics/labels?cycle={quote(cycle, safe='')}", f"labels/{cycle}.json"
         )
         for item in (listing or {}).get("items", []):
             key = str(item["key"])

@@ -284,6 +284,22 @@ class QuarantineListResponse(ApiModel):
     release_after: int
 
 
+class TestLabelItem(ApiModel):
+    """What a test is about: ``feature=Checkout``, ``severity=critical``, ``tag=smoke``..."""
+
+    name: str
+    value: str
+
+
+class TestLinkItem(ApiModel):
+    """A link the test's results carry: an issue or story it covers, or a doc."""
+
+    name: str
+    url: str
+    # "issue" for issue and story links, "tms" for test management ids, else "link".
+    type: str = "link"
+
+
 class FailingTestItem(ApiModel):
     key: str
     name: str
@@ -302,6 +318,8 @@ class FailingTestItem(ApiModel):
     triage: TriageItem | None = None
     # "stack_overflow" | "crash" when the failure's message or trace shows one.
     crash_kind: str | None = None
+    labels: list[TestLabelItem] = Field(default_factory=list)
+    links: list[TestLinkItem] = Field(default_factory=list)
 
 
 class FailureGroupItem(ApiModel):
@@ -468,12 +486,34 @@ class TestSummaryItem(ApiModel):
     # Recent median minus the earlier one, only when that is more than timing noise.
     slowdown_ms: int | None = None
     slowdown_pct: float | None = None
+    # From the test's latest run.
+    labels: list[TestLabelItem] = Field(default_factory=list)
+    links: list[TestLinkItem] = Field(default_factory=list)
 
 
 class CycleTestsResponse(ApiModel):
     cycle: str
     runs_considered: int
     items: list[TestSummaryItem] = Field(default_factory=list)
+
+
+class LabelCountItem(ApiModel):
+    name: str
+    value: str
+    tests: int
+    # Tests whose latest outcome failed.
+    failing: int
+    flaky: int
+    # What ``GET /analytics/tests?label=`` takes to list these tests.
+    filter: str
+
+
+class CycleLabelsResponse(ApiModel):
+    cycle: str
+    runs_considered: int
+    labelled_tests: int
+    total_tests: int
+    items: list[LabelCountItem] = Field(default_factory=list)
 
 
 class TestPointItem(ApiModel):

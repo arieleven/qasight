@@ -126,6 +126,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cycle Labels
+         * @description A cycle's tests counted by label (feature, story, severity, owner, tag...).
+         *
+         *     Each label's tests, how many failed in their latest run and how many are flaky,
+         *     features first. See ``testo_core/services/test_labels.py``.
+         */
+        get: operations["get_cycle_labels_api_v1_analytics_labels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/test-history": {
         parameters: {
             query?: never;
@@ -1365,6 +1388,19 @@ export interface components {
             /** Tests */
             tests: number;
         };
+        /** CycleLabelsResponse */
+        CycleLabelsResponse: {
+            /** Cycle */
+            cycle: string;
+            /** Items */
+            items: components["schemas"]["LabelCountItem"][];
+            /** Labelled Tests */
+            labelled_tests: number;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Total Tests */
+            total_tests: number;
+        };
         /**
          * CycleLatestRun
          * @description The newest recorded run of a cycle: enough for a list card to show its result.
@@ -1721,6 +1757,10 @@ export interface components {
             group: string;
             /** Key */
             key: string;
+            /** Labels */
+            labels: components["schemas"]["TestLabelItem"][];
+            /** Links */
+            links: components["schemas"]["TestLinkItem"][];
             /** Message */
             message: string;
             /** Name */
@@ -1892,6 +1932,21 @@ export interface components {
             skipped: number;
             /** Tests */
             tests: number;
+        };
+        /** LabelCountItem */
+        LabelCountItem: {
+            /** Failing */
+            failing: number;
+            /** Filter */
+            filter: string;
+            /** Flaky */
+            flaky: number;
+            /** Name */
+            name: string;
+            /** Tests */
+            tests: number;
+            /** Value */
+            value: string;
         };
         /**
          * ProjectHealthResponse
@@ -2587,6 +2642,31 @@ export interface components {
             points: components["schemas"]["TestPointItem"][];
             test: components["schemas"]["TestSummaryItem"];
         };
+        /**
+         * TestLabelItem
+         * @description What a test is about: ``feature=Checkout``, ``severity=critical``, ``tag=smoke``...
+         */
+        TestLabelItem: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * TestLinkItem
+         * @description A link the test's results carry: an issue or story it covers, or a doc.
+         */
+        TestLinkItem: {
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @default link
+             */
+            type: string;
+            /** Url */
+            url: string;
+        };
         /** TestPointItem */
         TestPointItem: {
             /** Branch */
@@ -2622,10 +2702,14 @@ export interface components {
             group: string;
             /** Key */
             key: string;
+            /** Labels */
+            labels: components["schemas"]["TestLabelItem"][];
             /** Last Duration Ms */
             last_duration_ms: number | null;
             /** Last Status */
             last_status: string;
+            /** Links */
+            links: components["schemas"]["TestLinkItem"][];
             /** Median Duration Ms */
             median_duration_ms: number | null;
             /** Name */
@@ -2936,6 +3020,38 @@ export interface operations {
             };
         };
     };
+    get_cycle_labels_api_v1_analytics_labels_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleLabelsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_test_history_api_v1_analytics_test_history_get: {
         parameters: {
             query: {
@@ -2973,8 +3089,10 @@ export interface operations {
         parameters: {
             query: {
                 cycle: string;
-                /** @description Match in name, full name or group. */
+                /** @description Match in name, full name, group or a label's value. */
                 q?: string | null;
+                /** @description Only tests with this label: `name:value` (`feature:Checkout`) or a bare value. */
+                label?: string | null;
                 window?: number;
             };
             header?: never;

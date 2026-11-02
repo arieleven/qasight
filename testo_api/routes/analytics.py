@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from testo_api.models import (
     AttachmentItem,
     BrokenTestItem,
+    CycleLabelsResponse,
     CycleTestsResponse,
     DeltaCaseChange,
     DeltaCaseChangesResponse,
@@ -20,6 +21,7 @@ from testo_api.models import (
     DeltaStatusSummaryResponse,
     FlakyTestItem,
     FlakyTestsResponse,
+    LabelCountItem,
     TestHistoryResponse,
     TestPointItem,
     TestSummaryItem,
@@ -37,6 +39,7 @@ from testo_core.services.flaky_service import DEFAULT_WINDOW, FlakyTest, find_fl
 from testo_core.services.run_snapshot_diff import diff_run_snapshots
 from testo_core.services.test_attachments import attachments_for
 from testo_core.services.test_history import cycle_source, list_cycle_tests, load_test_history
+from testo_core.services.test_labels import cycle_labels
 from testo_core.services.test_ownership import issue_url, owners_for
 
 logger = logging.getLogger(__name__)
@@ -254,15 +257,41 @@ def get_flaky_tests(
 @router.get("/analytics/tests", response_model=CycleTestsResponse)
 def get_cycle_tests(
     cycle: str,
-    q: str | None = Query(None, max_length=200, description="Match in name, full name or group."),
+    q: str | None = Query(
+        None, max_length=200, description="Match in name, full name, group or a label's value."
+    ),
+    label: str | None = Query(
+        None,
+        max_length=200,
+        description="Only tests with this label: `name:value` (`feature:Checkout`) or a bare value.",
+    ),
     window: int = Query(DEFAULT_WINDOW, ge=1, le=200),
 ) -> CycleTestsResponse:
     """Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns."""
-    found = list_cycle_tests(cycle, window=window, query=q)
+    found = list_cycle_tests(cycle, window=window, query=q, label=label)
     return CycleTestsResponse(
         cycle=found.cycle,
         runs_considered=found.runs_considered,
         items=[TestSummaryItem(**vars(t)) for t in found.tests],
+    )
+
+
+@router.get("/analytics/labels", response_model=CycleLabelsResponse)
+def get_cycle_labels(
+    cycle: str, window: int = Query(DEFAULT_WINDOW, ge=1, le=200)
+) -> CycleLabelsResponse:
+    """A cycle's tests counted by label (feature, story, severity, owner, tag...).
+
+    Each label's tests, how many failed in their latest run and how many are flaky,
+    features first. See ``testo_core/services/test_labels.py``.
+    """
+    found = cycle_labels(cycle, window=window)
+    return CycleLabelsResponse(
+        cycle=found.cycle,
+        runs_considered=found.runs_considered,
+        labelled_tests=found.labelled_tests,
+        total_tests=found.total_tests,
+        items=[LabelCountItem(**vars(c), filter=c.filter) for c in found.labels],
     )
 
 

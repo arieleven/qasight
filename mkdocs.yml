@@ -113,6 +113,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Test Labels, Environments and Releases: Specs & ADRs/Test Labels, Environments and Releases - 2026-11-02.md
       - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
       - Importer and Integration Bug Hunt: Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md
       - Engine Fixes: Specs & ADRs/Engine Fixes - 2026-11-01.md

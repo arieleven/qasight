@@ -98,6 +98,11 @@ export function describeExitCode(code: number | null | undefined): string {
   }
 }
 
+/** A cycle's page: `/cycles/<cycle>`. */
+export function cyclePath(cycle: string): string {
+  return `/cycles/${encodeURIComponent(cycle)}`;
+}
+
 /** The per-test page: `/cycles/<cycle>/test?key=<key>` (keys can hold any character). */
 export function testPath(cycle: string, key: string): string {
   return `/cycles/${encodeURIComponent(cycle)}/test?${new URLSearchParams({ key }).toString()}`;

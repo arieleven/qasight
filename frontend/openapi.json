@@ -1227,6 +1227,42 @@
         "title": "CycleHealthItem",
         "type": "object"
       },
+      "CycleLabelsResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LabelCountItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "labelled_tests": {
+            "title": "Labelled Tests",
+            "type": "integer"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          },
+          "total_tests": {
+            "title": "Total Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "runs_considered",
+          "labelled_tests",
+          "total_tests",
+          "items"
+        ],
+        "title": "CycleLabelsResponse",
+        "type": "object"
+      },
       "CycleLatestRun": {
         "description": "The newest recorded run of a cycle: enough for a list card to show its result.",
         "properties": {
@@ -2510,6 +2546,20 @@
             "title": "Key",
             "type": "string"
           },
+          "labels": {
+            "items": {
+              "$ref": "#/components/schemas/TestLabelItem"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/TestLinkItem"
+            },
+            "title": "Links",
+            "type": "array"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -2555,7 +2605,9 @@
           "flaky",
           "new",
           "triage",
-          "crash_kind"
+          "crash_kind",
+          "labels",
+          "links"
         ],
         "title": "FailingTestItem",
         "type": "object"
@@ -3000,6 +3052,44 @@
           "run_url"
         ],
         "title": "IngestResponse",
+        "type": "object"
+      },
+      "LabelCountItem": {
+        "properties": {
+          "failing": {
+            "title": "Failing",
+            "type": "integer"
+          },
+          "filter": {
+            "title": "Filter",
+            "type": "string"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "tests",
+          "failing",
+          "flaky",
+          "filter"
+        ],
+        "title": "LabelCountItem",
         "type": "object"
       },
       "ProjectHealthResponse": {
@@ -5059,6 +5149,50 @@
         "title": "TestHistoryResponse",
         "type": "object"
       },
+      "TestLabelItem": {
+        "description": "What a test is about: ``feature=Checkout``, ``severity=critical``, ``tag=smoke``...",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "TestLabelItem",
+        "type": "object"
+      },
+      "TestLinkItem": {
+        "description": "A link the test's results carry: an issue or story it covers, or a doc.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "default": "link",
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "type"
+        ],
+        "title": "TestLinkItem",
+        "type": "object"
+      },
       "TestPointItem": {
         "properties": {
           "branch": {
@@ -5147,6 +5281,13 @@
             "title": "Key",
             "type": "string"
           },
+          "labels": {
+            "items": {
+              "$ref": "#/components/schemas/TestLabelItem"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
           "last_duration_ms": {
             "anyOf": [
               {
@@ -5161,6 +5302,13 @@
           "last_status": {
             "title": "Last Status",
             "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/TestLinkItem"
+            },
+            "title": "Links",
+            "type": "array"
           },
           "median_duration_ms": {
             "anyOf": [
@@ -5226,7 +5374,9 @@
           "last_duration_ms",
           "median_duration_ms",
           "slowdown_ms",
-          "slowdown_pct"
+          "slowdown_pct",
+          "labels",
+          "links"
         ],
         "title": "TestSummaryItem",
         "type": "object"
@@ -5751,6 +5901,61 @@
         ]
       }
     },
+    "/api/v1/analytics/labels": {
+      "get": {
+        "description": "A cycle's tests counted by label (feature, story, severity, owner, tag...).\n\nEach label's tests, how many failed in their latest run and how many are flaky,\nfeatures first. See ``testo_core/services/test_labels.py``.",
+        "operationId": "get_cycle_labels_api_v1_analytics_labels_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleLabelsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle Labels",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/analytics/test-history": {
       "get": {
         "description": "One test in each of a cycle's last runs, newest first, with its last failure.",
@@ -5831,7 +6036,7 @@
             }
           },
           {
-            "description": "Match in name, full name or group.",
+            "description": "Match in name, full name, group or a label's value.",
             "in": "query",
             "name": "q",
             "required": false,
@@ -5845,8 +6050,27 @@
                   "type": "null"
                 }
               ],
-              "description": "Match in name, full name or group.",
+              "description": "Match in name, full name, group or a label's value.",
               "title": "Q"
+            }
+          },
+          {
+            "description": "Only tests with this label: `name:value` (`feature:Checkout`) or a bare value.",
+            "in": "query",
+            "name": "label",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only tests with this label: `name:value` (`feature:Checkout`) or a bare value.",
+              "title": "Label"
             }
           },
           {

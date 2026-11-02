@@ -19,6 +19,14 @@ from testo_core.repository.models import TestResult
 _WRITE_BATCH = 500
 
 
+def _pairs(value: Any) -> list[dict[str, str]] | None:
+    """A case's ``labels`` / ``links`` list as stored: string-valued dicts, ``None`` when empty."""
+    if not isinstance(value, list):
+        return None
+    out = [{str(k): str(v) for k, v in item.items()} for item in value if isinstance(item, dict)]
+    return out or None
+
+
 def _row(run_id: str, key: str, case: Mapping[str, Any]) -> TestResult:
     duration = case.get("duration_ms")
     return TestResult(
@@ -34,6 +42,8 @@ def _row(run_id: str, key: str, case: Mapping[str, Any]) -> TestResult:
         message=str(case.get("message") or "")[:300],
         crash=str(case.get("crash") or "")[:16],
         retried=bool(case.get("retried")),
+        labels=_pairs(case.get("labels")),
+        links=_pairs(case.get("links")),
     )
 
 
@@ -49,6 +59,8 @@ def _case(row: TestResult) -> dict[str, Any]:
         "framework": row.framework,
         "crash": row.crash,
         "retried": bool(row.retried),
+        "labels": list(row.labels or []),
+        "links": list(row.links or []),
     }
 
 

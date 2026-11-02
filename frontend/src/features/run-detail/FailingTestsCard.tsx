@@ -6,6 +6,7 @@ import { apiClient, type FailingTestItem } from "../../lib/api-client";
 import { Badge, Button, Card } from "../../components/ui";
 import { countLabel, formatDuration, shortRunId, testPath } from "../../lib/format";
 import { CrashBadge } from "./CrashBadge";
+import { TestLabels } from "../labels/TestLabels";
 import { CAUSE_LABELS, TriageControl } from "./TriageControl";
 
 // Enough to read at a glance; the rest are one click away.
@@ -56,6 +57,7 @@ function FailingTestRow({
         {test.status === "broken" ? <Badge>Broken</Badge> : null}
         <CrashBadge kind={test.crash_kind} />
       </div>
+      <TestLabels labels={test.labels} links={test.links} cycle={cycle} />
       {test.message ? (
         <p className="break-words font-mono text-xs text-danger-300" title={test.message}>
           {test.message}

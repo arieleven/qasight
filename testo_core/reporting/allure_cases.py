@@ -2,8 +2,8 @@
 
 This is the shape the analytics share (``flaky``, per-test history, failures,
 Compare, the PR comment): ``{key: {name, full_name, group, status, duration_ms,
-message, stage, framework, crash}}``. Since revision ``0003`` the same rows are also
-stored in the ``test_result`` table when a run is recorded
+message, stage, framework, crash, retried, labels, links}}``. Since revision
+``0003`` the same rows are also stored in the ``test_result`` table when a run is recorded
 (:mod:`testo_core.repository.test_results`); this module is the parser that
 fills it, and the fallback for snapshots recorded before the table existed.
 """
@@ -21,6 +21,31 @@ NAME_LIMIT = 120
 GROUP_LIMIT = 100
 MESSAGE_LIMIT = 300
 KEY_LIMIT = 200
+LABEL_VALUE_LIMIT = 100
+LABELS_PER_TEST = 20
+LINKS_PER_TEST = 10
+URL_LIMIT = 500
+
+# Allure labels that describe where a test lives or ran, not what it is about.
+# Everything else (feature, story, epic, severity, owner, tag, layer, custom ones)
+# is kept as one of the test's labels.
+_STRUCTURAL_LABELS = frozenset(
+    {
+        "package",
+        "testclass",
+        "testmethod",
+        "suite",
+        "parentsuite",
+        "subsuite",
+        "host",
+        "thread",
+        "framework",
+        "language",
+        "as_id",
+        "allure_id",
+        "resultformat",
+    }
+)
 
 
 def case_key(data: dict[str, Any]) -> str:
@@ -48,6 +73,56 @@ def label_value(labels: Any, name: str) -> str:
             v = lab.get("value")
             return str(v).strip() if v is not None else ""
     return ""
+
+
+def case_labels(data: dict[str, Any]) -> list[dict[str, str]]:
+    """What the test is about: its feature, story, severity, owner and tags, as ``{name, value}``.
+
+    Allure labels that only say where the test lives (package, suite, host,
+    framework...) are left out; duplicates are dropped and the list is bounded.
+    """
+    labels = data.get("labels")
+    if not isinstance(labels, list):
+        return []
+    out: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for lab in labels:
+        if not isinstance(lab, dict):
+            continue
+        name = str(lab.get("name") or "").strip().lower()
+        value = str(lab.get("value") or "").strip()
+        if not name or not value or name in _STRUCTURAL_LABELS:
+            continue
+        pair = (name[:40], value[:LABEL_VALUE_LIMIT])
+        if pair in seen:
+            continue
+        seen.add(pair)
+        out.append({"name": pair[0], "value": pair[1]})
+        if len(out) >= LABELS_PER_TEST:
+            break
+    return out
+
+
+def case_links(data: dict[str, Any]) -> list[dict[str, str]]:
+    """The test's links (issues, stories, docs) as ``{name, url, type}``; only http(s) URLs."""
+    links = data.get("links")
+    if not isinstance(links, list):
+        return []
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        url = str(link.get("url") or "").strip()
+        if not url.lower().startswith(("http://", "https://")) or url in seen:
+            continue
+        seen.add(url)
+        kind = str(link.get("type") or "link").strip().lower() or "link"
+        name = str(link.get("name") or "").strip() or url
+        out.append({"name": name[:LABEL_VALUE_LIMIT], "url": url[:URL_LIMIT], "type": kind[:20]})
+        if len(out) >= LINKS_PER_TEST:
+            break
+    return out
 
 
 def case_message(data: dict[str, Any]) -> str:
@@ -135,5 +210,7 @@ def load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "crash": case_crash(data, st),
             # Failed, then passed on a retry inside this run (JUnit reruns, Surefire).
             "retried": isinstance(details, dict) and bool(details.get("flaky")),
+            "labels": case_labels(data),
+            "links": case_links(data),
         }
     return out

@@ -66,6 +66,9 @@ class TestSummary:
     # Recent median minus the median before; set only when that is more than noise.
     slowdown_ms: int | None
     slowdown_pct: float | None
+    # From the latest run: what the test is about ({name, value}) and its issue links.
+    labels: tuple[dict[str, str], ...] = ()
+    links: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -155,6 +158,8 @@ def _summarise(key: str, observed: list[tuple[CompletedRunView, dict[str, Any]]]
         median_duration_ms=int(median(durations)) if durations else None,
         slowdown_ms=slowdown_ms,
         slowdown_pct=slowdown_pct,
+        labels=tuple(latest.get("labels") or ()),
+        links=tuple(latest.get("links") or ()),
     )
 
 
@@ -173,19 +178,53 @@ def _flip_rates(statuses: list[str]) -> list[float | None]:
 
 def _matches(summary: TestSummary, query: str) -> bool:
     needle = query.casefold()
-    return any(
-        needle in field.casefold() for field in (summary.name, summary.full_name, summary.group)
+    fields = (
+        summary.name,
+        summary.full_name,
+        summary.group,
+        *(lab.get("value", "") for lab in summary.labels),
     )
+    return any(needle in field.casefold() for field in fields)
+
+
+def has_label(labels: tuple[dict[str, str], ...] | list[dict[str, str]], wanted: str) -> bool:
+    """Whether ``labels`` holds ``wanted``: ``name:value`` exactly, or a bare value under any name.
+
+    Case-insensitive, so ``feature:checkout`` matches the label ``feature=Checkout``
+    and ``smoke`` matches the tag ``smoke``.
+    """
+    wanted = wanted.strip().casefold()
+    if not wanted:
+        return True
+    name, sep, value = wanted.partition(":")
+    for lab in labels:
+        lab_name = str(lab.get("name", "")).casefold()
+        lab_value = str(lab.get("value", "")).casefold()
+        if sep and lab_name == name.strip() and lab_value == value.strip():
+            return True
+        if lab_value == wanted:
+            return True
+    return False
 
 
 def list_cycle_tests(
-    cycle: str, *, window: int = DEFAULT_WINDOW, query: str | None = None
+    cycle: str,
+    *,
+    window: int = DEFAULT_WINDOW,
+    query: str | None = None,
+    label: str | None = None,
 ) -> CycleTests:
-    """Every test seen in ``cycle``'s last ``window`` runs, failing first, then by name."""
+    """Every test seen in ``cycle``'s last ``window`` runs, failing first, then by name.
+
+    ``query`` matches name, full name, group or a label's value; ``label`` keeps
+    only the tests that carry that label (see :func:`has_label`).
+    """
     analysed, per_test = _observations(cycle, window)
     tests = [_summarise(key, observed) for key, observed in per_test.items()]
     if query and query.strip():
         tests = [t for t in tests if _matches(t, query.strip())]
+    if label and label.strip():
+        tests = [t for t in tests if has_label(t.labels, label)]
     tests.sort(key=lambda t: (t.last_status not in _FAIL, not t.flaky, t.name, t.key))
     return CycleTests(cycle=cycle, runs_considered=analysed, tests=tuple(tests))
 

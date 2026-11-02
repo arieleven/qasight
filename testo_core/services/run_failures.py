@@ -62,6 +62,9 @@ class FailingTest:
     triage: Triage | None = None
     # "stack_overflow" | "crash" when its message or trace shows one (engine/crash_signatures.py).
     crash_kind: str | None = None
+    # What the test is about ({name, value}: feature, severity, tag...) and its issue links.
+    labels: tuple[dict[str, str], ...] = ()
+    links: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -205,6 +208,8 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
                 flaky=flaky_service.classify(key, observations.get(key, [])) is not None,
                 new=new,
                 crash_kind=str(case.get("crash") or "") or None,
+                labels=tuple(case.get("labels") or ()),
+                links=tuple(case.get("links") or ()),
             )
         )
     tests = _with_triage(run.cycle, tests)

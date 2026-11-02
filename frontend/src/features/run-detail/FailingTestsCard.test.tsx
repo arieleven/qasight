@@ -28,7 +28,9 @@ function failing(
     flaky: false,
     new: true,
     triage,
-    crash_kind
+    crash_kind,
+    labels: [],
+    links: []
   };
 }
 

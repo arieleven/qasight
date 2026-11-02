@@ -7,6 +7,7 @@ import { countLabel, formatDuration, formatRunTime, shortRunId } from "../../lib
 import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { QuarantineControl, matchingEntry } from "../quarantine/QuarantineControl";
 import { Attachments } from "./Attachments";
+import { TestLabels } from "../labels/TestLabels";
 
 const FAILED = new Set(["failed", "broken"]);
 
@@ -303,6 +304,15 @@ export function TestPage() {
             { label: "Full name", value: <span className="break-all font-mono text-xs">{test.full_name || "—"}</span> },
             { label: "Group", value: test.group },
             { label: "Stage", value: test.stage || "—" },
+            {
+              label: "Labels",
+              value:
+                (test.labels ?? []).length > 0 || (test.links ?? []).length > 0 ? (
+                  <TestLabels labels={test.labels} links={test.links} cycle={cycle} />
+                ) : (
+                  "None in the results"
+                )
+            },
             { label: "Owners", value: owners.length > 0 ? owners.join(", ") : "No CODEOWNERS rule matches this test" }
           ]}
         />
