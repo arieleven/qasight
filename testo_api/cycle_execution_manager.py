@@ -10,7 +10,7 @@ from collections import deque
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from uuid import uuid4
 
 from testo_api.execution_events import NdjsonCycleListener, append_ndjson_line
@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 # final status can always be read), so memory stays bounded however many runs happen.
 MAX_FINISHED_EXECUTIONS_ENV = "TESTO_MAX_FINISHED_EXECUTIONS"
 DEFAULT_MAX_FINISHED_EXECUTIONS = 200
+
+if TYPE_CHECKING:
+    from testo_core.services.test_selection import Selection
 
 
 # How many executions run at the same time. Each run starts test subprocesses, so the cap
@@ -75,6 +78,17 @@ def _adhoc_plan(request: RunRequest) -> Plan:
         timeout_s=request.timeout_s,
         extra_env=request.extra_env,
     )
+
+
+def _selection(request: RunRequest) -> Selection | None:
+    """The chosen tests of a cycle run (``tests`` / ``rerun_failed``), else ``None``."""
+    if request.kind != "cycle" or not (request.tests or request.rerun_failed):
+        return None
+    from testo_core.services import test_selection
+
+    if request.rerun_failed:
+        return test_selection.from_run_failures(request.rerun_failed)
+    return test_selection.from_names(list(request.tests))
 
 
 def plan_loader(request: RunRequest) -> PlanLoader:
@@ -204,6 +218,8 @@ class CycleExecutionManager:
         workers_override: int | None = None,
         stream: bool = False,
         ci: bool = True,
+        tests: Sequence[str] = (),
+        rerun_failed: str | None = None,
     ) -> CycleExecutionState:
         request = RunRequest(
             kind="cycle",
@@ -219,6 +235,8 @@ class CycleExecutionManager:
             workers_override=workers_override,
             stream=stream,
             ci=ci,
+            tests=tuple(tests),
+            rerun_failed=rerun_failed,
         )
         return self._start(request, plan_loader(request))
 
@@ -432,6 +450,7 @@ class CycleExecutionManager:
                     artifacts_root=artifacts_root,
                     parent_env=parent_env,
                     ci=request.ci,
+                    selection=_selection(request),
                 ),
             )
             if outcome.skipped:

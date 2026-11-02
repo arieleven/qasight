@@ -372,7 +372,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Cycle Execution */
+        /**
+         * Create Cycle Execution
+         * @description Start a run of ``cycle``; with ``tests`` or ``rerun_failed``, only those tests.
+         */
         post: operations["create_cycle_execution_api_v1_cycles__cycle__executions_post"];
         delete?: never;
         options?: never;
@@ -1406,11 +1409,15 @@ export interface components {
             report_db?: boolean;
             /** Reporter Override */
             reporter_override?: string[] | null;
+            /** Rerun Failed */
+            rerun_failed?: string | null;
             /**
              * Stream
              * @default false
              */
             stream?: boolean;
+            /** Tests */
+            tests?: string[];
             /** Workers Override */
             workers_override?: number | null;
         };

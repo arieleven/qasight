@@ -17,7 +17,7 @@ The comparison ranked five gaps, and Taltal chose to build all of them in waves:
 | --- | --- | --- |
 | N1 | Test labels and issue links | Built (this note) |
 | N2 | Environments per run, pass and flake rate split by environment | Built (this note) |
-| N3 | Run a chosen set of tests | Planned |
+| N3 | Run a chosen set of tests | Built (this note) |
 | N4 | Releases: runs tagged with an app version, a release page | Planned |
 | N5 | Which issues have red tests | Planned |
 
@@ -42,9 +42,18 @@ Manual test case management stays out of scope, as the [comparison page](../Comp
 - **Run failures.** A run's failing streak and "new" baseline use runs of the same environment (or with none recorded); a pull request's target-branch baseline prefers the run on the same environment.
 - **UI and API.** `environment` on `GET /api/v1/runs`, the run detail, and each point of the test history; the test history adds `environments`, pass and fail counts per environment. The run page and the cycle's runs list show it; the test page has a "By environment" card that says "Fails only on browser=firefox" when that's the case.
 
+### N3: run a chosen set of tests
+
+- **One selection, many runners.** `services/test_selection.py` holds a selection (test names, and the stage each ran in when it comes from a recorded run) and `narrow_plan()` turns it into the same cycle with each stage told to run only those tests: pytest node ids (or `-k` on the names when the stage's own arguments name a path, since node ids next to `tests/` would run all of `tests/`), Playwright `--grep` with `--pass-with-no-tests`, Behave and BehaveX `--name`. Other stages run as they are, with two variables a script or adapter can use: `ALLURE_TESTPLAN_PATH` (Allure's public test plan file, which Allure's own adapters for JUnit 5, TestNG, Cucumber and pytest read to run only the listed tests) and `TESTO_SELECTED_TESTS`.
+- **Entry points.** `testo run --test NAME` (repeatable) and `--rerun-failed RUN_ID` on the CLI; `tests` and `rerun_failed` on `POST /api/v1/cycles/{cycle}/executions` (kept in the run queue's JSON). The UI's run page has "Run these tests again" and the cycle page's label filter has "Run these" for a cycle defined in `testosterone.yaml`; both open the cycle's run panel with the selection shown and a "Run every test instead" way out.
+- **Same engine.** The narrowed plan goes through `CycleRunService` and `run_plan()` like any run; nothing else changes. The run records `selected_tests` (how many) and `selected_from` in its metadata.
+- **No match is not a failure.** pytest exits 5 when it collects nothing; with a selection the executor counts that as passed for the stage, because it only means none of the chosen tests lives there. A selection from a recorded run skips stages with no failing test.
+- **Not a scheduler.** Nothing here splits tests across machines or calls a CI provider's "re-run failed jobs" (F11 in the paid-features note); the run happens where `testo run` or the team server runs.
+
 ## Consequences
 
 - A suite that already uses Allure, Playwright tags or JUnit properties gets the breakdown with no config change. A plain pytest JUnit file has no labels until tests call `record_property("feature", "Checkout")` or use allure-pytest.
 - `test_result` rows are a little larger (two small JSON values per test).
 - N5 builds directly on the `issue` labels and links stored here.
+- A run of chosen tests is a run like any other in the history. Its absent tests are simply absent: flaky detection and per-test history skip runs a test isn't in, and Compare lists them as not run.
 - Environments split flaky lanes only when runs record one. A team that sets `TESTO_ENV` on some jobs and not others gets an extra "not set" lane until every job sets it.

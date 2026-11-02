@@ -1073,10 +1073,30 @@
             ],
             "title": "Reporter Override"
           },
+          "rerun_failed": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerun Failed"
+          },
           "stream": {
             "default": false,
             "title": "Stream",
             "type": "boolean"
+          },
+          "tests": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Tests",
+            "type": "array"
           },
           "workers_override": {
             "anyOf": [
@@ -7052,6 +7072,7 @@
     },
     "/api/v1/cycles/{cycle}/executions": {
       "post": {
+        "description": "Start a run of ``cycle``; with ``tests`` or ``rerun_failed``, only those tests.",
         "operationId": "create_cycle_execution_api_v1_cycles__cycle__executions_post",
         "parameters": [
           {

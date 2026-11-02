@@ -459,6 +459,12 @@ def _run_process_stage(
             waived_returncode, returncode = returncode, 0
         _append_run_log(log_path, _quarantine_log_lines(verdict))
 
+    # pytest exits 5 when it collects nothing: with a chosen set of tests (testo run
+    # --test / --rerun-failed) that only means none of them lives in this stage.
+    if stage.framework == "pytest" and returncode == 5 and env.get("TESTO_SELECTED_TESTS"):
+        _append_run_log(log_path, ["[testo] selection: none of the chosen tests is in this stage"])
+        returncode = 0
+
     crash = stage_crash(scanner.finish(), returncode=returncode, timed_out=timed_out)
     if crash is not None:
         _append_run_log(log_path, [f"[testo] crash detection: {crash.describe()}"])

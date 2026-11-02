@@ -82,6 +82,10 @@ class CycleExecutionRequest(ApiModel):
     report_db: bool = True
     async_report_db: bool = False
     reporter_override: list[str] | None = None
+    # Run only these tests (name, full name or pytest node id), like `testo run --test`.
+    tests: list[str] = Field(default_factory=list, max_length=500)
+    # Run only the failing tests of this recorded run, like `testo run --rerun-failed`.
+    rerun_failed: str | None = Field(default=None, max_length=64)
 
 
 class AdhocExecutionRequest(ApiModel):

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from rich.console import Console
@@ -26,6 +27,9 @@ from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Plan, TestosteroneConfig
 from testo_core.config.triggers import TriggerResult
 from testo_core.engine.exit_codes import EngineExitCode
+
+if TYPE_CHECKING:
+    from testo_core.services.test_selection import Selection
 
 
 def _print_config_warnings(warnings: tuple[str, ...], *, console: Console, ci: bool) -> None:
@@ -50,6 +54,8 @@ def execute_plan_command(
     report_db: bool = True,
     async_report_db: bool = False,
     coverage: list[Path] | None = None,
+    tests: list[str] | None = None,
+    rerun_failed: str | None = None,
 ) -> int:
     """Load + resolve + execute one plan (or every cycle when ``plan_name == 'all'``)."""
     try:
@@ -59,6 +65,24 @@ def execute_plan_command(
         return int(EngineExitCode.INVALID_INPUT)
     _print_config_warnings(cfg.warnings, console=console, ci=ci)
     coverage_reports = tuple(p.expanduser().resolve() for p in coverage or ())
+
+    selection = None
+    if tests or rerun_failed:
+        from testo_core.services import test_selection
+
+        try:
+            if plan_name == "all":
+                raise test_selection.SelectionError(
+                    "--test and --rerun-failed need one cycle, not --cycle all."
+                )
+            selection = (
+                test_selection.from_run_failures(rerun_failed)
+                if rerun_failed
+                else test_selection.from_names(tests or [])
+            )
+        except test_selection.SelectionError as exc:
+            _emit_config_error(console=console, exc=exc, ci=ci)
+            return int(EngineExitCode.INVALID_INPUT)
 
     if plan_name == "all":
         if coverage_reports:
@@ -112,6 +136,7 @@ def execute_plan_command(
         report_db=report_db,
         async_report_db=async_report_db,
         coverage_reports=coverage_reports,
+        selection=selection,
     )
 
 
@@ -303,8 +328,10 @@ def _execute_one_cycle(
     report_db: bool = True,
     async_report_db: bool = False,
     coverage_reports: tuple[Path, ...] = (),
+    selection: Selection | None = None,
 ) -> int:
     from testo_core.services.cycle_run import CycleRunOptions, CycleRunService, NoStagesEnabledError
+    from testo_core.services.test_selection import SelectionError
 
     service = CycleRunService(
         listener=_ConsoleCycleListener(console=console, ci=ci), console=console
@@ -322,9 +349,10 @@ def _execute_one_cycle(
                 async_report_db=async_report_db,
                 ci=ci,
                 coverage_reports=coverage_reports,
+                selection=selection,
             ),
         )
-    except NoStagesEnabledError as exc:
+    except (NoStagesEnabledError, SelectionError) as exc:
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
     return outcome.exit_code
@@ -343,6 +371,27 @@ class _ConsoleCycleListener:
             _emit_cycle_activating(console=self._console, ci=self._ci, plan=plan, tr=result)
         else:
             _emit_cycle_resting(console=self._console, ci=self._ci, plan=plan)
+
+    def selection_applied(self, plan: Plan, selection: Selection) -> None:
+        from testo_core.services.test_selection import describe
+
+        if self._ci:
+            from testo_core.cli.ui.ci_renderer import emit_ndjson
+
+            emit_ndjson(
+                {
+                    "event": "selection",
+                    "source": selection.source,
+                    "tests": len(selection.tests),
+                    "stages": [s.name for s in plan.stages],
+                }
+            )
+            return
+        self._console.print(
+            f"[muted]Running {len(selection.tests)} chosen test(s) ({selection.source}):[/]"
+        )
+        for line in describe(plan):
+            self._console.print(f"[muted]  {line}[/]")
 
     def trigger_bypassed(self, plan: Plan) -> None:
         if not self._ci:

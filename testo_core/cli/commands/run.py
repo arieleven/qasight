@@ -88,6 +88,22 @@ def run(
             "stored with it. Cobertura or JaCoCo XML, LCOV, or a Go cover profile."
         ),
     ),
+    test: list[str] = typer.Option(
+        None,
+        "--test",
+        "-t",
+        help=(
+            "Run only this test (repeatable): its name, full name or pytest node id. "
+            "pytest, Playwright and Behave stages are narrowed to it; other stages get "
+            "ALLURE_TESTPLAN_PATH and TESTO_SELECTED_TESTS."
+        ),
+    ),
+    rerun_failed: str = typer.Option(
+        None,
+        "--rerun-failed",
+        metavar="RUN_ID",
+        help="Run only the tests that failed in this recorded run, each in the stage it failed in.",
+    ),
     env: list[str] = typer.Option(
         None,
         "--env",
@@ -123,5 +139,7 @@ def run(
         report_db=not no_report_db,
         async_report_db=async_report_db,
         coverage=coverage or [],
+        tests=test or [],
+        rerun_failed=rerun_failed,
     )
     raise typer.Exit(code=int(exit_code))

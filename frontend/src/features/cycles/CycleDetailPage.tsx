@@ -2,17 +2,18 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "../../lib/api-client";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { Badge, Card, EmptyState, KeyValue, PageHeader, Spinner } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 import { CycleRunsCard } from "./CycleRunsCard";
 import { CycleTestsCard } from "./CycleTestsCard";
 import { CycleLabelsCard } from "../labels/CycleLabelsCard";
 import { FlakyTestsCard } from "./FlakyTestsCard";
-import { RunPanel } from "./RunPanel";
+import { RunPanel, type RunSelection } from "./RunPanel";
 
 export function CycleDetailPage() {
   const { name = "" } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const query = useQuery({
     queryKey: ["cycle", name],
     queryFn: () => apiClient.getCycle(name),
@@ -46,6 +47,19 @@ export function CycleDetailPage() {
   }
 
   const cycle = query.data;
+  const rerunFailed = searchParams.get("rerun");
+  const chosenTests = searchParams.getAll("test");
+  const selection: RunSelection | null = rerunFailed
+    ? { rerunFailed, label: `the failing tests of run ${rerunFailed.slice(0, 8)}` }
+    : chosenTests.length > 0
+      ? { tests: chosenTests, label: chosenTests.length === 1 ? chosenTests[0] : `${chosenTests.length} chosen tests` }
+      : null;
+  const clearSelection = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("rerun");
+    next.delete("test");
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <section className="space-y-6">
@@ -56,7 +70,13 @@ export function CycleDetailPage() {
       />
 
       {cycle.source === "config" ? (
-        <RunPanel initialCycle={cycle.name} lockCycle autoFocusRun={searchParams.get("run") === "1"} />
+        <RunPanel
+          initialCycle={cycle.name}
+          lockCycle
+          autoFocusRun={searchParams.get("run") === "1"}
+          selection={selection}
+          onClearSelection={clearSelection}
+        />
       ) : null}
 
       <CycleRunsCard cycle={cycle.name} />
@@ -65,7 +85,7 @@ export function CycleDetailPage() {
 
       <CycleLabelsCard cycle={cycle.name} />
 
-      <CycleTestsCard cycle={cycle.name} />
+      <CycleTestsCard cycle={cycle.name} runnable={cycle.source === "config" && !IS_STATIC_BUILD} />
 
       {/* A recorded-only cycle has one stage with nothing to configure: the header already says it. */}
       {cycle.source === "config" ? (

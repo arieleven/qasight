@@ -10,6 +10,14 @@ import { TestLabels } from "../labels/TestLabels";
 
 const LIST_LIMIT = 5;
 const SEARCH_LIMIT = 25;
+// A link carries the names; past this, run the cycle (or `testo run --test`).
+const RUN_LIMIT = 50;
+
+function runTestsQuery(tests: TestSummaryItem[]): string {
+  const params = new URLSearchParams({ run: "1" });
+  for (const test of tests) params.append("test", test.full_name || test.name);
+  return params.toString();
+}
 
 function TestLink({ cycle, test }: { cycle: string; test: TestSummaryItem }) {
   return (
@@ -37,7 +45,7 @@ function TestRow({ cycle, test }: { cycle: string; test: TestSummaryItem }) {
 }
 
 /** Find a test, and see the slowest ones and the ones that got slower, across the cycle's recent runs. */
-export function CycleTestsCard({ cycle }: { cycle: string }) {
+export function CycleTestsCard({ cycle, runnable = false }: { cycle: string; runnable?: boolean }) {
   const [search, setSearch] = useState("");
   const [params, setParams] = useSearchParams();
   const label = params.get("label") ?? "";
@@ -91,9 +99,19 @@ export function CycleTestsCard({ cycle }: { cycle: string }) {
             <h3 className="text-sm font-semibold text-white">
               {labelled.length} {labelled.length === 1 ? "test" : "tests"} labelled "{label}"
             </h3>
-            <button type="button" onClick={clearLabel} className="text-xs text-brand-300 hover:underline">
-              Show all tests
-            </button>
+            <span className="flex flex-wrap items-center gap-3">
+              {runnable && labelled.length > 0 && labelled.length <= RUN_LIMIT ? (
+                <Link
+                  to={`?${runTestsQuery(labelled)}`}
+                  className="text-xs font-medium text-brand-300 hover:underline"
+                >
+                  Run {labelled.length === 1 ? "it" : `these ${labelled.length}`}
+                </Link>
+              ) : null}
+              <button type="button" onClick={clearLabel} className="text-xs text-brand-300 hover:underline">
+                Show all tests
+              </button>
+            </span>
           </div>
           {labelled.length === 0 ? (
             <p className="text-sm text-ink-300">No test in the recent runs has this label.</p>
