@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-25
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Compared with other tools
@@ -23,6 +23,7 @@ Features and prices of the other tools change often. This page describes them as
 | History across runs | Yes, with per-test diffs between any two runs | One run, with an optional history folder | Yes | Yes | Yes | Yes |
 | Flaky test detection | Yes, plus quarantine from config, the UI or the CLI | Retries only | Yes | Yes | Yes | Yes |
 | Per-test history page | Yes: outcomes, flake rate over time, duration, owner | Per run | Yes | Yes | Yes | Yes |
+| Labels on tests (feature, severity, tags, issue links) | Yes, read from Allure results, Playwright tags and JUnit properties, with counts per label | Yes | Yes (attributes) | Tags | No | Tags |
 | Traces, screenshots and videos | Playwright attachments on the test page | Yes, the richest per-run view | Yes | Yes, streamed live | Not its focus | Through Datadog APM |
 | Runs the tests for you | Yes (`testo run`, cycles of stages) | No | No | Orchestrates Playwright and Cypress | No | No |
 | Test case management and manual testing | No | No (Allure TestOps does) | No | No | No | No |
