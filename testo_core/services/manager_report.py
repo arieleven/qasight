@@ -13,6 +13,8 @@ compute, so the numbers match ``testo notify --digest`` and the ``/health`` page
   (``services/delivery_metrics.py``);
 * the failure signal: what the red runs were (real bugs, test bugs, environment,
   flaky, not marked yet) and what flaky tests cost (``services/failure_signal.py``);
+* each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``)
+  and the suite's growth and dead weight (``services/suite_hygiene.py``);
 * one row per cycle;
 * what needs attention (still failing, turned flaky, got slower) and good news
   (fixed), plus the health score's own findings.
@@ -30,6 +32,8 @@ from testo_core.services import run_digest
 from testo_core.services.delivery_metrics import Delivery, build_delivery, span
 from testo_core.services.failure_signal import NOISE, Signal, build_signal
 from testo_core.services.project_health import grade_for, project_health
+from testo_core.services.suite_hygiene import Hygiene, build_hygiene
+from testo_core.services.team_view import NO_OWNER, Teams, build_teams
 
 PERIOD_DAYS: dict[str, int] = {"day": 1, "week": 7, "month": 30, "quarter": 90}
 PERIOD_LABELS: dict[str, str] = {
@@ -119,6 +123,8 @@ class ManagerReport:
     findings: list[Finding] = field(default_factory=list)
     delivery: Delivery = field(default_factory=Delivery)
     signal: Signal = field(default_factory=Signal)
+    teams: Teams = field(default_factory=Teams)
+    hygiene: Hygiene = field(default_factory=Hygiene)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -233,8 +239,33 @@ def _signal_lines(s: Signal) -> list[str]:
     return lines
 
 
+def _suite_lines(h: Hygiene, t: Teams) -> list[str]:
+    lines = []
+    if h.tests:
+        change = ""
+        if h.prev_tests is not None:
+            delta = h.tests - h.prev_tests
+            sign = "+" if delta >= 0 else "−"
+            change = f" ({sign}{abs(delta)}: {h.added} added, {h.removed} removed)"
+        lines.append(f"The suite has {_plural(h.tests, 'test')}{change}.")
+    if h.always_skipped_count:
+        lines.append(
+            f"{_plural(h.always_skipped_count, 'test')} "
+            f"{'was' if h.always_skipped_count == 1 else 'were'} skipped in every run."
+        )
+    owned = [r for r in t.rows if r.owner != NO_OWNER and r.open_failures]
+    if t.owners_known and owned:
+        top = owned[0]
+        lines.append(f"{top.owner} has the most open failures ({top.open_failures}).")
+    return lines
+
+
 def _summary(
-    k: Kpis, period: str, delivery: Delivery | None = None, signal: Signal | None = None
+    k: Kpis,
+    period: str,
+    delivery: Delivery | None = None,
+    signal: Signal | None = None,
+    extra: list[str] | None = None,
 ) -> list[str]:
     if not k.runs:
         return [f"No runs were recorded this {period}."]
@@ -263,6 +294,7 @@ def _summary(
         lines += _delivery_lines(delivery, period)
     if signal is not None:
         lines += _signal_lines(signal)
+    lines += extra or []
     if k.health_score is not None:
         lines.append(f"Test health score: {k.health_score}/100 (grade {k.health_grade}).")
     return lines
@@ -322,6 +354,8 @@ def build_report(
         cycles=in_scope,
         default_branch=delivery.default_branch,
     )
+    teams = build_teams(recent, start=digest.start, end=digest.end, cycles=in_scope)
+    hygiene = build_hygiene(recent, start=digest.start, end=digest.end, cycles=in_scope)
     findings = [
         Finding(cycle=f.cycle, title=f.title, detail=f.detail)
         for f in health.findings
@@ -335,7 +369,7 @@ def build_report(
         end=digest.end,
         generated_at=digest.end if now is not None else datetime.now(tz=UTC).timestamp(),
         scope=wanted,
-        summary=_summary(kpis, period, delivery, signal),
+        summary=_summary(kpis, period, delivery, signal, _suite_lines(hygiene, teams)),
         kpis=kpis,
         trend=_trend(digest.start, digest.end, days, in_scope),
         cycles=[
@@ -368,4 +402,6 @@ def build_report(
         findings=findings,
         delivery=delivery,
         signal=signal,
+        teams=teams,
+        hygiene=hygiene,
     )

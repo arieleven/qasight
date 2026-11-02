@@ -1631,6 +1631,19 @@ export interface components {
             /** Items */
             items: components["schemas"]["CycleSummary"][];
         };
+        /** CycleSize */
+        CycleSize: {
+            /** Added */
+            added: number;
+            /** Cycle */
+            cycle: string;
+            /** Prev Tests */
+            prev_tests: number | null;
+            /** Removed */
+            removed: number;
+            /** Tests */
+            tests: number;
+        };
         /** CycleSummary */
         CycleSummary: {
             /** Description */
@@ -1853,6 +1866,11 @@ export interface components {
             age_s: number;
             /** Cycle */
             cycle: string;
+            /**
+             * Key
+             * @default
+             */
+            key: string;
             /** Name */
             name: string;
             /** Runs */
@@ -2235,6 +2253,36 @@ export interface components {
             weight: number;
         };
         /**
+         * HygieneResponse
+         * @description Suite size, added and removed tests, always-skipped and slow never-failing tests.
+         *
+         *     See ``services/suite_hygiene.py``.
+         */
+        HygieneResponse: {
+            /** Added */
+            added: number;
+            /** Added Tests */
+            added_tests: components["schemas"]["NamedCycleTest"][];
+            /** Always Skipped */
+            always_skipped: components["schemas"]["NamedCycleTest"][];
+            /** Always Skipped Count */
+            always_skipped_count: number;
+            /** Cycles */
+            cycles: components["schemas"]["CycleSize"][];
+            /** Prev Tests */
+            prev_tests: number | null;
+            /** Removed */
+            removed: number;
+            /** Removed Tests */
+            removed_tests: components["schemas"]["NamedCycleTest"][];
+            /** Slow Never Failed */
+            slow_never_failed: components["schemas"]["NamedCycleTest"][];
+            /** Slow Never Failed Ms */
+            slow_never_failed_ms: number;
+            /** Tests */
+            tests: number;
+        };
+        /**
          * IngestResponse
          * @description A recorded upload (``POST /api/v1/ingest``, what ``testo ingest --server`` sends).
          */
@@ -2320,6 +2368,7 @@ export interface components {
             fixed: components["schemas"]["ReportTest"][];
             /** Generated At */
             generated_at: number;
+            hygiene: components["schemas"]["HygieneResponse"];
             kpis: components["schemas"]["ReportKpis"];
             /** Newly Flaky */
             newly_flaky: components["schemas"]["ReportTest"][];
@@ -2339,10 +2388,41 @@ export interface components {
             still_failing: components["schemas"]["ReportTest"][];
             /** Summary */
             summary: string[];
+            teams: components["schemas"]["TeamsResponse"];
             /** Title */
             title: string;
             /** Trend */
             trend: components["schemas"]["ReportTrendPoint"][];
+        };
+        /** NamedCycleTest */
+        NamedCycleTest: {
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /** Name */
+            name: string;
+        };
+        /** OwnerRow */
+        OwnerRow: {
+            /** Failing */
+            failing: number;
+            /** Fixes */
+            fixes: number;
+            /** Flaky */
+            flaky: number;
+            /** Flaky Minutes */
+            flaky_minutes: number;
+            /** Median Fix S */
+            median_fix_s: number | null;
+            /** Oldest Open S */
+            oldest_open_s: number | null;
+            /** Open Failures */
+            open_failures: number;
+            /** Owner */
+            owner: string;
+            /** Tests */
+            tests: number;
         };
         /**
          * ProjectHealthResponse
@@ -3264,6 +3344,16 @@ export interface components {
             timeout_s: number | null;
             /** Workers */
             workers: number | null;
+        };
+        /**
+         * TeamsResponse
+         * @description Each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``).
+         */
+        TeamsResponse: {
+            /** Owners Known */
+            owners_known: boolean;
+            /** Rows */
+            rows: components["schemas"]["OwnerRow"][];
         };
         /** TestHistoryResponse */
         TestHistoryResponse: {

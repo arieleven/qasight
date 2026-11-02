@@ -61,6 +61,7 @@ class OpenFailure:
     since: float  # when the red spell began (epoch seconds)
     age_s: float
     runs: int  # runs on the default branch it failed in, in a row
+    key: str = ""
 
 
 @dataclass(frozen=True)
@@ -123,7 +124,7 @@ def default_branch(runs: list[CompletedRunView]) -> str | None:
     return next((b for b in _WELL_KNOWN if b in branches), None)
 
 
-def _on_default(run: CompletedRunView, branch: str | None, any_branch: bool) -> bool:
+def on_default_branch(run: CompletedRunView, branch: str | None, any_branch: bool) -> bool:
     if not any_branch:
         return True  # no run has a branch: they all count
     return branch is not None and run.branch == branch
@@ -148,10 +149,10 @@ class _Spell:
     runs: int = 1
 
 
-def _spells(
+def red_spells(
     runs: list[CompletedRunView], cycle: str
-) -> tuple[list[tuple[float, float]], list[OpenFailure]]:
-    """(closed spells as (fixed_at, seconds red), open failures) for ``runs`` (oldest first)."""
+) -> tuple[list[tuple[str, float, float]], list[OpenFailure]]:
+    """(closed spells as (test key, fixed_at, seconds red), open failures) for ``runs`` (oldest first)."""
     cases = [(run, flaky_service._cases_for_run(run)) for run in runs]
     cases = [(run, c) for run, c in cases if c]
     observations: dict[str, list[dict[str, Any]]] = {}
@@ -162,7 +163,7 @@ def _spells(
 
     open_: dict[str, _Spell] = {}
     names: dict[str, str] = {}
-    closed: list[tuple[float, float]] = []
+    closed: list[tuple[str, float, float]] = []
     for run, run_cases in cases:
         for key, case in run_cases.items():
             if key in flaky:
@@ -179,11 +180,11 @@ def _spells(
                 del open_[key]
                 if spell.commit and spell.commit == run.commit:
                     continue  # passed again on the commit that failed: a retry, not a fix
-                closed.append((run.created_at, max(0.0, run.created_at - spell.since)))
+                closed.append((key, run.created_at, max(0.0, run.created_at - spell.since)))
     latest = cases[-1][1] if cases else {}
     end = cases[-1][0].created_at if cases else 0.0
     still = [
-        OpenFailure(cycle, names[key], s.since, max(0.0, end - s.since), s.runs)
+        OpenFailure(cycle, names[key], s.since, max(0.0, end - s.since), s.runs, key)
         for key, s in open_.items()
         if str(latest.get(key, {}).get("status")) in _FAIL  # gone or skipped since: not open
     ]
@@ -299,10 +300,10 @@ def _cycle(
     prev_start: float,
 ) -> tuple[CycleDelivery, list[float], list[float], list[OpenFailure], list[tuple[float, float]]]:
     """One cycle's row, plus the raw pieces the totals are built from."""
-    on_default = [r for r in runs if _on_default(r, branch, any_branch)]
-    closed, still = _spells(on_default[-MAX_CASE_RUNS:], cycle)
-    fixes_now = [secs for at, secs in closed if start <= at <= end]
-    fixes_prev = [secs for at, secs in closed if prev_start <= at < start]
+    on_default = [r for r in runs if on_default_branch(r, branch, any_branch)]
+    closed, still = red_spells(on_default[-MAX_CASE_RUNS:], cycle)
+    fixes_now = [secs for _, at, secs in closed if start <= at <= end]
+    fixes_prev = [secs for _, at, secs in closed if prev_start <= at < start]
 
     now_runs = [r for r in runs if start <= r.created_at <= end]
     prev_runs = [r for r in runs if prev_start <= r.created_at < start]
@@ -386,7 +387,7 @@ def build_delivery(
         fixes_prev += prev_f
         still += open_f
         spells += red
-        default_runs += [r for r in cycle_runs if _on_default(r, branch, any_branch)]
+        default_runs += [r for r in cycle_runs if on_default_branch(r, branch, any_branch)]
     rows.sort(key=lambda r: (-r.ci_minutes, r.cycle))
 
     ok, tried = _first_try(kept, branch, start, end) if any_branch else (0, 0)

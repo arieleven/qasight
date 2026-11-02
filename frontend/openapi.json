@@ -1527,6 +1527,46 @@
         "title": "CycleListResponse",
         "type": "object"
       },
+      "CycleSize": {
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "prev_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Tests"
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "tests",
+          "prev_tests",
+          "added",
+          "removed"
+        ],
+        "title": "CycleSize",
+        "type": "object"
+      },
       "CycleSummary": {
         "properties": {
           "description": {
@@ -2349,6 +2389,11 @@
             "title": "Cycle",
             "type": "string"
           },
+          "key": {
+            "default": "",
+            "title": "Key",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -2367,7 +2412,8 @@
           "name",
           "since",
           "age_s",
-          "runs"
+          "runs",
+          "key"
         ],
         "title": "DeliveryOpenFailure",
         "type": "object"
@@ -3552,6 +3598,92 @@
         "title": "HealthSignalItem",
         "type": "object"
       },
+      "HygieneResponse": {
+        "description": "Suite size, added and removed tests, always-skipped and slow never-failing tests.\n\nSee ``services/suite_hygiene.py``.",
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "added_tests": {
+            "items": {
+              "$ref": "#/components/schemas/NamedCycleTest"
+            },
+            "title": "Added Tests",
+            "type": "array"
+          },
+          "always_skipped": {
+            "items": {
+              "$ref": "#/components/schemas/NamedCycleTest"
+            },
+            "title": "Always Skipped",
+            "type": "array"
+          },
+          "always_skipped_count": {
+            "title": "Always Skipped Count",
+            "type": "integer"
+          },
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/CycleSize"
+            },
+            "title": "Cycles",
+            "type": "array"
+          },
+          "prev_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Tests"
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          },
+          "removed_tests": {
+            "items": {
+              "$ref": "#/components/schemas/NamedCycleTest"
+            },
+            "title": "Removed Tests",
+            "type": "array"
+          },
+          "slow_never_failed": {
+            "items": {
+              "$ref": "#/components/schemas/NamedCycleTest"
+            },
+            "title": "Slow Never Failed",
+            "type": "array"
+          },
+          "slow_never_failed_ms": {
+            "title": "Slow Never Failed Ms",
+            "type": "integer"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tests",
+          "prev_tests",
+          "added",
+          "removed",
+          "cycles",
+          "added_tests",
+          "removed_tests",
+          "always_skipped",
+          "always_skipped_count",
+          "slow_never_failed",
+          "slow_never_failed_ms"
+        ],
+        "title": "HygieneResponse",
+        "type": "object"
+      },
       "IngestResponse": {
         "description": "A recorded upload (``POST /api/v1/ingest``, what ``testo ingest --server`` sends).",
         "properties": {
@@ -3773,6 +3905,9 @@
             "title": "Generated At",
             "type": "number"
           },
+          "hygiene": {
+            "$ref": "#/components/schemas/HygieneResponse"
+          },
           "kpis": {
             "$ref": "#/components/schemas/ReportKpis"
           },
@@ -3828,6 +3963,9 @@
             "title": "Summary",
             "type": "array"
           },
+          "teams": {
+            "$ref": "#/components/schemas/TeamsResponse"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -3858,9 +3996,101 @@
           "slower",
           "findings",
           "delivery",
-          "signal"
+          "signal",
+          "teams",
+          "hygiene"
         ],
         "title": "ManagerReportResponse",
+        "type": "object"
+      },
+      "NamedCycleTest": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "name",
+          "detail"
+        ],
+        "title": "NamedCycleTest",
+        "type": "object"
+      },
+      "OwnerRow": {
+        "properties": {
+          "failing": {
+            "title": "Failing",
+            "type": "integer"
+          },
+          "fixes": {
+            "title": "Fixes",
+            "type": "integer"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "integer"
+          },
+          "flaky_minutes": {
+            "title": "Flaky Minutes",
+            "type": "number"
+          },
+          "median_fix_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Fix S"
+          },
+          "oldest_open_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Open S"
+          },
+          "open_failures": {
+            "title": "Open Failures",
+            "type": "integer"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "owner",
+          "tests",
+          "failing",
+          "flaky",
+          "flaky_minutes",
+          "fixes",
+          "median_fix_s",
+          "open_failures",
+          "oldest_open_s"
+        ],
+        "title": "OwnerRow",
         "type": "object"
       },
       "ProjectHealthResponse": {
@@ -6595,6 +6825,28 @@
           "workers"
         ],
         "title": "StageSummary",
+        "type": "object"
+      },
+      "TeamsResponse": {
+        "description": "Each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``).",
+        "properties": {
+          "owners_known": {
+            "title": "Owners Known",
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/OwnerRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "owners_known",
+          "rows"
+        ],
+        "title": "TeamsResponse",
         "type": "object"
       },
       "TestHistoryResponse": {

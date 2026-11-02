@@ -263,6 +263,8 @@ export function ReportDocument({ report, brand = "Testosterone", copy = true }: 
       </Section>
 
       <DeliveryByCycle report={report} copy={copy} />
+      <TeamsSection report={report} copy={copy} />
+      <HygieneSection report={report} copy={copy} />
 
       <Section copy={copy} title="Still failing" note={report.still_failing.length ? `${report.still_failing.length} shown` : undefined}>
         <TestList items={report.still_failing} empty="Nothing is failing in the latest runs." />
@@ -563,5 +565,132 @@ function SignalSection({ report, copy }: { report: ManagerReport; copy: boolean 
         )}
       </Section>
     </div>
+  );
+}
+
+/** Each owner's numbers, so every team has its own line instead of one shared score. */
+function TeamsSection({ report, copy }: { report: ManagerReport; copy: boolean }) {
+  const t = report.teams;
+  if (!t.rows.length) return null;
+  return (
+    <Section copy={copy} title="By team" note={t.owners_known ? "CODEOWNERS and owner labels" : undefined}>
+      {t.owners_known ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="text-left text-xs" style={{ color: PAPER.muted }}>
+                <th className="py-1 pr-3 font-semibold">Owner</th>
+                <th className="py-1 pr-3 text-right font-semibold">Tests</th>
+                <th className="py-1 pr-3 text-right font-semibold">Failing</th>
+                <th className="py-1 pr-3 text-right font-semibold">Open, oldest</th>
+                <th className="py-1 pr-3 text-right font-semibold">Time to fix</th>
+                <th className="py-1 pr-3 text-right font-semibold">Flaky</th>
+                <th className="py-1 text-right font-semibold">Flaky cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {t.rows.map((r) => (
+                <tr key={r.owner} className="border-t tabular-nums" style={{ borderColor: PAPER.rule }}>
+                  <td className="py-1.5 pr-3 font-medium break-all">{r.owner}</td>
+                  <td className="py-1.5 pr-3 text-right">{r.tests}</td>
+                  <td className="py-1.5 pr-3 text-right" style={{ color: r.failing ? PAPER.bad : undefined }}>
+                    {r.failing}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right">
+                    {r.open_failures ? `${r.open_failures}, ${formatSpan(r.oldest_open_s)}` : "0"}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right">{formatSpan(r.median_fix_s)}</td>
+                  <td className="py-1.5 pr-3 text-right" style={{ color: r.flaky ? PAPER.warn : undefined }}>
+                    {r.flaky}
+                  </td>
+                  <td className="py-1.5 text-right">{r.flaky_minutes ? `${r.flaky_minutes.toFixed(1)} min` : "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-sm" style={{ color: PAPER.muted }}>
+          No test has an owner yet. Add a CODEOWNERS file to the repository, or an owner label to tests (an Allure owner label, a pytest
+          marker or a JUnit property), and this section splits the numbers by team.
+        </p>
+      )}
+    </Section>
+  );
+}
+
+function NameList({ items, empty }: { items: ManagerReport["hygiene"]["added_tests"]; empty: string }) {
+  if (!items.length)
+    return (
+      <p className="text-sm" style={{ color: PAPER.muted }}>
+        {empty}
+      </p>
+    );
+  return (
+    <ul className="space-y-1 text-sm">
+      {items.map((t) => (
+        <li key={`${t.cycle}:${t.name}`}>
+          <span className="font-mono text-[12px] break-all">{t.name}</span>
+          <span style={{ color: PAPER.muted }}>
+            {" "}
+            · {t.cycle}
+            {t.detail ? ` · ${t.detail}` : ""}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Is the suite growing with the code, and what costs time or checks nothing? */
+function HygieneSection({ report, copy }: { report: ManagerReport; copy: boolean }) {
+  const h = report.hygiene;
+  if (!h.tests) return null;
+  const delta = h.prev_tests === null ? null : h.tests - h.prev_tests;
+  return (
+    <>
+      <Section copy={copy} title="Suite size">
+        <p className="text-sm" style={{ color: PAPER.ink }}>
+          <span className="text-2xl font-bold tabular-nums">{h.tests.toLocaleString()}</span> tests
+          {delta !== null ? (
+            <span style={{ color: PAPER.muted }}>
+              {" "}
+              · {delta >= 0 ? "+" : "−"}
+              {Math.abs(delta)} since the period before ({h.added} added, {h.removed} removed)
+            </span>
+          ) : null}
+        </p>
+        {h.added_tests.length || h.removed_tests.length ? (
+          <div className="mt-3 grid gap-x-8 md:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-semibold" style={{ color: PAPER.muted }}>
+                Added
+              </p>
+              <NameList items={h.added_tests} empty="None." />
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold" style={{ color: PAPER.muted }}>
+                Removed
+              </p>
+              <NameList items={h.removed_tests} empty="None." />
+            </div>
+          </div>
+        ) : null}
+      </Section>
+      <div className="grid gap-x-8 md:grid-cols-2">
+        <Section copy={copy} title="Skipped in every run" note={h.always_skipped_count ? String(h.always_skipped_count) : undefined}>
+          <NameList items={h.always_skipped} empty="No test was skipped every time." />
+        </Section>
+        <Section copy={copy} title="Slow and never failed" note={h.slow_never_failed.length ? `${ms(h.slow_never_failed_ms)} a run` : undefined}>
+          <NameList items={h.slow_never_failed} empty="No slow test passed every run." />
+          {h.slow_never_failed.length ? (
+            <p className="mt-2 text-xs" style={{ color: PAPER.muted }}>
+              The slowest tenth of the suite, and they passed every run: the first place to look when the suite is too slow (a nightly
+              cycle, or a faster test that covers the same thing).
+            </p>
+          ) : null}
+        </Section>
+      </div>
+    </>
   );
 }

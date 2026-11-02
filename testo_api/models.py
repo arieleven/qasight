@@ -1076,6 +1076,7 @@ class DeliveryOpenFailure(ApiModel):
     since: float
     age_s: float
     runs: int
+    key: str = ""
 
 
 class DeliveryCycleRow(ApiModel):
@@ -1163,6 +1164,58 @@ class SignalResponse(ApiModel):
     costly: list[CostlyFlakyTest]
 
 
+class OwnerRow(ApiModel):
+    owner: str
+    tests: int
+    failing: int
+    flaky: int
+    flaky_minutes: float
+    fixes: int
+    median_fix_s: float | None
+    open_failures: int
+    oldest_open_s: float | None
+
+
+class TeamsResponse(ApiModel):
+    """Each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``)."""
+
+    owners_known: bool
+    rows: list[OwnerRow]
+
+
+class NamedCycleTest(ApiModel):
+    cycle: str
+    name: str
+    detail: str
+
+
+class CycleSize(ApiModel):
+    cycle: str
+    tests: int
+    prev_tests: int | None
+    added: int
+    removed: int
+
+
+class HygieneResponse(ApiModel):
+    """Suite size, added and removed tests, always-skipped and slow never-failing tests.
+
+    See ``services/suite_hygiene.py``.
+    """
+
+    tests: int
+    prev_tests: int | None
+    added: int
+    removed: int
+    cycles: list[CycleSize]
+    added_tests: list[NamedCycleTest]
+    removed_tests: list[NamedCycleTest]
+    always_skipped: list[NamedCycleTest]
+    always_skipped_count: int
+    slow_never_failed: list[NamedCycleTest]
+    slow_never_failed_ms: int
+
+
 class ManagerReportResponse(ApiModel):
     """How testing went over a period: the ``/report`` page and every ``testo export`` format."""
 
@@ -1184,6 +1237,8 @@ class ManagerReportResponse(ApiModel):
     findings: list[ReportFinding]
     delivery: DeliveryResponse
     signal: SignalResponse
+    teams: TeamsResponse
+    hygiene: HygieneResponse
 
 
 class ReleaseSummaryItem(BaseModel):

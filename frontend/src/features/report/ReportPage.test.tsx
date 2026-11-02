@@ -57,7 +57,7 @@ const report: ManagerReport = {
       { label: "1–4 weeks", count: 1 },
       { label: "Over a month", count: 0 }
     ],
-    oldest_open: [{ cycle: "web", name: "test_cart_total", since: 1_760_000_000, age_s: 12 * 86400, runs: 9 }],
+    oldest_open: [{ cycle: "web", name: "test_cart_total", since: 1_760_000_000, age_s: 12 * 86400, runs: 9, key: "k9" }],
     ci_minutes: 24.5,
     prev_ci_minutes: 20,
     red_pct: 18,
@@ -107,6 +107,26 @@ const report: ManagerReport = {
     flaky_red_runs: 5,
     flaky_branches: 2,
     costly: [{ cycle: "api", key: "k1", name: "test_payment_retry", cost_minutes: 21.5, retries: 3, red_runs: 4, branches: ["f1"] }]
+  },
+  teams: {
+    owners_known: true,
+    rows: [
+      { owner: "@acme/payments", tests: 40, failing: 2, flaky: 1, flaky_minutes: 6.5, fixes: 2, median_fix_s: 7200, open_failures: 2, oldest_open_s: 3 * 86400 },
+      { owner: "(no owner)", tests: 12, failing: 0, flaky: 0, flaky_minutes: 0, fixes: 0, median_fix_s: null, open_failures: 0, oldest_open_s: null }
+    ]
+  },
+  hygiene: {
+    tests: 1240,
+    prev_tests: 1205,
+    added: 40,
+    removed: 5,
+    cycles: [{ cycle: "api", tests: 1240, prev_tests: 1205, added: 40, removed: 5 }],
+    added_tests: [{ cycle: "api", name: "test_refund_partial", detail: "" }],
+    removed_tests: [],
+    always_skipped: [{ cycle: "api", name: "test_legacy_export", detail: "skipped in 6 runs" }],
+    always_skipped_count: 1,
+    slow_never_failed: [{ cycle: "api", name: "test_full_sync", detail: "48.0s, passed all 20 runs" }],
+    slow_never_failed_ms: 48_000
   }
 };
 
@@ -148,6 +168,12 @@ describe("ReportPage", () => {
     expect(screen.getByText(/50% noise, was 75%/)).toBeInTheDocument();
     expect(screen.getByText("test_payment_retry")).toBeInTheDocument();
     expect(screen.getByText(/5 red runs, 2 branches held up/)).toBeInTheDocument();
+    // By team, suite size and hygiene
+    expect(screen.getByText("@acme/payments")).toBeInTheDocument();
+    expect(screen.getByText("2, 3.0d")).toBeInTheDocument();
+    expect(screen.getByText(/\+35 since the period before \(40 added, 5 removed\)/)).toBeInTheDocument();
+    expect(screen.getByText("test_legacy_export")).toBeInTheDocument();
+    expect(screen.getByText("test_full_sync")).toBeInTheDocument();
     expect(screen.getByText("No test was fixed this period.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy or export Cycles" })).toBeInTheDocument();
 

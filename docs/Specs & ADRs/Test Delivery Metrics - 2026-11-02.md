@@ -42,10 +42,18 @@ Where it shows:
 
 Where it shows: the `/report` page's **Why runs were red** (a bar by cause and the counts) and **Cost of flakiness** (CI minutes, red runs, branches held up, the most costly tests), the `signal` object of `GET /api/v1/report`, two summary sentences, and on the cycle page's flaky card a cost badge per test, which is now sorted most costly first (`red_runs` and `cost_minutes` on `GET /api/v1/analytics/flaky`).
 
+### Wave 3: per-team view, suite growth and hygiene
+
+- **By team** (`services/team_view.py`). A test's owners are its CODEOWNERS owners (when the cycle has a checkout, [the same lookup as the flaky card](Flaky%20Test%20Issues%20-%202026-11-01.md)) plus its `owner` labels; tests with neither count as "(no owner)", and a test with two owners counts for both. Per owner: tests in the latest run, failing now, open failures and the oldest one's age, median time to fix, flaky tests and their cost. With no owners at all, the report says how to add them instead of showing one "(no owner)" row.
+- **Suite size and hygiene** (`services/suite_hygiene.py`). Tests in each cycle's latest run against the latest run before the period, with the tests added and removed (by key, so a rename is one of each; a new cycle counts from zero). Tests skipped in every run of the period (at least three runs). Tests in the slowest tenth of their cycle that passed every run over both periods: not wrong, but the first place to look when the suite is too slow.
+
+Both are in `GET /api/v1/report` (`teams`, `hygiene`), on the `/report` page (**By team**, **Suite size**, **Skipped in every run**, **Slow and never failed**) and in the summary sentences.
+
 ## Consequences
 
 - No new tables or settings: the metrics are read-side only and recomputed on each request from up to 5000 recent runs (the manager report's existing scan limit) and at most 400 runs of test results per cycle.
 - A project that never sends branch data gets red time over all runs, which is right for a single-branch setup and noisy when feature branches run too. `ci_base_ref` (sent by the GitHub Action, GitLab template and `testo ingest` in CI) fixes it.
 - Time to fix needs per-test results; a cycle whose runs have none shows red time and suite time only.
 - The real-bug share is only as good as the causes people mark. Unmarked failures are shown as their own group, not guessed, and the page says how to mark them.
+- A team server without a checkout has no CODEOWNERS file, so only `owner` labels name teams there.
 - Cost is CI time, not people's time: a rerun someone waited on costs more than its minutes, so the number is a floor.
