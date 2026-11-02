@@ -155,7 +155,6 @@ def test_cli_without_a_built_ui_explains_where_to_get_one(
     history_db: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TESTO_UI_DIR", str(tmp_path / "nothing-here"))
-    monkeypatch.setattr("testo_api.ui.BUNDLED_UI_DIR", tmp_path / "nothing-here")
     result = CliRunner().invoke(app, ["export-site"])
     assert result.exit_code == 2
     assert "No built UI found" in result.output
