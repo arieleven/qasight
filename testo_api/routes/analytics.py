@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from testo_api.models import (
     AttachmentItem,
     BrokenTestItem,
+    CycleIssuesResponse,
     CycleLabelsResponse,
     CycleTestsResponse,
     DeltaCaseChange,
@@ -22,6 +23,8 @@ from testo_api.models import (
     EnvironmentOutcomeItem,
     FlakyTestItem,
     FlakyTestsResponse,
+    IssueStatusItem,
+    IssueTestItem,
     LabelCountItem,
     ReleaseCycleItem,
     ReleaseDetailResponse,
@@ -46,6 +49,7 @@ from testo_core.services.releases import ReleaseSummary, list_releases, load_rel
 from testo_core.services.run_snapshot_diff import diff_run_snapshots
 from testo_core.services.test_attachments import attachments_for
 from testo_core.services.test_history import cycle_source, list_cycle_tests, load_test_history
+from testo_core.services.test_issues import cycle_issues
 from testo_core.services.test_labels import cycle_labels
 from testo_core.services.test_ownership import issue_url, owners_for
 
@@ -334,6 +338,36 @@ def get_test_history(
             message=last.message if last else "",
             owners=owners,
         ),
+    )
+
+
+@router.get("/analytics/issues", response_model=CycleIssuesResponse)
+def get_cycle_issues(
+    cycle: str, window: int = Query(DEFAULT_WINDOW, ge=1, le=200)
+) -> CycleIssuesResponse:
+    """The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.
+
+    An issue is failing when one of its tests failed in its latest run. Read-only: the
+    issue tracker is never called. See ``testo_core/services/test_issues.py``.
+    """
+    found = cycle_issues(cycle, window=window)
+    return CycleIssuesResponse(
+        cycle=found.cycle,
+        runs_considered=found.runs_considered,
+        linked_tests=found.linked_tests,
+        total_tests=found.total_tests,
+        items=[
+            IssueStatusItem(
+                issue=i.issue,
+                url=i.url,
+                tests=i.tests,
+                failing=i.failing,
+                flaky=i.flaky,
+                state=i.state,
+                examples=[IssueTestItem(**vars(t)) for t in i.examples],
+            )
+            for i in found.issues
+        ],
     )
 
 

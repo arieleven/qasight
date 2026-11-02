@@ -1129,3 +1129,31 @@ class ReleaseDetailResponse(BaseModel):
     fixed: list[ReleaseTestItem]
     flaky: int
     previous: ReleaseSummaryItem | None = None
+
+
+class IssueTestItem(BaseModel):
+    key: str
+    name: str
+    last_status: str
+    flaky: bool
+
+
+class IssueStatusItem(BaseModel):
+    """An issue the cycle's tests point at, and how those tests did in their latest run."""
+
+    issue: str
+    url: str | None = None
+    tests: int
+    failing: int
+    flaky: int
+    # "failing" | "flaky" | "passing"
+    state: str
+    examples: list[IssueTestItem]
+
+
+class CycleIssuesResponse(BaseModel):
+    cycle: str
+    runs_considered: int
+    linked_tests: int
+    total_tests: int
+    items: list[IssueStatusItem]

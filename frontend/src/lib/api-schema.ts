@@ -126,6 +126,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cycle Issues
+         * @description The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.
+         *
+         *     An issue is failing when one of its tests failed in its latest run. Read-only: the
+         *     issue tracker is never called. See ``testo_core/services/test_issues.py``.
+         */
+        get: operations["get_cycle_issues_api_v1_analytics_issues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/labels": {
         parameters: {
             query?: never;
@@ -1512,6 +1535,19 @@ export interface components {
             /** Tests */
             tests: number;
         };
+        /** CycleIssuesResponse */
+        CycleIssuesResponse: {
+            /** Cycle */
+            cycle: string;
+            /** Items */
+            items: components["schemas"]["IssueStatusItem"][];
+            /** Linked Tests */
+            linked_tests: number;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Total Tests */
+            total_tests: number;
+        };
         /** CycleLabelsResponse */
         CycleLabelsResponse: {
             /** Cycle */
@@ -2072,6 +2108,37 @@ export interface components {
             skipped: number;
             /** Tests */
             tests: number;
+        };
+        /**
+         * IssueStatusItem
+         * @description An issue the cycle's tests point at, and how those tests did in their latest run.
+         */
+        IssueStatusItem: {
+            /** Examples */
+            examples: components["schemas"]["IssueTestItem"][];
+            /** Failing */
+            failing: number;
+            /** Flaky */
+            flaky: number;
+            /** Issue */
+            issue: string;
+            /** State */
+            state: string;
+            /** Tests */
+            tests: number;
+            /** Url */
+            url?: string | null;
+        };
+        /** IssueTestItem */
+        IssueTestItem: {
+            /** Flaky */
+            flaky: boolean;
+            /** Key */
+            key: string;
+            /** Last Status */
+            last_status: string;
+            /** Name */
+            name: string;
         };
         /** LabelCountItem */
         LabelCountItem: {
@@ -3380,6 +3447,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FlakyTestsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cycle_issues_api_v1_analytics_issues_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleIssuesResponse"];
                 };
             };
             /** @description Validation Error */

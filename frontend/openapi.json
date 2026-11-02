@@ -1273,6 +1273,42 @@
         "title": "CycleHealthItem",
         "type": "object"
       },
+      "CycleIssuesResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IssueStatusItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "linked_tests": {
+            "title": "Linked Tests",
+            "type": "integer"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          },
+          "total_tests": {
+            "title": "Total Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "runs_considered",
+          "linked_tests",
+          "total_tests",
+          "items"
+        ],
+        "title": "CycleIssuesResponse",
+        "type": "object"
+      },
       "CycleLabelsResponse": {
         "properties": {
           "cycle": {
@@ -3132,6 +3168,87 @@
           "run_url"
         ],
         "title": "IngestResponse",
+        "type": "object"
+      },
+      "IssueStatusItem": {
+        "description": "An issue the cycle's tests point at, and how those tests did in their latest run.",
+        "properties": {
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/IssueTestItem"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "failing": {
+            "title": "Failing",
+            "type": "integer"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "integer"
+          },
+          "issue": {
+            "title": "Issue",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "issue",
+          "tests",
+          "failing",
+          "flaky",
+          "state",
+          "examples"
+        ],
+        "title": "IssueStatusItem",
+        "type": "object"
+      },
+      "IssueTestItem": {
+        "properties": {
+          "flaky": {
+            "title": "Flaky",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "last_status": {
+            "title": "Last Status",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "last_status",
+          "flaky"
+        ],
+        "title": "IssueTestItem",
         "type": "object"
       },
       "LabelCountItem": {
@@ -6693,6 +6810,61 @@
           }
         },
         "summary": "Get Flaky Tests",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/issues": {
+      "get": {
+        "description": "The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.\n\nAn issue is failing when one of its tests failed in its latest run. Read-only: the\nissue tracker is never called. See ``testo_core/services/test_issues.py``.",
+        "operationId": "get_cycle_issues_api_v1_analytics_issues_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleIssuesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle Issues",
         "tags": [
           "analytics"
         ]

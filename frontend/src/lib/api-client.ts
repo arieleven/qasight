@@ -54,6 +54,8 @@ export type EnvironmentOutcomeItem = Schemas["EnvironmentOutcomeItem"];
 export type TestLinkItem = Schemas["TestLinkItem"];
 export type CycleLabelsResponse = Schemas["CycleLabelsResponse"];
 export type LabelCountItem = Schemas["LabelCountItem"];
+export type CycleIssuesResponse = Schemas["CycleIssuesResponse"];
+export type IssueStatusItem = Schemas["IssueStatusItem"];
 export type ReleasesResponse = Schemas["ReleasesResponse"];
 export type ReleaseSummaryItem = Schemas["ReleaseSummaryItem"];
 export type ReleaseDetailResponse = Schemas["ReleaseDetailResponse"];
@@ -270,6 +272,10 @@ export const apiClient = {
   },
   getRelease(release: string): Promise<ReleaseDetailResponse> {
     return api<ReleaseDetailResponse>(`/api/v1/releases/${encodeURIComponent(release)}`);
+  },
+  getCycleIssues(cycle: string): Promise<CycleIssuesResponse> {
+    const params = new URLSearchParams({ cycle });
+    return api<CycleIssuesResponse>(`/api/v1/analytics/issues?${params.toString()}`);
   },
   getCycleLabels(cycle: string): Promise<CycleLabelsResponse> {
     const params = new URLSearchParams({ cycle });

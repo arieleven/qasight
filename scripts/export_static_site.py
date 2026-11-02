@@ -40,6 +40,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/flaky/<name>.json                 GET /api/v1/analytics/flaky?cycle={name}
     data/tests/<name>.json                 GET /api/v1/analytics/tests?cycle={name}
     data/labels/<name>.json                GET /api/v1/analytics/labels?cycle={name}
+    data/issues/<name>.json                GET /api/v1/analytics/issues?cycle={name}
     data/releases.json                     GET /api/v1/releases
     data/releases/<release>.json           GET /api/v1/releases/{release}
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
@@ -287,6 +288,9 @@ class Exporter:
         )
         self._dump(
             f"/api/v1/analytics/labels?cycle={quote(cycle, safe='')}", f"labels/{cycle}.json"
+        )
+        self._dump(
+            f"/api/v1/analytics/issues?cycle={quote(cycle, safe='')}", f"issues/{cycle}.json"
         )
         for item in (listing or {}).get("items", []):
             key = str(item["key"])
