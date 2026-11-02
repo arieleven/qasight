@@ -702,10 +702,10 @@ testo ai status
 testo ai summary [--cycle NAME | --run-id ID] [--refresh]
 ```
 
-- **`setup`** detects, in order: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY` (Gemini's free tier through its OpenAI-compatible endpoint), then the Claude Code CLI. `--provider`, `--model`, `--base-url` and `--key-env` override. Only the *name* of the key's environment variable is saved, never the key. Exit `2` when nothing is found.
-- **`status`** prints the provider, model, where the settings came from and whether the key variable is set.
+- **`setup`** detects, in order: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY` (Gemini's free tier through its OpenAI-compatible endpoint), then the Claude Code CLI. `--provider`, `--model`, `--base-url` and `--key-env` override. `--share-test-source` also sends a short excerpt of each failing test's own source with the prompt (off by default; with a cloud provider it goes to that provider; see [Test Source in AI Summaries](../Specs%20&%20ADRs/Test%20Source%20in%20AI%20Summaries%20-%202026-11-01.md)). Only the *name* of the key's environment variable is saved, never the key. Exit `2` when nothing is found.
+- **`status`** prints the provider, model, where the settings came from, whether test source is shared and whether the key variable is set.
 - **`summary`** prints the AI summary of the latest failed run (of `--cycle`, or `--run-id`), generating and storing it on first use so the UI shows the same. Exit `2` when there is no failed run or the provider can't answer.
-- **In CI**, set `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`, `claude_code`) with `TESTO_AI_MODEL`, `TESTO_AI_BASE_URL`, `TESTO_AI_KEY_ENV` and `TESTO_AI_TIMEOUT_S` (default `60`): they win over the settings file. The GitHub Action's `ai-summary: "true"` input adds the summary to the job summary and comment (`testo report markdown --ai`).
+- **In CI**, set `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`, `claude_code`) with `TESTO_AI_MODEL`, `TESTO_AI_BASE_URL`, `TESTO_AI_KEY_ENV`, `TESTO_AI_TIMEOUT_S` (default `60`) and `TESTO_AI_SHARE_TEST_SOURCE=1` (send the failing tests' source too): they win over the settings file. The GitHub Action's `ai-summary: "true"` input adds the summary to the job summary and comment (`testo report markdown --ai`).
 
 ---
 

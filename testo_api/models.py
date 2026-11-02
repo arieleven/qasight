@@ -653,6 +653,8 @@ class AiConfigUpdateRequest(ApiModel):
     max_input_chars: int = 16000
     max_output_tokens: int = 300
     base_url: str | None = None
+    # Also send a short excerpt of each failing test's own source with the summary prompt.
+    share_test_source: bool = False
 
 
 class AiConfigStatusResponse(ApiModel):
@@ -668,6 +670,7 @@ class AiConfigStatusResponse(ApiModel):
     max_input_chars: int
     max_output_tokens: int
     base_url: str | None = None
+    share_test_source: bool = False
 
 
 class AiSummaryResponse(ApiModel):

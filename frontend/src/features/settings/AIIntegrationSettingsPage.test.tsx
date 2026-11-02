@@ -57,7 +57,7 @@ describe("AIIntegrationSettingsPage", () => {
     );
 
     await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "AI settings" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Enable AI failure summaries" }));
     fireEvent.change(screen.getByPlaceholderText("Enter token (not persisted to disk)"), { target: { value: "sk-temp" } });
     fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
     await waitFor(() => expect(screen.getByText("Settings saved.")).toBeInTheDocument());
@@ -155,5 +155,55 @@ describe("AIIntegrationSettingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
     await waitFor(() => expect(put).toHaveBeenCalled());
     expect(put.mock.calls[0][0]).toMatchObject({ enabled: true, provider: "claude_code", model: "sonnet", timeout_s: 120 });
+  });
+
+  it("keeps test source sharing off by default and warns before sending it to a cloud provider", async () => {
+    const put = vi.fn();
+    const status = {
+      enabled: true,
+      configured: true,
+      provider: "openai_compatible",
+      model: "gemini-flash-latest",
+      api_key_source: "env",
+      api_key_env_var: "GEMINI_API_KEY",
+      key_present: true,
+      timeout_s: 60,
+      retry_count: 1,
+      max_input_chars: 16000,
+      max_output_tokens: 2000,
+      base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
+      share_test_source: false
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "PUT") {
+          put(JSON.parse(String(init.body)));
+        }
+        return Promise.resolve({ ok: String(input).includes("/api/v1/ai/config"), json: async () => status });
+      })
+    );
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AIIntegrationSettingsPage />
+      </QueryClientProvider>
+    );
+
+    const share = await screen.findByRole("checkbox", { name: "Let the AI read the failing test's source" });
+    expect(share).not.toBeChecked();
+    expect(screen.queryByText(/will be sent to/)).not.toBeInTheDocument();
+    fireEvent.click(share);
+    expect(screen.getByText(/Source excerpts will be sent to generativelanguage.googleapis.com/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(put.mock.calls[0][0]).toMatchObject({ share_test_source: true });
+
+    // A different provider is a new decision: sharing starts off again.
+    fireEvent.change(screen.getByLabelText("Provider"), { target: { value: "claude_code" } });
+    expect(screen.getByRole("checkbox", { name: "Let the AI read the failing test's source" })).not.toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Let the AI read the failing test's source" }));
+    expect(screen.queryByText(/will be sent to/)).not.toBeInTheDocument();
+    expect(screen.getByText(/through your own login/)).toBeInTheDocument();
   });
 });

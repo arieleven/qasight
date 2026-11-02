@@ -44,6 +44,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Runs, stages and tests as OpenTelemetry traces (OTLP), off by default | [OpenTelemetry Export - 2026-10-30](OpenTelemetry%20Export%20-%202026-10-30.md) |
 | The run history as an MCP server for coding agents (`testo mcp`), read-only by default | [MCP Server - 2026-11-01](MCP%20Server%20-%202026-11-01.md) |
 | Coverage on the PR comment, weekly digest, secrets hidden in stored results, backup and restore, failed-first ordering | [Free Copies of Paid Features - 2026-11-01](Free%20Copies%20of%20Paid%20Features%20-%202026-11-01.md) |
+| The failing test's own source in AI failure summaries, opt-in and size-capped | [Test Source in AI Summaries - 2026-11-01](Test%20Source%20in%20AI%20Summaries%20-%202026-11-01.md) |
 | Security and fresh-install review: findings R1 to R18, fixes and proposals | [Security and Install Review - 2026-10-31](Security%20and%20Install%20Review%20-%202026-10-31.md) |
 | Slack and Teams alerts, failure annotations on the diff, flaky test issues | [Alerts Where Developers Look - 2026-10-22](Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
 | A GitHub issue per test that turns flaky, assigned from CODEOWNERS and closed once it is stable | [Flaky Test Issues - 2026-11-01](Flaky%20Test%20Issues%20-%202026-11-01.md) |

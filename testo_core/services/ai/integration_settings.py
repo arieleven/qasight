@@ -35,6 +35,10 @@ class AiIntegrationSettings:
     max_input_chars: int = 16_000
     max_output_tokens: int = 300
     base_url: str | None = None
+    # Off by default: when on, the failure summary's prompt also carries a short excerpt
+    # of each failing test's own source (services/failure_source.py). With a cloud
+    # provider that excerpt is sent to that provider.
+    share_test_source: bool = False
     runtime_api_key: str | None = None
 
     def to_provider_config(self) -> AiProviderConfig:
@@ -66,6 +70,7 @@ class AiIntegrationSettings:
             "max_input_chars": self.max_input_chars,
             "max_output_tokens": self.max_output_tokens,
             "base_url": self.base_url,
+            "share_test_source": self.share_test_source,
         }
 
 

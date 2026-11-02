@@ -168,6 +168,11 @@
             "title": "Retry Count",
             "type": "integer"
           },
+          "share_test_source": {
+            "default": false,
+            "title": "Share Test Source",
+            "type": "boolean"
+          },
           "timeout_s": {
             "title": "Timeout S",
             "type": "number"
@@ -185,7 +190,8 @@
           "retry_count",
           "max_input_chars",
           "max_output_tokens",
-          "base_url"
+          "base_url",
+          "share_test_source"
         ],
         "title": "AiConfigStatusResponse",
         "type": "object"
@@ -269,6 +275,11 @@
             "default": 1,
             "title": "Retry Count",
             "type": "integer"
+          },
+          "share_test_source": {
+            "default": false,
+            "title": "Share Test Source",
+            "type": "boolean"
           },
           "timeout_s": {
             "default": 8.0,

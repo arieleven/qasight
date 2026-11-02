@@ -202,6 +202,9 @@ export function RunDetailPage() {
               <AiSummaryText text={aiSummaryQuery.data.summary_text ?? ""} />
               <p className="text-xs text-ink-400">
                 Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
+                {aiSummaryQuery.data.context_stats?.source_files
+                  ? ` | Read the source of ${aiSummaryQuery.data.context_stats.source_files} test file${aiSummaryQuery.data.context_stats.source_files === 1 ? "" : "s"}`
+                  : ""}
                 {IS_STATIC_BUILD ? " | Generated when this snapshot was built" : ""}
               </p>
             </article>
