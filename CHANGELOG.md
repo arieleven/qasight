@@ -92,6 +92,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `pytest --testo-failed-first` (or `TESTO_FAILED_FIRST=1`): tests that failed last time run first, then flaky ones, then recent failures, using the shared run history (local or `--testo-server`); works with pytest-xdist
 
 ### Fixed
+- Contributors: the Pages demo export (`scripts/export_static_site.py`) reads each run's test results once instead of once per test page, so it no longer runs past the 30-minute job limit (about 7x faster on a 5-run history, and it stops growing with the number of runs). It also prints progress as it goes
 - AI settings: with Claude Code (or any provider) found but "Enable AI failure summaries" unticked, the Ask page and the AI review said "AI is not set up yet ... add a provider". They now say AI is switched off and how to turn it on, and picking a provider in AI settings ticks Enable for you
 - The docs link `testo init` writes at the top of `testosterone.yaml` pointed at a page that doesn't exist (`docs/CLI%20Commands/...`); it now goes to the Command Reference, and a test checks every docs link that generated files carry
 - Contributors: `import testo_core` no longer loads the config and engine modules (they resolve on first use, like the database names), so pytest-cov, which starts after the `pytest11` plugin, now measures `config/schema.py`, `engine/events.py` and `engine/result.py` instead of reporting them at 0%
