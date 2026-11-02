@@ -38,6 +38,7 @@ export type QuarantineRequest = Schemas["QuarantineRequest"];
 export type QuarantineListResponse = Schemas["QuarantineListResponse"];
 export type PyramidShape = RunPyramidResponse["shape"];
 export type VersionResponse = Schemas["VersionResponse"];
+export type StorageResponse = Schemas["StorageResponse"];
 
 export type DeltaMetricNode = Schemas["DeltaMetricNode"];
 export type DeltaClassification = DeltaMetricNode["classification"];
@@ -312,6 +313,9 @@ export const apiClient = {
   },
   getVersion(): Promise<VersionResponse> {
     return api<VersionResponse>("/api/v1/version");
+  },
+  getStorage(): Promise<StorageResponse> {
+    return api<StorageResponse>("/api/v1/storage");
   },
   getDashboardDelivery(days = 7): Promise<Delivery> {
     return api<Delivery>(`/api/v1/dashboard/delivery?days=${days}`);

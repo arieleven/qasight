@@ -1051,6 +1051,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storage */
+        get: operations["storage_api_v1_storage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/triage": {
         parameters: {
             query?: never;
@@ -2608,7 +2625,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "ok" | "degraded";
+            status: "ok" | "warning" | "degraded";
         };
         /** ReleaseCycleItem */
         ReleaseCycleItem: {
@@ -3426,6 +3443,43 @@ export interface components {
             timeout_s: number | null;
             /** Workers */
             workers: number | null;
+        };
+        /** StorageDisk */
+        StorageDisk: {
+            /** Free Bytes */
+            free_bytes: number;
+            /** Free Pct */
+            free_pct: number;
+            /**
+             * Low
+             * @description Free space is under TESTO_LOW_DISK_PCT (default 10%).
+             */
+            low: boolean;
+            /** Path */
+            path: string;
+            /** Total Bytes */
+            total_bytes: number;
+        };
+        /**
+         * StorageResponse
+         * @description How much the run history takes. ``None`` means it couldn't be measured.
+         */
+        StorageResponse: {
+            /** Database Bytes */
+            database_bytes: number | null;
+            /** Database Dialect */
+            database_dialect: string | null;
+            disk: components["schemas"]["StorageDisk"] | null;
+            /** History Files Bytes */
+            history_files_bytes: number | null;
+            /** Measured At */
+            measured_at: number;
+            /** Report Archive Bytes */
+            report_archive_bytes: number | null;
+            /** Report Archives */
+            report_archives: number | null;
+            /** Runs */
+            runs: number | null;
         };
         /**
          * TeamsResponse
@@ -5351,6 +5405,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunReportsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    storage_api_v1_storage_get: {
+        parameters: {
+            query?: {
+                /** @description Measure again instead of using the cached answer. */
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageResponse"];
                 };
             };
             /** @description Validation Error */

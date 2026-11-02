@@ -6,6 +6,7 @@ import { apiClient } from "../../lib/api-client";
 import { formatPercent, passRateLine } from "../../lib/format";
 import { EmptyState, PageHeader, RunLabel, Spinner, StatusPill, buttonClasses } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { StorageNote } from "./StorageNote";
 
 const selectClass =
   "rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 text-sm text-ink-100 focus:border-brand-500 focus:outline-none";
@@ -120,6 +121,7 @@ export function HistoryPage() {
           {runsQuery.isFetching ? "Loading…" : "Show older runs"}
         </button>
       ) : null}
+      <StorageNote />
     </section>
   );
 }

@@ -40,7 +40,24 @@ def ready(response: Response) -> HealthReadyResponse:
         logger.debug("readiness: repository check failed", exc_info=True)
         checks["repository"] = ReadinessCheck(status="degraded", detail=str(exc))
 
+    checks["disk"] = _disk_check()
+
     is_degraded = any(check.status == "degraded" for check in checks.values())
     if is_degraded:
         response.status_code = 503
     return HealthReadyResponse(status="degraded" if is_degraded else "ready", checks=checks)
+
+
+def _disk_check() -> ReadinessCheck:
+    """Free space where the history is kept: a warning when low, degraded when nearly full."""
+    from testo_core.history.storage import FULL_DISK_BYTES, disk_space, human_bytes, low_disk_pct
+
+    disk = disk_space()
+    if disk is None:
+        return ReadinessCheck(status="ok", detail="free space unknown")
+    detail = f"{human_bytes(disk.free_bytes)} free ({disk.free_pct:.0f}%) at {disk.path}"
+    if disk.free_bytes < FULL_DISK_BYTES:
+        return ReadinessCheck(status="degraded", detail=detail)
+    if disk.free_pct < low_disk_pct():
+        return ReadinessCheck(status="warning", detail=detail)
+    return ReadinessCheck(status="ok", detail=detail)

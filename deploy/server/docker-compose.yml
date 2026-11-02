@@ -41,9 +41,10 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # A copy of the whole history (`testo backup`) once a day, the newest 7 kept, in the
-  # testo_data volume under backups/. Copy them off the machine:
-  #   docker compose cp backup:/data/backups ./testo-backups
+  # A copy of the whole history (`testo backup`) once a day, the newest 7 kept, in their
+  # own testo_backups volume (not the data volume, so backups never fill the disk the
+  # server writes to; put that volume on another disk if you can). Copy them off the machine:
+  #   docker compose cp backup:/backups ./testo-backups
   # Restore: docs/Processes & Guides/Team Server.md#backups
   backup:
     image: ghcr.io/taltal-beep/testo-server:${TESTO_SERVER_TAG:-1}
@@ -53,10 +54,12 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - |
-        mkdir -p /data/backups
+        mkdir -p /backups
         while true; do
-          testo backup --out "/data/backups/testo-$$(date -u +%Y%m%d-%H%M%S).tar.gz" &&
-            ls -1t /data/backups/testo-*.tar.gz | tail -n +$$((TESTO_BACKUP_KEEP + 1)) | xargs -r rm -f --
+          # A backup cut short (full disk, restart) leaves a .partial file: never keep those.
+          rm -f /backups/*.partial
+          testo backup --out "/backups/testo-$$(date -u +%Y%m%d-%H%M%S).tar.gz" &&
+            ls -1t /backups/testo-*.tar.gz | tail -n +$$((TESTO_BACKUP_KEEP + 1)) | xargs -r rm -f --
           sleep "$$TESTO_BACKUP_EVERY_S"
         done
     environment:
@@ -65,11 +68,12 @@ services:
       TESTO_BACKUP_EVERY_S: ${TESTO_BACKUP_EVERY_S:-86400}
     volumes:
       - testo_data:/data
+      - testo_backups:/backups
     # Healthy while the newest backup is younger than two intervals.
     healthcheck:
       test:
         - CMD-SHELL
-        - find /data/backups -name 'testo-*.tar.gz' -mmin -$$((TESTO_BACKUP_EVERY_S / 30 + 1)) | grep -q .
+        - find /backups -name 'testo-*.tar.gz' -mmin -$$((TESTO_BACKUP_EVERY_S / 30 + 1)) | grep -q .
       interval: 5s
       timeout: 5s
       retries: 3
@@ -99,4 +103,5 @@ services:
 
 volumes:
   testo_data:
+  testo_backups:
   postgres_data:

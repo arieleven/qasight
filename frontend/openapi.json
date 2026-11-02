@@ -4705,6 +4705,7 @@
           "status": {
             "enum": [
               "ok",
+              "warning",
               "degraded"
             ],
             "title": "Status",
@@ -7090,6 +7091,137 @@
           "workers"
         ],
         "title": "StageSummary",
+        "type": "object"
+      },
+      "StorageDisk": {
+        "properties": {
+          "free_bytes": {
+            "title": "Free Bytes",
+            "type": "integer"
+          },
+          "free_pct": {
+            "title": "Free Pct",
+            "type": "number"
+          },
+          "low": {
+            "description": "Free space is under TESTO_LOW_DISK_PCT (default 10%).",
+            "title": "Low",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "total_bytes",
+          "free_bytes",
+          "free_pct",
+          "low"
+        ],
+        "title": "StorageDisk",
+        "type": "object"
+      },
+      "StorageResponse": {
+        "description": "How much the run history takes. ``None`` means it couldn't be measured.",
+        "properties": {
+          "database_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Bytes"
+          },
+          "database_dialect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Dialect"
+          },
+          "disk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StorageDisk"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history_files_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Files Bytes"
+          },
+          "measured_at": {
+            "title": "Measured At",
+            "type": "number"
+          },
+          "report_archive_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Archive Bytes"
+          },
+          "report_archives": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Archives"
+          },
+          "runs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs"
+          }
+        },
+        "required": [
+          "runs",
+          "report_archives",
+          "report_archive_bytes",
+          "history_files_bytes",
+          "database_bytes",
+          "database_dialect",
+          "disk",
+          "measured_at"
+        ],
+        "title": "StorageResponse",
         "type": "object"
       },
       "TeamsResponse": {
@@ -10305,6 +10437,51 @@
           }
         },
         "summary": "Get Run Reports",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/storage": {
+      "get": {
+        "operationId": "storage_api_v1_storage_get",
+        "parameters": [
+          {
+            "description": "Measure again instead of using the cached answer.",
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Measure again instead of using the cached answer.",
+              "title": "Refresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Storage",
         "tags": [
           "history"
         ]

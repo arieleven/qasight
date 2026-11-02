@@ -703,8 +703,30 @@ class VersionResponse(ApiModel):
 
 
 class ReadinessCheck(ApiModel):
-    status: Literal["ok", "degraded"]
+    # "warning" is reported but keeps the server ready (low disk); "degraded" makes it 503.
+    status: Literal["ok", "warning", "degraded"]
     detail: str | None = None
+
+
+class StorageDisk(ApiModel):
+    path: str
+    total_bytes: int
+    free_bytes: int
+    free_pct: float
+    low: bool = Field(description="Free space is under TESTO_LOW_DISK_PCT (default 10%).")
+
+
+class StorageResponse(ApiModel):
+    """How much the run history takes. ``None`` means it couldn't be measured."""
+
+    runs: int | None
+    report_archives: int | None
+    report_archive_bytes: int | None
+    history_files_bytes: int | None
+    database_bytes: int | None
+    database_dialect: str | None
+    disk: StorageDisk | None
+    measured_at: float
 
 
 class HealthReadyResponse(ApiModel):

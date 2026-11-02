@@ -6,6 +6,7 @@ import logging
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -159,6 +160,8 @@ def doctor(
     else:
         table.add_row("Database", "[dim]SKIP[/]", "no database.url / DATABASE_URL")
 
+    _storage_rows(table, with_database=bool(db_url))
+
     from testo_core.services.update_check import check as update_check
     from testo_core.services.update_check import enabled as update_check_enabled
 
@@ -182,3 +185,37 @@ def doctor(
         console.print("[fail]One or more required checks failed.[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     console.print("[ok]Doctor checks passed (optional warnings may remain).[/]")
+
+
+def _storage_rows(table: Any, *, with_database: bool) -> None:
+    """Free disk where the history lives, and (with a database) how big the history is."""
+    from testo_core.history.storage import (
+        disk_space,
+        human_bytes,
+        low_disk_pct,
+        storage_summary,
+    )
+
+    disk = disk_space()
+    if disk is not None:
+        detail = f"{human_bytes(disk.free_bytes)} free ({disk.free_pct:.0f}%) at {disk.path}"
+        if disk.free_pct < low_disk_pct():
+            table.add_row("Disk", "[warn]WARN[/]", detail + "; set history.retention or free space")
+        else:
+            table.add_row("Disk", "[ok]PASS[/]", detail)
+    if not with_database:
+        return
+    try:
+        summary = storage_summary()
+    except Exception as exc:  # noqa: BLE001 - one row, never a crash
+        table.add_row("History size", "[dim]SKIP[/]", str(exc))
+        return
+    parts = [f"{summary.runs if summary.runs is not None else '?'} runs"]
+    parts.append(f"database {human_bytes(summary.database_bytes)}")
+    parts.append(f"files {human_bytes(summary.history_files_bytes)}")
+    if summary.report_archives:
+        parts.append(
+            f"{summary.report_archives} report archives "
+            f"({human_bytes(summary.report_archive_bytes)})"
+        )
+    table.add_row("History size", "[ok]INFO[/]", ", ".join(parts))
