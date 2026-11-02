@@ -158,10 +158,17 @@ def _cycle_digest(
 
 
 def build_digest(
-    *, period: str = "week", cycles: list[str] | None = None, now: float | None = None
+    *,
+    period: str = "week",
+    cycles: list[str] | None = None,
+    now: float | None = None,
+    days: int | None = None,
 ) -> Digest:
-    """Every cycle with a run in the last ``period`` (``day`` or ``week``), busiest first."""
-    days = PERIODS[period]
+    """Every cycle with a run in the last ``period`` (``day`` or ``week``), busiest first.
+
+    ``days`` overrides the period's length (the manager report's month and quarter).
+    """
+    days = days if days is not None else PERIODS[period]
     end = now if now is not None else datetime.now(tz=UTC).timestamp()
     start = end - days * 86400
     prev_start = start - days * 86400

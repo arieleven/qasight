@@ -101,6 +101,14 @@ otel = [
     "opentelemetry-sdk>=1.27.0",
     "opentelemetry-exporter-otlp-proto-http>=1.27.0",
 ]
+# `testo export` and the Report page's downloads: PDF and PNG are drawn by headless
+# Chromium (run `playwright install chromium` once, or set TESTO_CHROMIUM to a Chrome),
+# PowerPoint by python-pptx, Excel by openpyxl. HTML, CSV and JSON need none of them.
+export = [
+    "playwright>=1.48.0",
+    "python-pptx>=1.0.0",
+    "openpyxl>=3.1.0",
+]
 # `testo mcp`: the run history as an MCP server for coding agents (stdio).
 # Works with the SDK's 1.x FastMCP and 2.x MCPServer. Not in `dev`: mcp 2.x pulls in
 # httpx2, which starlette's TestClient then uses instead of httpx for every API test.
@@ -126,7 +134,7 @@ dev = [
     "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
     # surface area without needing per-test installs.
-    "testo-core[api,bdd,db,metrics,otel]",
+    "testo-core[api,bdd,db,metrics,otel,export]",
 ]
 
 [project.urls]

@@ -11,6 +11,7 @@ import pytest
 from typer.testing import CliRunner
 
 from testo_api import ui as ui_mod
+from testo_core import ui_bundle
 from testo_core.cli.app import app
 from testo_core.services import github_history as gh
 
@@ -92,7 +93,7 @@ def test_ui_from_github_points_the_server_at_the_download(
 ) -> None:
     (tmp_path / "ui").mkdir()
     (tmp_path / "ui" / "index.html").write_text("<!doctype html>")
-    monkeypatch.setattr(ui_mod, "BUNDLED_UI_DIR", tmp_path / "ui")
+    monkeypatch.setattr(ui_bundle, "bundled_ui_dir", lambda: tmp_path / "ui")
     monkeypatch.delenv(ui_mod.UI_DIR_ENV, raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     for key in ("DATABASE_URL", "TESTO_HOME"):

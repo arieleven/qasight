@@ -49,7 +49,7 @@ describe("AppShell mobile menu", () => {
     const labels = within(panel)
       .getAllByRole("link")
       .map((link) => link.textContent);
-    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Project health", "Ask", "Quick run", "Resources", "Try a file", "AI settings"]);
+    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Project health", "Report", "Ask", "Quick run", "Resources", "Try a file", "AI settings"]);
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");

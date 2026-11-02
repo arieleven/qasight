@@ -59,6 +59,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import demo as demo_mod
     from testo_core.cli.commands import diff_cli as diff_cli_mod
     from testo_core.cli.commands import doctor as doctor_mod
+    from testo_core.cli.commands import export_cmd as export_mod
     from testo_core.cli.commands import flaky as flaky_mod
     from testo_core.cli.commands import ingest as ingest_mod
     from testo_core.cli.commands import init_cmd as init_cmd_mod
@@ -138,6 +139,11 @@ def _register_commands() -> None:
         help="Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",
         rich_help_panel="Run and report",
     )(otel_mod.otel)
+    app.command(
+        name="export",
+        help="Write the manager report as a PDF, PNG, HTML, PowerPoint, Excel, CSV or JSON file.",
+        rich_help_panel="Run and report",
+    )(export_mod.export)
     app.command(
         name="badge",
         help="Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",

@@ -40,6 +40,48 @@ body {
   outline-offset: 2px;
 }
 
+/* While a card is being copied as text, leave out what only makes sense on screen (controls, the menu). */
+[data-copying] [data-copy-exclude],
+[data-copying] button {
+  display: none !important;
+}
+
+/*
+ * Printing (the Report page's "Save as PDF", or Ctrl+P on any page): white
+ * paper, no app chrome, cards kept whole where they fit.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+    height: auto;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .report-paper {
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+  .report-section,
+  .glass-card {
+    break-inside: avoid;
+  }
+}
+
+/* A report exported by `testo export` (single-file HTML, PDF, PNG): grey desk, white page. */
+body.report-standalone {
+  background: #e9ecf2;
+  background-image: none;
+}
 /* Eye logo: blink on hover, pupil spins while the app loads. */
 .eye-logo__ball {
   transform-box: fill-box;

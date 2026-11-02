@@ -17,6 +17,7 @@ const PRIMARY_LINKS: NavLinkSpec[] = [
   { to: "/runs", label: "Runs", icon: Icons.RunsIcon },
   { to: "/compare", label: "Compare", icon: Icons.CompareIcon },
   { to: "/health", label: "Project health", icon: Icons.HeartIcon },
+  { to: "/report", label: "Report", icon: Icons.ReportIcon },
   { to: "/ask", label: "Ask", icon: Icons.ChatIcon }
 ];
 
@@ -80,7 +81,7 @@ export function AppShell() {
   return (
     <div className="min-h-full">
       {/* Inside a landmark, like all content, so screen-reader region navigation finds it. */}
-      <nav aria-label="Skip links">
+      <nav aria-label="Skip links" className="print:hidden">
         <a
           href="#main"
           className="sr-only z-50 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -89,7 +90,7 @@ export function AppShell() {
         </a>
       </nav>
       <BackgroundArt />
-      <aside className="glass-panel fixed inset-y-4 left-4 z-20 hidden w-64 flex-col overflow-y-auto px-4 py-6 lg:flex">
+      <aside className="glass-panel print:hidden fixed inset-y-4 left-4 z-20 hidden w-64 flex-col overflow-y-auto px-4 py-6 lg:flex">
         <Link to="/" className="flex items-center justify-center gap-2.5 pb-6" aria-label="Testo home">
           <BrandEye />
           <span className="text-sm font-bold uppercase tracking-[0.3em] text-white">Testo</span>
@@ -108,7 +109,7 @@ export function AppShell() {
         <VersionNote />
       </aside>
 
-      <header className="sticky top-0 z-30 border-b border-white/5 bg-ink-950/80 backdrop-blur-xl lg:hidden">
+      <header className="sticky top-0 z-30 print:hidden border-b border-white/5 bg-ink-950/80 backdrop-blur-xl lg:hidden">
         <div className="relative flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2" aria-label="Testo home">
             <BrandEye />
@@ -123,9 +124,9 @@ export function AppShell() {
         </div>
       </header>
 
-      <div className="lg:pl-[18rem]">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:pt-5">
-          <header className="mb-5 hidden items-center justify-between gap-4 lg:flex">
+      <div className="lg:pl-[18rem] print:pl-0">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:pt-5 print:max-w-none print:p-0">
+          <header className="mb-5 hidden print:hidden items-center justify-between gap-4 lg:flex">
             <nav aria-label="Breadcrumb" className="text-xs text-ink-300">
               <ol className="flex flex-wrap items-center gap-1">
                 <li>Testosterone</li>

@@ -11,6 +11,7 @@ import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { ProjectHealthPage } from "../features/health/ProjectHealthPage";
 import { HistoryPage } from "../features/history/HistoryPage";
+import { ReportPage } from "../features/report/ReportPage";
 import { ResourcesPage } from "../features/resources/ResourcesPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { TestPage } from "../features/tests/TestPage";
@@ -53,6 +54,10 @@ export const routes = [
       {
         path: "health",
         element: <ProjectHealthPage />
+      },
+      {
+        path: "report",
+        element: <ReportPage />
       },
       {
         path: "ask",
