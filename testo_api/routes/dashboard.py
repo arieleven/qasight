@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from testo_api.models import (
     AttentionFailingCycle,
@@ -18,6 +18,7 @@ from testo_api.models import (
     DashboardRollupResponse,
     DashboardRollupSummaryResponse,
     DashboardTrendIndicator,
+    DeliveryResponse,
 )
 from testo_core.services.attention import needs_attention
 from testo_core.services.dashboard_service import DashboardRecentRun, DashboardService
@@ -110,6 +111,17 @@ def get_dashboard_attention() -> DashboardAttentionResponse:
         newly_flaky=[AttentionTestItem(**vars(t)) for t in attention.newly_flaky],
         slower=[AttentionTestItem(**vars(t)) for t in attention.slower],
     )
+
+
+@router.get("/dashboard/delivery", response_model=DeliveryResponse)
+def get_dashboard_delivery(days: int = Query(7, ge=1, le=90)) -> DeliveryResponse:
+    """Time to fix, open failures by age, CI time and default-branch red time over the last ``days``."""
+    from testo_core.history.read_model import list_recent_runs
+    from testo_core.services.delivery_metrics import DAY, build_delivery
+
+    end = time.time()
+    delivery = build_delivery(list_recent_runs(limit=5000), start=end - days * DAY, end=end)
+    return DeliveryResponse.model_validate(delivery.to_dict())
 
 
 @router.get("/dashboard/runs/recent", response_model=DashboardRecentRunsResponse)

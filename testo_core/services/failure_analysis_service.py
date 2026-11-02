@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -23,6 +24,20 @@ from testo_core.services.ai import (
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 
 from .failure_context_builder import FailureContextBudget, build_failure_context
+from .failure_source import (
+    SourceSnippet,
+    checkout_of,
+    collect_sources,
+    failing_tests_of,
+    format_sources,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _default_source_lookup(run: CompletedRunView) -> list[SourceSnippet]:
+    return collect_sources(failing_tests_of(run), repo=checkout_of(run))
+
 
 SummaryStatus = Literal["available", "no_summary_generated"]
 
@@ -61,11 +76,13 @@ class FailureAnalysisService:
         metadata_upsert: Callable[[str, dict[str, Any]], bool] = lambda run_id, patch: (
             upsert_run_metadata(run_id=run_id, metadata_patch=patch)
         ),
+        source_lookup: Callable[[CompletedRunView], list[SourceSnippet]] = _default_source_lookup,
     ) -> None:
         self._settings_store = settings_store
         self._run_lookup = run_lookup
         self._metadata_lookup = metadata_lookup
         self._metadata_upsert = metadata_upsert
+        self._source_lookup = source_lookup
 
     def get_summary(self, *, run_id: str) -> FailureAnalysisSummary:
         metadata = self._metadata_lookup(run_id) or {}
@@ -102,11 +119,21 @@ class FailureAnalysisService:
             )
         cfg: AiProviderConfig = settings.to_provider_config()
         metadata = self._metadata_lookup(run_id) or {}
+        # Only with the person's opt-in (AI settings), and only the failing tests' own code.
+        snippets: list[SourceSnippet] = []
+        if settings.share_test_source:
+            try:
+                snippets = self._source_lookup(run)
+            except Exception:  # noqa: BLE001 - a summary without source beats no summary
+                logger.warning("could not read test source for run %s", run_id, exc_info=True)
         context = build_failure_context(
             run=run,
             metadata=metadata,
             budget=FailureContextBudget(max_total_chars=cfg.max_input_chars),
+            source=format_sources(snippets),
         )
+        if snippets:
+            context.context_stats["source_files"] = len({s.path for s in snippets})
         try:
             provider = build_ai_provider(config=cfg, runtime_api_key=settings.runtime_api_key)
             result = provider.generate(

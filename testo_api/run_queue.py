@@ -55,6 +55,10 @@ class RunRequest:
     args: tuple[str, ...] = ()
     timeout_s: float | None = None
     extra_env: Mapping[str, str] = field(default_factory=dict)
+    # Cycle runs only: run just these tests, or the failing tests of a recorded run
+    # (services/test_selection.py).
+    tests: tuple[str, ...] = ()
+    rerun_failed: str | None = None
 
     @staticmethod
     def path_or_none(value: Path | None) -> str | None:
@@ -67,6 +71,7 @@ class RunRequest:
         )
         data["args"] = list(self.args)
         data["extra_env"] = dict(self.extra_env)
+        data["tests"] = list(self.tests)
         return data
 
     @classmethod
@@ -76,6 +81,7 @@ class RunRequest:
             known["reporter_override"] = tuple(known["reporter_override"])
         known["args"] = tuple(known.get("args") or ())
         known["extra_env"] = dict(known.get("extra_env") or {})
+        known["tests"] = tuple(known.get("tests") or ())
         return cls(**known)
 
 

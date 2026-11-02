@@ -6,19 +6,23 @@ import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid, buttonClasses } from "../../components/ui";
 import { countLabel, describeExitCode, formatDuration, formatPercent, formatRunLabel } from "../../lib/format";
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD, STATIC_LABEL } from "../../lib/static-backend";
+import { CopySummaryButton } from "./CopySummaryButton";
 import { CrashBadge } from "./CrashBadge";
 import { FailingTestsCard } from "./FailingTestsCard";
+import { releasePath } from "../releases/ReleasesPage";
 
 type RunProvenanceFields = {
   branch?: string | null;
   commit?: string | null;
   base_branch?: string | null;
   repository?: string | null;
+  environment?: string | null;
+  release?: string | null;
 };
 
 /** Branch, PR target and commit the run tested, when it recorded them. */
 function RunProvenance({ run }: { run: RunProvenanceFields }) {
-  if (!run.branch && !run.commit) return null;
+  if (!run.branch && !run.commit && !run.environment && !run.release) return null;
   const short = run.commit ? run.commit.slice(0, 7) : null;
   const commitUrl =
     run.commit && run.repository && /^[\w.-]+\/[\w.-]+$/.test(run.repository)
@@ -44,6 +48,22 @@ function RunProvenance({ run }: { run: RunProvenanceFields }) {
               {short}
             </span>
           )}
+        </>
+      ) : null}
+      {run.environment ? (
+        <>
+          {run.branch || short ? <span aria-hidden>·</span> : null}
+          <span className="text-ink-200" title="What this run tested on">
+            {run.environment}
+          </span>
+        </>
+      ) : null}
+      {run.release ? (
+        <>
+          {run.branch || short || run.environment ? <span aria-hidden>·</span> : null}
+          <Link to={releasePath(run.release)} className="text-brand-300 hover:underline" title="The release this run tested">
+            release {run.release}
+          </Link>
         </>
       ) : null}
     </span>
@@ -179,9 +199,12 @@ export function RunDetailPage() {
           </>
         }
         actions={
-          <Link to="/runs" className={buttonClasses("secondary", "sm")}>
-            Back to runs
-          </Link>
+          <>
+            <CopySummaryButton runId={runId} />
+            <Link to="/runs" className={buttonClasses("secondary", "sm")}>
+              Back to runs
+            </Link>
+          </>
         }
       />
 
@@ -198,6 +221,9 @@ export function RunDetailPage() {
               <AiSummaryText text={aiSummaryQuery.data.summary_text ?? ""} />
               <p className="text-xs text-ink-400">
                 Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
+                {aiSummaryQuery.data.context_stats?.source_files
+                  ? ` | Read the source of ${aiSummaryQuery.data.context_stats.source_files} test file${aiSummaryQuery.data.context_stats.source_files === 1 ? "" : "s"}`
+                  : ""}
                 {IS_STATIC_BUILD ? " | Generated when this snapshot was built" : ""}
               </p>
             </article>

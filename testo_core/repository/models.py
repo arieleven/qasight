@@ -134,6 +134,14 @@ class TestResult(SQLModel, table=True):
     crash: str = Field(default="", max_length=16)
     # Failed, then passed on a retry inside this run (JUnit reruns, Surefire flakyFailure).
     retried: bool = Field(default=False)
+    # What the test is about, [{name, value}] (feature, severity, tag...), and its issue
+    # links, [{name, url, type}]. NULL on rows written before revision 0006.
+    labels: list[dict[str, str]] | None = Field(
+        default=None, sa_column=Column("labels", _METADATA_JSON_COL, nullable=True)
+    )
+    links: list[dict[str, str]] | None = Field(
+        default=None, sa_column=Column("links", _METADATA_JSON_COL, nullable=True)
+    )
 
 
 class ReportArchive(SQLModel, table=True):

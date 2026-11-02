@@ -95,3 +95,47 @@ def test_events_stream_stops_at_its_own_run_in_the_shared_cycle_file(
     ]
     assert events.count("plan_started") == 1
     assert events[-1] == "plan_finished"
+
+
+def test_rerun_failed_of_a_run_without_failures_is_400(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.services import run_failures
+
+    monkeypatch.setattr(run_failures, "load_run_failures", lambda run_id: None)
+    client = _client(CycleExecutionManager())
+    resp = client.post("/api/v1/cycles/smoke/executions", json={"rerun_failed": "nope"})
+    assert resp.status_code == 400
+    assert "no run" in resp.text
+
+
+def test_chosen_tests_reach_the_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from testo_core.services import cycle_run
+
+    seen: dict[str, object] = {}
+    real_run = cycle_run.CycleRunService.run
+
+    def spy(self, *, cfg, plan, renderer, options=None):  # noqa: ANN001, ANN202
+        seen["selection"] = options.selection if options else None
+        return real_run(self, cfg=cfg, plan=plan, renderer=renderer, options=options)
+
+    monkeypatch.setattr(cycle_run.CycleRunService, "run", spy)
+    use_echo_adapter(monkeypatch)
+    config = write_minimal_config(tmp_path)
+    client = _client(CycleExecutionManager())
+    resp = client.post(
+        "/api/v1/cycles/smoke/executions",
+        json={"config_path": str(config), "report_db": False, "tests": ["test_a"]},
+    )
+    assert resp.status_code == 202, resp.text
+    execution_id = resp.json()["execution_id"]
+    deadline = time.monotonic() + 20
+    while client.get(f"/api/v1/cycle-executions/{execution_id}").json()["status"] not in (
+        "completed",
+        "failed",
+    ):
+        assert time.monotonic() < deadline, "execution did not finish"
+        time.sleep(0.05)
+    selection = seen["selection"]
+    assert selection is not None
+    assert [t.name for t in selection.tests] == ["test_a"]  # type: ignore[attr-defined]

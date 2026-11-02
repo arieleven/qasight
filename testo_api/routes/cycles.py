@@ -186,6 +186,14 @@ def create_cycle_execution(
     request: Request,
     manager: CycleExecutionManager = Depends(get_cycle_execution_manager),
 ) -> CycleExecutionAcceptedResponse:
+    """Start a run of ``cycle``; with ``tests`` or ``rerun_failed``, only those tests."""
+    if payload.rerun_failed:
+        from testo_core.services.test_selection import SelectionError, from_run_failures
+
+        try:  # checked now so the caller hears about it, not the event stream
+            from_run_failures(payload.rerun_failed.strip())
+        except SelectionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     try:
         state = manager.create_execution(
             cycle=str(cycle),
@@ -202,6 +210,8 @@ def create_cycle_execution(
             workers_override=payload.workers_override,
             stream=bool(payload.stream),
             ci=True,
+            tests=[t for t in payload.tests if t.strip()],
+            rerun_failed=(payload.rerun_failed or "").strip() or None,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

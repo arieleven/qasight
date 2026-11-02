@@ -5,7 +5,8 @@ The UI keeps its settings in ``ai_settings.json`` (``TESTO_AI_SETTINGS_PATH``,
 The CLI reads and writes the same file, so a provider picked here shows on the
 AI settings page and the other way round. In CI there is usually no file, so
 ``TESTO_AI_PROVIDER`` (with ``TESTO_AI_MODEL``, ``TESTO_AI_BASE_URL`` and
-``TESTO_AI_KEY_ENV``) turns summaries on from the environment and wins over it.
+``TESTO_AI_KEY_ENV``, and ``TESTO_AI_SHARE_TEST_SOURCE=1`` to send the failing
+tests' source too) turns summaries on from the environment and wins over it.
 
 API keys are never written anywhere: the settings name the environment variable
 that holds the key.
@@ -93,6 +94,8 @@ def settings_from_env(env: dict[str, str] | None = None) -> AiIntegrationSetting
         api_key_env_var=env.get("TESTO_AI_KEY_ENV", "").strip() or None,
         # CI runners are slower than the UI's default allows for a model's first answer.
         timeout_s=float(timeout) if timeout else 60.0,
+        share_test_source=env.get("TESTO_AI_SHARE_TEST_SOURCE", "").strip().lower()
+        in ("1", "true", "yes", "on"),
     )
 
 

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Phase 4 BYOK and Failure Analysis
@@ -45,7 +45,11 @@ The API keeps the AI settings (enabled, provider, model, key source, env var nam
 
 The settings page resets the model to the provider's default when the provider changes, and names the missing environment variable when no key is found. The Run Details card turns each `error_code` into a sentence and links to the settings page when the fix is there.
 
-Security: opt-in default, redaction pipeline, keys never returned on read. See [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) for ongoing contract gaps.
+Security: opt-in default, redaction pipeline, keys never returned on read.
+
+### Failing test source (opt-in)
+
+`share_test_source` (off by default) adds a short, line-numbered excerpt of each failing test's own code to the summary prompt: its definition and a few lines around the trace frames, inside the run's checkout only, secret-looking files skipped, at most 3 files and 4,000 characters. With a cloud provider the settings page warns that the excerpt is sent to it. See [Test Source in AI Summaries - 2026-11-01](Test%20Source%20in%20AI%20Summaries%20-%202026-11-01.md). See [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) for ongoing contract gaps.
 
 ## Context-aware failure analysis
 

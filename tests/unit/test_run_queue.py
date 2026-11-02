@@ -50,6 +50,8 @@ def test_request_round_trips_through_json() -> None:
     assert RunRequest.from_json(request.to_json()) == request
     # Keys from a newer version are ignored rather than failing the restart.
     assert RunRequest.from_json({**request.to_json(), "added_later": 1}) == request
+    chosen = RunRequest(kind="cycle", cycle="c", tests=("test_a", "test_b"), rerun_failed="r1")
+    assert RunRequest.from_json(chosen.to_json()) == chosen
 
 
 def test_db_store_keeps_rows_in_order_and_claims_each_once(store: DbRunStore) -> None:

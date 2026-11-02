@@ -82,6 +82,10 @@ class CycleExecutionRequest(ApiModel):
     report_db: bool = True
     async_report_db: bool = False
     reporter_override: list[str] | None = None
+    # Run only these tests (name, full name or pytest node id), like `testo run --test`.
+    tests: list[str] = Field(default_factory=list, max_length=500)
+    # Run only the failing tests of this recorded run, like `testo run --rerun-failed`.
+    rerun_failed: str | None = Field(default=None, max_length=64)
 
 
 class AdhocExecutionRequest(ApiModel):
@@ -153,6 +157,10 @@ class RunListItem(ApiModel):
     links_under_static: dict[str, str] = Field(default_factory=dict)
     branch: str | None = None
     commit: str | None = None
+    # "browser=firefox, os=linux" (testo run --env, TESTO_ENV, Allure environment.properties).
+    environment: str | None = None
+    # "2.3" (testo run --release, TESTO_RELEASE).
+    release: str | None = None
 
 
 class RunListResponse(ApiModel):
@@ -201,6 +209,10 @@ class RunDetail(ApiModel):
     commit: str | None = None
     base_branch: str | None = None
     repository: str | None = None
+    # "browser=firefox, os=linux" (testo run --env, TESTO_ENV, Allure environment.properties).
+    environment: str | None = None
+    # "2.3" (testo run --release, TESTO_RELEASE).
+    release: str | None = None
     # Line coverage stored with ``--coverage``.
     coverage_pct: float | None = None
     coverage_covered: int | None = None
@@ -228,6 +240,13 @@ class RunPyramidResponse(ApiModel):
     e2e: int
     shape: Literal["healthy", "top_heavy", "mid_bulge", "irregular"]
     message: str
+
+
+class RunMarkdownResponse(ApiModel):
+    """A run as GitHub-flavored Markdown, the same text as ``testo report markdown``."""
+
+    run_id: str
+    markdown: str
 
 
 class TriageItem(ApiModel):
@@ -284,6 +303,22 @@ class QuarantineListResponse(ApiModel):
     release_after: int
 
 
+class TestLabelItem(ApiModel):
+    """What a test is about: ``feature=Checkout``, ``severity=critical``, ``tag=smoke``..."""
+
+    name: str
+    value: str
+
+
+class TestLinkItem(ApiModel):
+    """A link the test's results carry: an issue or story it covers, or a doc."""
+
+    name: str
+    url: str
+    # "issue" for issue and story links, "tms" for test management ids, else "link".
+    type: str = "link"
+
+
 class FailingTestItem(ApiModel):
     key: str
     name: str
@@ -302,6 +337,8 @@ class FailingTestItem(ApiModel):
     triage: TriageItem | None = None
     # "stack_overflow" | "crash" when the failure's message or trace shows one.
     crash_kind: str | None = None
+    labels: list[TestLabelItem] = Field(default_factory=list)
+    links: list[TestLinkItem] = Field(default_factory=list)
 
 
 class FailureGroupItem(ApiModel):
@@ -425,6 +462,10 @@ class FlakyTestItem(ApiModel):
     reasons: list[str] = Field(default_factory=list)
     # Runs in which it failed and then passed on a retry.
     retried: int = 0
+    # Red runs only flaky tests caused that this one was in, and the CI minutes of its
+    # retries plus its share of those runs (services/flaky_service.flaky_costs).
+    red_runs: int = 0
+    cost_minutes: float = 0.0
     # Matches the cycle's quarantine: the list kept on the server, or testosterone.yaml when it is readable.
     quarantined: bool = False
     # The stored entry it matches exactly, which the UI can release (null for config rules and globs).
@@ -468,12 +509,35 @@ class TestSummaryItem(ApiModel):
     # Recent median minus the earlier one, only when that is more than timing noise.
     slowdown_ms: int | None = None
     slowdown_pct: float | None = None
+    p95_duration_ms: int | None = None
+    # From the test's latest run.
+    labels: list[TestLabelItem] = Field(default_factory=list)
+    links: list[TestLinkItem] = Field(default_factory=list)
 
 
 class CycleTestsResponse(ApiModel):
     cycle: str
     runs_considered: int
     items: list[TestSummaryItem] = Field(default_factory=list)
+
+
+class LabelCountItem(ApiModel):
+    name: str
+    value: str
+    tests: int
+    # Tests whose latest outcome failed.
+    failing: int
+    flaky: int
+    # What ``GET /analytics/tests?label=`` takes to list these tests.
+    filter: str
+
+
+class CycleLabelsResponse(ApiModel):
+    cycle: str
+    runs_considered: int
+    labelled_tests: int
+    total_tests: int
+    items: list[LabelCountItem] = Field(default_factory=list)
 
 
 class TestPointItem(ApiModel):
@@ -485,6 +549,18 @@ class TestPointItem(ApiModel):
     branch: str | None = None
     # Rolling flip rate (0-1) over the runs ending here; null until two passed or failed.
     flip_rate: float | None = None
+    # What the run tested on ("browser=firefox, os=linux"), when it recorded one.
+    environment: str | None = None
+
+
+class EnvironmentOutcomeItem(ApiModel):
+    """The test on one environment across the window."""
+
+    environment: str
+    runs: int
+    passed: int
+    failed: int
+    last_status: str
 
 
 class AttachmentItem(ApiModel):
@@ -504,6 +580,8 @@ class TestHistoryResponse(ApiModel):
     last_failure: TestPointItem | None = None
     # Screenshots, videos, traces the last failing run kept for this test.
     last_failure_attachments: list[AttachmentItem] = Field(default_factory=list)
+    # Pass and fail counts per environment, most failures first; empty when no run recorded one.
+    environments: list[EnvironmentOutcomeItem] = Field(default_factory=list)
     owners: list[str] = Field(default_factory=list)
     issue_url: str | None = None
 
@@ -646,6 +724,8 @@ class AiConfigUpdateRequest(ApiModel):
     max_input_chars: int = 16000
     max_output_tokens: int = 300
     base_url: str | None = None
+    # Also send a short excerpt of each failing test's own source with the summary prompt.
+    share_test_source: bool = False
 
 
 class AiConfigStatusResponse(ApiModel):
@@ -661,6 +741,7 @@ class AiConfigStatusResponse(ApiModel):
     max_input_chars: int
     max_output_tokens: int
     base_url: str | None = None
+    share_test_source: bool = False
 
 
 class AiSummaryResponse(ApiModel):
@@ -932,3 +1013,359 @@ class AskResponse(ApiModel):
     error_code: str | None = None
     error_message: str | None = None
     context_stats: dict[str, int] = Field(default_factory=dict)
+
+
+class ReportKpis(ApiModel):
+    health_score: int | None
+    health_grade: str | None
+    pass_rate: float | None
+    prev_pass_rate: float | None
+    runs: int
+    prev_runs: int
+    green: int
+    prev_green: int
+    coverage_pct: float | None
+    prev_coverage_pct: float | None
+    cycles: int
+    failing_tests: int
+    newly_flaky: int
+    fixed: int
+
+
+class ReportTrendPoint(ApiModel):
+    day: str
+    runs: int
+    green: int
+    pass_rate: float | None
+    median_duration_ms: int | None = None
+    ci_minutes: float = 0.0
+
+
+class ReportCycleRow(ApiModel):
+    cycle: str
+    runs: int
+    green: int
+    pass_rate: float | None
+    prev_pass_rate: float | None
+    failing: int
+    newly_flaky: int
+    fixed: int
+    slower: int
+    health_score: int | None
+
+
+class ReportTest(ApiModel):
+    cycle: str
+    name: str
+    detail: str = ""
+
+
+class ReportFinding(ApiModel):
+    cycle: str
+    title: str
+    detail: str
+
+
+class DeliveryAgeBucket(ApiModel):
+    label: str
+    count: int
+
+
+class DeliveryOpenFailure(ApiModel):
+    cycle: str
+    name: str
+    since: float
+    age_s: float
+    runs: int
+    key: str = ""
+
+
+class DeliveryCycleRow(ApiModel):
+    cycle: str
+    fixes: int
+    median_fix_s: float | None
+    prev_median_fix_s: float | None
+    open_failures: int
+    suite_median_ms: int | None
+    suite_p90_ms: int | None
+    prev_suite_median_ms: int | None
+    ci_minutes: float
+    prev_ci_minutes: float
+    grown_stage: str | None
+    grown_stage_before_ms: int | None
+    grown_stage_after_ms: int | None
+    red_pct: float | None
+    prev_red_pct: float | None
+    longest_red_s: float | None
+    first_try_green_pct: float | None
+    first_try_commits: int
+
+
+class DeliveryResponse(ApiModel):
+    """Time to fix failing tests, suite and CI time, and how often the default branch was red.
+
+    See ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no
+    run recorded a branch; then every run counts as the default branch.
+    """
+
+    default_branch: str | None
+    fixes: int
+    median_fix_s: float | None
+    prev_median_fix_s: float | None
+    open_failures: int
+    open_by_age: list[DeliveryAgeBucket]
+    oldest_open: list[DeliveryOpenFailure]
+    ci_minutes: float
+    prev_ci_minutes: float
+    red_pct: float | None
+    prev_red_pct: float | None
+    longest_red_s: float | None
+    first_try_green_pct: float | None
+    prev_first_try_green_pct: float | None
+    first_try_commits: int
+    cycles: list[DeliveryCycleRow]
+
+
+class SignalCause(ApiModel):
+    cause: Literal[
+        "product_bug", "test_bug", "environment", "other", "unmarked", "flaky", "no_tests"
+    ]
+    label: str
+    runs: int
+
+
+class CostlyFlakyTest(ApiModel):
+    cycle: str
+    key: str
+    name: str
+    cost_minutes: float
+    retries: int
+    red_runs: int
+    branches: list[str]
+
+
+class SignalResponse(ApiModel):
+    """What the red runs were (real bugs vs noise) and what flaky tests cost.
+
+    See ``testo_core/services/failure_signal.py``.
+    """
+
+    red_runs: int
+    prev_red_runs: int
+    by_cause: list[SignalCause]
+    real_pct: float | None
+    noise_pct: float | None
+    unmarked_pct: float | None
+    prev_real_pct: float | None
+    prev_noise_pct: float | None
+    flaky_minutes: float
+    prev_flaky_minutes: float
+    flaky_red_runs: int
+    flaky_branches: int
+    costly: list[CostlyFlakyTest]
+
+
+class OwnerRow(ApiModel):
+    owner: str
+    tests: int
+    failing: int
+    flaky: int
+    flaky_minutes: float
+    fixes: int
+    median_fix_s: float | None
+    open_failures: int
+    oldest_open_s: float | None
+
+
+class TeamsResponse(ApiModel):
+    """Each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``)."""
+
+    owners_known: bool
+    rows: list[OwnerRow]
+
+
+class NamedCycleTest(ApiModel):
+    cycle: str
+    name: str
+    detail: str
+
+
+class CycleSize(ApiModel):
+    cycle: str
+    tests: int
+    prev_tests: int | None
+    added: int
+    removed: int
+
+
+class HygieneResponse(ApiModel):
+    """Suite size, added and removed tests, always-skipped and slow never-failing tests.
+
+    See ``services/suite_hygiene.py``.
+    """
+
+    tests: int
+    prev_tests: int | None
+    added: int
+    removed: int
+    cycles: list[CycleSize]
+    added_tests: list[NamedCycleTest]
+    removed_tests: list[NamedCycleTest]
+    always_skipped: list[NamedCycleTest]
+    always_skipped_count: int
+    slow_never_failed: list[NamedCycleTest]
+    slow_never_failed_ms: int
+
+
+class CountedTest(ApiModel):
+    cycle: str
+    name: str
+    count: int
+    detail: str
+
+
+class RepeatedError(ApiModel):
+    message: str
+    count: int
+    tests: int
+
+
+class RunSlice(ApiModel):
+    label: str
+    runs: int
+    red: int
+
+
+class PatternDay(ApiModel):
+    day: str
+    retried: int
+    executed: int
+    retry_pct: float | None
+    coverage_pct: float | None
+
+
+class PatternsResponse(ApiModel):
+    """Failure concentration, repeated errors, retry rate, unstable timing, when failures
+    happen, tests that catch bugs and coverage by day (``services/failure_patterns.py``)."""
+
+    failures: int
+    top_tests: list[CountedTest]
+    top_share_pct: float | None
+    repeated_errors: list[RepeatedError]
+    retried: int
+    executed: int
+    retry_pct: float | None
+    prev_retry_pct: float | None
+    unstable_timing: list[CountedTest]
+    by_hour: list[RunSlice]
+    by_weekday: list[RunSlice]
+    by_environment: list[RunSlice]
+    when_findings: list[str]
+    caught_bugs: list[CountedTest]
+    only_noise: list[CountedTest]
+    days: list[PatternDay]
+
+
+class ManagerReportResponse(ApiModel):
+    """How testing went over a period: the ``/report`` page and every ``testo export`` format."""
+
+    title: str
+    period: Literal["day", "week", "month", "quarter"]
+    days: int
+    start: float
+    end: float
+    generated_at: float
+    scope: list[str]
+    summary: list[str]
+    kpis: ReportKpis
+    trend: list[ReportTrendPoint]
+    cycles: list[ReportCycleRow]
+    still_failing: list[ReportTest]
+    newly_flaky: list[ReportTest]
+    fixed: list[ReportTest]
+    slower: list[ReportTest]
+    findings: list[ReportFinding]
+    delivery: DeliveryResponse
+    signal: SignalResponse
+    teams: TeamsResponse
+    hygiene: HygieneResponse
+    patterns: PatternsResponse
+
+
+class ReleaseSummaryItem(BaseModel):
+    """One release: the latest run of each cycle that tested it, added up."""
+
+    release: str
+    first_run_at: float
+    last_run_at: float
+    runs: int
+    cycles: int
+    total: int
+    passed: int
+    failed: int
+    skipped: int
+    pass_rate: float | None = None
+
+
+class ReleasesResponse(BaseModel):
+    items: list[ReleaseSummaryItem]
+
+
+class ReleaseCycleItem(BaseModel):
+    cycle: str
+    run_id: str
+    created_at: float
+    runs: int
+    total: int
+    passed: int
+    failed: int
+    skipped: int
+    flaky: int
+
+
+class ReleaseTestItem(BaseModel):
+    cycle: str
+    key: str
+    name: str
+    status: str
+    message: str
+    run_id: str
+    # Not failing in the previous release's latest run of this cycle.
+    new: bool = False
+
+
+class ReleaseDetailResponse(BaseModel):
+    summary: ReleaseSummaryItem
+    cycles: list[ReleaseCycleItem]
+    failing: list[ReleaseTestItem]
+    fixed: list[ReleaseTestItem]
+    flaky: int
+    previous: ReleaseSummaryItem | None = None
+
+
+class IssueTestItem(BaseModel):
+    key: str
+    name: str
+    last_status: str
+    flaky: bool
+
+
+class IssueStatusItem(BaseModel):
+    """An issue the cycle's tests point at, and how those tests did in their latest run."""
+
+    issue: str
+    url: str | None = None
+    tests: int
+    failing: int
+    flaky: int
+    # "failing" | "flaky" | "passing"
+    state: str
+    examples: list[IssueTestItem]
+
+
+class CycleIssuesResponse(BaseModel):
+    cycle: str
+    runs_considered: int
+    linked_tests: int
+    total_tests: int
+    items: list[IssueStatusItem]

@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Vault log
@@ -208,3 +208,7 @@ Added [New User Journey Audit - 2026-11-01](Roadmap%20&%20Strategy/New%20User%20
 ## 2026-11-01: new user journey automation
 
 New ADR [New User Journey Automation - 2026-11-01](Specs%20&%20ADRs/New%20User%20Journey%20Automation%20-%202026-11-01.md), linked from the Specs README, the audit's Status section and the docs site menu (#278).
+
+## 2026-11-01: test source in AI summaries
+
+New ADR [Test Source in AI Summaries - 2026-11-01](Specs%20&%20ADRs/Test%20Source%20in%20AI%20Summaries%20-%202026-11-01.md) (opt-in failing test source in the AI failure summary), linked from the Specs README, Phase 4 BYOK and Failure Analysis, the Command Reference and the docs site menu.

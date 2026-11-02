@@ -36,6 +36,10 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/cycles/<name>.json                GET /api/v1/cycles/{name}
     data/flaky/<name>.json                 GET /api/v1/analytics/flaky?cycle={name}
     data/tests/<name>.json                 GET /api/v1/analytics/tests?cycle={name}
+    data/labels/<name>.json                GET /api/v1/analytics/labels?cycle={name}
+    data/issues/<name>.json                GET /api/v1/analytics/issues?cycle={name}
+    data/releases.json                     GET /api/v1/releases
+    data/releases/<release>.json           GET /api/v1/releases/{release}
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
                                            (<id> is test_history.stable_id(key))
     data/resources.json                    GET /api/v1/resources
@@ -45,12 +49,16 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/runs/<run_id>/pyramid.json        GET /api/v1/runs/{id}/pyramid
     data/runs/<run_id>/failures.json       GET /api/v1/runs/{id}/failures
     data/runs/<run_id>/ai-summary.json     GET /api/v1/runs/{id}/ai-summary
+    data/runs/<run_id>/markdown.json       GET /api/v1/runs/{id}/markdown
     data/dashboard/overview.json           GET /api/v1/dashboard/overview
     data/dashboard/recent-runs.json        GET /api/v1/dashboard/runs/recent
     data/dashboard/attention.json          GET /api/v1/dashboard/attention
+    data/dashboard/delivery.json           GET /api/v1/dashboard/delivery?days=7
     data/project-health/all.json           GET /api/v1/project-health
     data/project-health/cycles/<name>.json GET /api/v1/project-health?cycle={name}
     data/project-health/skills.json        GET /api/v1/project-health/skills
+    data/report/<period>.json              GET /api/v1/report?period={period}
+    data/report/<period>/<name>.json       GET /api/v1/report?period={period}&cycle={name}
     data/project-health/ai-review.json     GET /api/v1/project-health/ai-review
     data/project-health/ai-review/<name>.json  GET /api/v1/project-health/ai-review?cycle={name}
     data/delta/<current>__<baseline>/comparison.json
@@ -75,6 +83,8 @@ from urllib.parse import quote, urlparse
 # Anthropic provider sends a sampling temperature and reads the first content
 # block, so it needs a model without always-on thinking.
 DEFAULT_DEMO_AI_MODEL = "claude-haiku-4-5"
+# The Report page's period picker; each one is exported for every cycle and for all of them.
+REPORT_PERIODS = ("day", "week", "month", "quarter")
 
 # What `testo export-site` adds to the bundled UI's index.html: the UI reads it
 # (static-backend.ts) and answers API calls from data/ instead of a server.
@@ -223,6 +233,7 @@ class Exporter:
             self._dump(f"/api/v1/runs/{run_id}/pyramid", f"{base}/pyramid.json")
             self._dump(f"/api/v1/runs/{run_id}/failures", f"{base}/failures.json")
             self._dump(f"/api/v1/runs/{run_id}/ai-summary", f"{base}/ai-summary.json")
+            self._dump(f"/api/v1/runs/{run_id}/markdown", f"{base}/markdown.json")
         return items
 
     def generate_ai_summaries(self, run_ids: list[str]) -> None:
@@ -282,6 +293,11 @@ class Exporter:
             self._dump(
                 f"/api/v1/project-health/ai-review{query}", f"project-health/ai-review/{name}.json"
             )
+            for period in REPORT_PERIODS:
+                self._dump(
+                    f"/api/v1/report?period={period}&cycle={quote(name, safe='')}",
+                    f"report/{period}/{name}.json",
+                )
 
     def export_tests(self, cycle: str) -> None:
         """The cycle's test list, and one history file per test for the per-test page."""
@@ -289,6 +305,12 @@ class Exporter:
 
         listing = self._dump(
             f"/api/v1/analytics/tests?cycle={quote(cycle, safe='')}", f"tests/{cycle}.json"
+        )
+        self._dump(
+            f"/api/v1/analytics/labels?cycle={quote(cycle, safe='')}", f"labels/{cycle}.json"
+        )
+        self._dump(
+            f"/api/v1/analytics/issues?cycle={quote(cycle, safe='')}", f"issues/{cycle}.json"
         )
         for item in (listing or {}).get("items", []):
             key = str(item["key"])
@@ -298,15 +320,24 @@ class Exporter:
                 f"test-history/{cycle}/{stable_id(key)}.json",
             )
 
+    def export_releases(self) -> None:
+        listing = self._dump("/api/v1/releases", "releases.json")
+        for item in (listing or {}).get("items", []):
+            name = str(item["release"])
+            self._dump(f"/api/v1/releases/{quote(name, safe='')}", f"releases/{name}.json")
+
     def export_dashboard(self) -> None:
         overview = self._get("/api/v1/dashboard/overview?recent_limit=6")
         if overview is not None:
             self._write("dashboard/overview.json", self._absolutize_report_links(overview))
         self._dump("/api/v1/dashboard/runs/recent?limit=8", "dashboard/recent-runs.json")
         self._dump("/api/v1/dashboard/attention", "dashboard/attention.json")
+        self._dump("/api/v1/dashboard/delivery?days=7", "dashboard/delivery.json")
         self._dump("/api/v1/project-health", "project-health/all.json")
         self._dump("/api/v1/project-health/skills", "project-health/skills.json")
         self._dump("/api/v1/project-health/ai-review", "project-health/ai-review.json")
+        for period in REPORT_PERIODS:
+            self._dump(f"/api/v1/report?period={period}", f"report/{period}.json")
 
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
         """Export the run pairs the UI can ask for.
@@ -411,6 +442,7 @@ class Exporter:
             return 1
         self.export_cycles(runs)
         self.export_dashboard()
+        self.export_releases()
         deltas = self.export_deltas(runs)
         copied = self.copy_reports(runs)
 

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Specs & ADRs
@@ -21,6 +21,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Navy glass look and sidebar | [UI Restyle - 2026-10-19](UI%20Restyle%20-%202026-10-19.md) |
 | One engine, generated API types, blocking type checks | [Architecture Consolidation - 2026-10-06](Architecture%20Consolidation%20-%202026-10-06.md) |
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
+| Test labels and issue links, then environments, chosen-test runs and releases (gaps found next to Allure TestOps) | [Test Labels, Environments and Releases - 2026-11-02](Test%20Labels,%20Environments%20and%20Releases%20-%202026-11-02.md) |
 | Better flaky signal: retries, same-commit results, flips per branch, broken kept apart | [Better Flaky Signal - 2026-11-01](Better%20Flaky%20Signal%20-%202026-11-01.md) |
 | Importer and integration bug hunt: ranked findings, fixes and proposals | [Importer and Integration Bug Hunt - 2026-10-31](Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) |
 | Engine fixes from the bug hunt: one run of a cycle at a time, and the other proposals | [Engine Fixes - 2026-11-01](Engine%20Fixes%20-%202026-11-01.md) |
@@ -31,6 +32,8 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Getting Started guide and the MkDocs docs site | [Docs Site - 2026-10-19](Docs%20Site%20-%202026-10-19.md) |
 | Third-party frameworks and reporters through entry points | [Plugin API - 2026-10-19](Plugin%20API%20-%202026-10-19.md) |
 | Playwright as its own equipment | [Playwright Adapter - 2026-10-19](Playwright%20Adapter%20-%202026-10-19.md) |
+| Time to fix failing tests, suite and CI time, default-branch red time, and the waves of report metrics after them | [Test Delivery Metrics - 2026-11-02](Test%20Delivery%20Metrics%20-%202026-11-02.md) |
+| Getting results out: copy menus, a manager report, PDF, PNG, CSV, XLSX and PowerPoint | [Exporting Results - 2026-11-01](Exporting%20Results%20-%202026-11-01.md) |
 | Quarantining flaky tests so they don't fail the run | [Flaky Test Quarantine - 2026-10-22](Flaky%20Test%20Quarantine%20-%202026-10-22.md) |
 | Quarantine from the UI, API or `testo quarantine`, kept on the server and applied to ingest and `pytest --testo` too | [Quarantine From the UI - 2026-11-01](Quarantine%20From%20the%20UI%20-%202026-11-01.md) |
 | Running only the tests a change can affect (`testo affected`, `pytest --testo-affected`) | [Affected Test Selection - 2026-10-30](Affected%20Test%20Selection%20-%202026-10-30.md) |
@@ -43,6 +46,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Runs, stages and tests as OpenTelemetry traces (OTLP), off by default | [OpenTelemetry Export - 2026-10-30](OpenTelemetry%20Export%20-%202026-10-30.md) |
 | The run history as an MCP server for coding agents (`testo mcp`), read-only by default | [MCP Server - 2026-11-01](MCP%20Server%20-%202026-11-01.md) |
 | Coverage on the PR comment, weekly digest, secrets hidden in stored results, backup and restore, failed-first ordering | [Free Copies of Paid Features - 2026-11-01](Free%20Copies%20of%20Paid%20Features%20-%202026-11-01.md) |
+| The failing test's own source in AI failure summaries, opt-in and size-capped | [Test Source in AI Summaries - 2026-11-01](Test%20Source%20in%20AI%20Summaries%20-%202026-11-01.md) |
 | Security and fresh-install review: findings R1 to R18, fixes and proposals | [Security and Install Review - 2026-10-31](Security%20and%20Install%20Review%20-%202026-10-31.md) |
 | Slack and Teams alerts, failure annotations on the diff, flaky test issues | [Alerts Where Developers Look - 2026-10-22](Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
 | A GitHub issue per test that turns flaky, assigned from CODEOWNERS and closed once it is stable | [Flaky Test Issues - 2026-11-01](Flaky%20Test%20Issues%20-%202026-11-01.md) |

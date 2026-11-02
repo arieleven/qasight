@@ -156,4 +156,30 @@ describe("RunPanel", () => {
       });
     });
   });
+
+  it("sends a chosen set of tests and offers to run every test instead", async () => {
+    const source = new FakeEventSource();
+    const fetchMock = stubApis(source);
+    const clear = vi.fn();
+    renderPanel({
+      initialCycle: "sample-pytests",
+      lockCycle: true,
+      selection: { rerunFailed: "run-42", label: "the failing tests of run run-42" },
+      onClearSelection: clear
+    });
+
+    expect(screen.getByRole("heading", { name: "Run chosen tests" })).toBeInTheDocument();
+    expect(screen.getByText("Runs only the failing tests of run run-42.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run every test instead" }));
+    expect(clear).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByRole("button", { name: "Run cycle" }));
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === "POST");
+      expect(post).toBeDefined();
+      const body = JSON.parse(String((post as [string, RequestInit])[1].body));
+      expect(body).toMatchObject({ rerun_failed: "run-42" });
+      expect(body.tests).toBeUndefined();
+    });
+  });
 });

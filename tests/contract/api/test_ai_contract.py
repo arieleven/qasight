@@ -108,6 +108,7 @@ def test_get_ai_config_status_contract() -> None:
         "max_input_chars",
         "max_output_tokens",
         "base_url",
+        "share_test_source",
     }
 
 

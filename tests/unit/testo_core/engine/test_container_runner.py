@@ -198,8 +198,12 @@ def test_a_vanished_api_stops_the_container(runner: Path) -> None:
     assert proc.stdout is not None and b"hanging" in proc.stdout.read(4096)
     proc._close()  # the API process died or dropped the connection
 
+    # The fake `docker kill` creates the file before writing the signal, so wait for the text.
     deadline = time.monotonic() + 10
-    while not list(runner.glob("kill-*")) and time.monotonic() < deadline:
+    while time.monotonic() < deadline:
+        kills = list(runner.glob("kill-*"))
+        if kills and kills[0].read_text():
+            break
         time.sleep(0.05)
     (kill,) = runner.glob("kill-*")
     assert kill.read_text() == "KILL"

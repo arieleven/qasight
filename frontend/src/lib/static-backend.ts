@@ -88,7 +88,14 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/dashboard/overview") return "dashboard/overview.json";
   if (path === "/dashboard/runs/recent") return "dashboard/recent-runs.json";
   if (path === "/dashboard/attention") return "dashboard/attention.json";
+  if (path === "/dashboard/delivery") return "dashboard/delivery.json";
   if (path === "/resources") return "resources.json";
+  if (path === "/releases") return "releases.json";
+  if (path === "/report") {
+    const period = search.get("period") ?? "week";
+    const name = search.get("cycle");
+    return name ? `report/${period}/${name}.json` : `report/${period}.json`;
+  }
   if (path === "/project-health/skills") return "project-health/skills.json";
   if (path === "/project-health") {
     const name = search.get("cycle");
@@ -102,10 +109,13 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   const cycle = /^\/cycles\/([^/]+)$/.exec(path);
   if (cycle) return `cycles/${decodeURIComponent(cycle[1])}.json`;
 
+  const release = /^\/releases\/([^/]+)$/.exec(path);
+  if (release) return `releases/${decodeURIComponent(release[1])}.json`;
+
   const run = /^\/runs\/([^/]+)$/.exec(path);
   if (run) return `runs/${run[1]}/detail.json`;
 
-  const runSub = /^\/runs\/([^/]+)\/(reports|pyramid|failures|ai-summary)$/.exec(path);
+  const runSub = /^\/runs\/([^/]+)\/(reports|pyramid|failures|ai-summary|markdown)$/.exec(path);
   if (runSub) return `runs/${runSub[1]}/${runSub[2]}.json`;
 
   if (path === "/analytics/flaky") {
@@ -116,6 +126,16 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/analytics/tests") {
     const name = search.get("cycle");
     return name ? `tests/${name}.json` : null;
+  }
+
+  if (path === "/analytics/issues") {
+    const name = search.get("cycle");
+    return name ? `issues/${name}.json` : null;
+  }
+
+  if (path === "/analytics/labels") {
+    const name = search.get("cycle");
+    return name ? `labels/${name}.json` : null;
   }
 
   if (path === "/analytics/test-history") {

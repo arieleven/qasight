@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Team Server
@@ -80,6 +80,10 @@ People then sign in at `/login` with their username and password. Admins can als
 After five wrong passwords for one name within 15 minutes (`TESTO_LOGIN_MAX_FAILURES`), that name has to wait before trying again, even with the right password; the wait is in the audit log as `429`.
 
 Set `TESTO_AUTH=token` (or unset it) to go back; the accounts stay in the database for next time.
+
+## Reports for managers
+
+The Report page (`/report`) summarises a day, week, month or quarter for people who don't read every run, and its Download menu gives the same report as PowerPoint, Excel, HTML, CSV or JSON from the server image as built. PDF and PNG need Chromium in the image, about 400 MB more, so they are opt-in: build with `--build-arg TESTO_REPORT_PDF=1` (`docker build -f Dockerfile.testo-server --build-arg TESTO_REPORT_PDF=1 .`). Without it the page's "Save as PDF" button still works: the browser prints the page. To email the report every Monday, run [`testo notify --digest week --to email`](../CLI%20Commands/Command%20Reference.md#testo-notify) from a scheduled CI job or cron against the same database.
 
 ## Reports on their own origin
 

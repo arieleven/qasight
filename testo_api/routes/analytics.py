@@ -7,6 +7,8 @@ from fastapi import APIRouter, HTTPException, Query
 from testo_api.models import (
     AttachmentItem,
     BrokenTestItem,
+    CycleIssuesResponse,
+    CycleLabelsResponse,
     CycleTestsResponse,
     DeltaCaseChange,
     DeltaCaseChangesResponse,
@@ -18,8 +20,17 @@ from testo_api.models import (
     DeltaReliabilityMetrics,
     DeltaStageDelta,
     DeltaStatusSummaryResponse,
+    EnvironmentOutcomeItem,
     FlakyTestItem,
     FlakyTestsResponse,
+    IssueStatusItem,
+    IssueTestItem,
+    LabelCountItem,
+    ReleaseCycleItem,
+    ReleaseDetailResponse,
+    ReleasesResponse,
+    ReleaseSummaryItem,
+    ReleaseTestItem,
     TestHistoryResponse,
     TestPointItem,
     TestSummaryItem,
@@ -34,9 +45,12 @@ from testo_core.services.delta_service import (
     RunNotFoundComparisonError,
 )
 from testo_core.services.flaky_service import DEFAULT_WINDOW, FlakyTest, find_flaky_tests
+from testo_core.services.releases import ReleaseSummary, list_releases, load_release
 from testo_core.services.run_snapshot_diff import diff_run_snapshots
 from testo_core.services.test_attachments import attachments_for
 from testo_core.services.test_history import cycle_source, list_cycle_tests, load_test_history
+from testo_core.services.test_issues import cycle_issues
+from testo_core.services.test_labels import cycle_labels
 from testo_core.services.test_ownership import issue_url, owners_for
 
 logger = logging.getLogger(__name__)
@@ -233,6 +247,8 @@ def get_flaky_tests(
                 ),
                 reasons=list(t.reasons),
                 retried=t.retried,
+                red_runs=t.red_runs,
+                cost_minutes=t.cost_minutes,
                 quarantined=t.key in quarantine,
                 quarantine_entry=quarantine.get(t.key),
             )
@@ -254,15 +270,41 @@ def get_flaky_tests(
 @router.get("/analytics/tests", response_model=CycleTestsResponse)
 def get_cycle_tests(
     cycle: str,
-    q: str | None = Query(None, max_length=200, description="Match in name, full name or group."),
+    q: str | None = Query(
+        None, max_length=200, description="Match in name, full name, group or a label's value."
+    ),
+    label: str | None = Query(
+        None,
+        max_length=200,
+        description="Only tests with this label: `name:value` (`feature:Checkout`) or a bare value.",
+    ),
     window: int = Query(DEFAULT_WINDOW, ge=1, le=200),
 ) -> CycleTestsResponse:
     """Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns."""
-    found = list_cycle_tests(cycle, window=window, query=q)
+    found = list_cycle_tests(cycle, window=window, query=q, label=label)
     return CycleTestsResponse(
         cycle=found.cycle,
         runs_considered=found.runs_considered,
         items=[TestSummaryItem(**vars(t)) for t in found.tests],
+    )
+
+
+@router.get("/analytics/labels", response_model=CycleLabelsResponse)
+def get_cycle_labels(
+    cycle: str, window: int = Query(DEFAULT_WINDOW, ge=1, le=200)
+) -> CycleLabelsResponse:
+    """A cycle's tests counted by label (feature, story, severity, owner, tag...).
+
+    Each label's tests, how many failed in their latest run and how many are flaky,
+    features first. See ``testo_core/services/test_labels.py``.
+    """
+    found = cycle_labels(cycle, window=window)
+    return CycleLabelsResponse(
+        cycle=found.cycle,
+        runs_considered=found.runs_considered,
+        labelled_tests=found.labelled_tests,
+        total_tests=found.total_tests,
+        items=[LabelCountItem(**vars(c), filter=c.filter) for c in found.labels],
     )
 
 
@@ -288,6 +330,7 @@ def get_test_history(
         points=[TestPointItem(**vars(p)) for p in history.points],
         last_failure=TestPointItem(**vars(last)) if last else None,
         last_failure_attachments=[AttachmentItem(**vars(a)) for a in attachments],
+        environments=[EnvironmentOutcomeItem(**vars(e)) for e in history.environments],
         owners=list(owners),
         issue_url=issue_url(
             repository,
@@ -297,4 +340,61 @@ def get_test_history(
             message=last.message if last else "",
             owners=owners,
         ),
+    )
+
+
+@router.get("/analytics/issues", response_model=CycleIssuesResponse)
+def get_cycle_issues(
+    cycle: str, window: int = Query(DEFAULT_WINDOW, ge=1, le=200)
+) -> CycleIssuesResponse:
+    """The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.
+
+    An issue is failing when one of its tests failed in its latest run. Read-only: the
+    issue tracker is never called. See ``testo_core/services/test_issues.py``.
+    """
+    found = cycle_issues(cycle, window=window)
+    return CycleIssuesResponse(
+        cycle=found.cycle,
+        runs_considered=found.runs_considered,
+        linked_tests=found.linked_tests,
+        total_tests=found.total_tests,
+        items=[
+            IssueStatusItem(
+                issue=i.issue,
+                url=i.url,
+                tests=i.tests,
+                failing=i.failing,
+                flaky=i.flaky,
+                state=i.state,
+                examples=[IssueTestItem(**vars(t)) for t in i.examples],
+            )
+            for i in found.issues
+        ],
+    )
+
+
+def _release_item(s: ReleaseSummary) -> ReleaseSummaryItem:
+    return ReleaseSummaryItem(**vars(s), pass_rate=s.pass_rate)
+
+
+@router.get("/releases", response_model=ReleasesResponse)
+def get_releases() -> ReleasesResponse:
+    """Every release a run recorded (``testo run --release``), newest first."""
+    return ReleasesResponse(items=[_release_item(s) for s in list_releases()])
+
+
+@router.get("/releases/{release}", response_model=ReleaseDetailResponse)
+def get_release(release: str) -> ReleaseDetailResponse:
+    """One release: each cycle's latest run in it, its failing and flaky tests, and what
+    changed from the release before (new failures, fixed tests)."""
+    found = load_release(release)
+    if found is None:
+        raise HTTPException(status_code=404, detail=f"no run recorded release {release!r}")
+    return ReleaseDetailResponse(
+        summary=_release_item(found.summary),
+        cycles=[ReleaseCycleItem(**vars(c)) for c in found.cycles],
+        failing=[ReleaseTestItem(**vars(t)) for t in found.failing],
+        fixed=[ReleaseTestItem(**vars(t)) for t in found.fixed],
+        flaky=found.flaky,
+        previous=_release_item(found.previous) if found.previous else None,
     )

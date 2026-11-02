@@ -113,6 +113,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Test Labels, Environments and Releases: Specs & ADRs/Test Labels, Environments and Releases - 2026-11-02.md
       - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
       - Importer and Integration Bug Hunt: Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md
       - Engine Fixes: Specs & ADRs/Engine Fixes - 2026-11-01.md
@@ -144,6 +145,8 @@ nav:
       - OpenTelemetry Export: Specs & ADRs/OpenTelemetry Export - 2026-10-30.md
       - Flaky Test Issues: Specs & ADRs/Flaky Test Issues - 2026-11-01.md
       - Free Copies of Paid Features: Specs & ADRs/Free Copies of Paid Features - 2026-11-01.md
+      - Exporting Results: Specs & ADRs/Exporting Results - 2026-11-01.md
+      - Test Delivery Metrics: Specs & ADRs/Test Delivery Metrics - 2026-11-02.md
       - New User Journey Automation: Specs & ADRs/New User Journey Automation - 2026-11-01.md
       - Security and Install Review: Specs & ADRs/Security and Install Review - 2026-10-31.md
       - Crash Detection: Specs & ADRs/Crash Detection - 2026-10-31.md
@@ -160,6 +163,7 @@ nav:
       - Phase 5 UI Redesign: Specs & ADRs/Phase 5 UI Redesign - Cycles-First Navigation.md
       - Product Roadmap Work: Specs & ADRs/Product Roadmap Work - 2026-10-25.md
       - Better Flaky Signal: Specs & ADRs/Better Flaky Signal - 2026-11-01.md
+      - Test Source in AI Summaries: Specs & ADRs/Test Source in AI Summaries - 2026-11-01.md
       - Product Roadmap: Roadmap & Strategy/Product Roadmap.md
       - Feature Gaps and Quick Wins: Roadmap & Strategy/Feature Gaps and Quick Wins - 2026-10-31.md
       - New User Journey Audit: Roadmap & Strategy/New User Journey Audit - 2026-11-01.md

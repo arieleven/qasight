@@ -78,6 +78,29 @@ function describeStatus(status: AiConfigStatus): string {
   return "Configured: failed runs can generate an AI summary.";
 }
 
+function providerLabel(provider: Provider, baseUrl: string | null | undefined): string {
+  if (provider === "openai") return "OpenAI";
+  if (provider === "anthropic") return "Anthropic";
+  if (provider === "claude_code") return "Claude through your Claude Code login";
+  try {
+    return baseUrl ? new URL(baseUrl).host : "the provider's server";
+  } catch {
+    return "the provider's server";
+  }
+}
+
+/** What turning on test source sharing sends, and where, for the chosen provider. */
+export function describeSourceSharing(provider: Provider): string {
+  const what =
+    "Off by default. When on, each AI failure summary also gets a short excerpt of the failing tests' own code: " +
+    "the test function and a few lines around the failing line, at most 3 files and about 4,000 characters, " +
+    "redacted like the logs. Never whole files or the rest of the repository, and never .env files, keys or certificates.";
+  if (provider === "claude_code") {
+    return `${what} With Claude Code it goes to Claude through your own login, the same way your Claude Code sessions do; nothing else is sent anywhere.`;
+  }
+  return `${what} With this provider the excerpt is sent to its servers along with the failure text.`;
+}
+
 export function AIIntegrationSettingsPage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -99,7 +122,8 @@ export function AIIntegrationSettingsPage() {
     retry_count: 1,
     max_input_chars: 16000,
     max_output_tokens: 300,
-    base_url: null
+    base_url: null,
+    share_test_source: false
   });
 
   useEffect(() => {
@@ -116,7 +140,8 @@ export function AIIntegrationSettingsPage() {
       retry_count: status.retry_count,
       max_input_chars: status.max_input_chars,
       max_output_tokens: status.max_output_tokens,
-      base_url: status.base_url
+      base_url: status.base_url,
+      share_test_source: status.share_test_source ?? false
     });
   }, [status]);
 
@@ -168,6 +193,7 @@ export function AIIntegrationSettingsPage() {
             onChange={(event) => {
               // A model name belongs to one provider, so switching provider resets it.
               // Picking a provider means you want AI on, so it also ticks Enable (untick to keep it off).
+              // Sharing test source is a choice about one provider, so a new provider starts with it off.
               const provider = event.target.value as Provider;
               setFormState((prev) => ({
                 ...prev,
@@ -176,7 +202,8 @@ export function AIIntegrationSettingsPage() {
                 model: PROVIDER_DEFAULTS[provider].model,
                 timeout_s: PROVIDER_DEFAULTS[provider].timeoutS,
                 max_output_tokens: PROVIDER_DEFAULTS[provider].maxOutputTokens,
-                base_url: provider === "openai_compatible" ? COMPATIBLE_PRESETS[0].baseUrl : null
+                base_url: provider === "openai_compatible" ? COMPATIBLE_PRESETS[0].baseUrl : null,
+                share_test_source: false
               }));
             }}
           >
@@ -188,9 +215,9 @@ export function AIIntegrationSettingsPage() {
         </label>
         {effectiveForm.provider === "claude_code" ? (
           <p className="text-xs text-ink-400">
-            Runs <code>claude -p</code> on the machine where the API runs, with no tools, so it only reads the failure
-            text it is given. Meant for local use (<code>testo ui</code>). Model can be an alias such as sonnet or haiku,
-            or empty for Claude Code's default.
+            Runs <code>claude -p</code> on the machine where the API runs, with no tools, so it only reads what it is
+            given: the failure text, plus the failing tests' source if you allow it below. Meant for local use
+            (<code>testo ui</code>). Model can be an alias such as sonnet or haiku, or empty for Claude Code's default.
           </p>
         ) : null}
         {effectiveForm.provider === "openai_compatible" ? (
@@ -273,6 +300,24 @@ export function AIIntegrationSettingsPage() {
             )}
           </>
         )}
+        <fieldset className="grid gap-1 rounded-xl border border-ink-700 p-3">
+          <label className="flex items-start gap-2 text-sm text-ink-300">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={effectiveForm.share_test_source ?? false}
+              onChange={(event) => setFormState((prev) => ({ ...prev, share_test_source: event.target.checked }))}
+            />
+            <span>Let the AI read the failing test's source</span>
+          </label>
+          <p className="text-xs text-ink-400">{describeSourceSharing(effectiveForm.provider as Provider)}</p>
+          {effectiveForm.share_test_source && effectiveForm.provider !== "claude_code" ? (
+            <p className="text-xs font-medium text-warn-300">
+              Source excerpts will be sent to {providerLabel(effectiveForm.provider as Provider, effectiveForm.base_url)}.
+              Only switch this on if your code may leave this machine.
+            </p>
+          ) : null}
+        </fieldset>
         <div>
           <button
             type="submit"

@@ -83,6 +83,7 @@ def update_ai_config(
         max_input_chars=payload.max_input_chars,
         max_output_tokens=payload.max_output_tokens,
         base_url=base_url,
+        share_test_source=payload.share_test_source,
         runtime_api_key=payload.api_key_input or store.get().runtime_api_key,
     )
     return AiConfigStatusResponse.model_validate(_config_status_payload(store))

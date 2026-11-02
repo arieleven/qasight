@@ -12,6 +12,7 @@ from testo_api.models import (
     RunFailuresResponse,
     RunListItem,
     RunListResponse,
+    RunMarkdownResponse,
     RunPyramidResponse,
     RunReportsResponse,
     StageHealth,
@@ -48,6 +49,8 @@ def list_runs(limit: int = Query(30, ge=1, le=500), cycle: str | None = None) ->
             links_under_static=s.links_under_static,
             branch=s.branch,
             commit=s.commit,
+            environment=s.environment,
+            release=s.release,
         )
         for s in sessions
     ]
@@ -84,6 +87,8 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
             branch=record.branch,
             commit=record.commit,
             base_branch=record.base_branch,
+            environment=record.environment,
+            release=record.release,
             repository=record.repository,
             coverage_pct=record.coverage_pct,
             coverage_covered=record.coverage_covered,
@@ -150,6 +155,25 @@ def get_run_failures(run_id: str) -> RunFailuresResponse:
             for g in failures.groups
         ],
     )
+
+
+@router.get("/runs/{run_id}/markdown", response_model=RunMarkdownResponse)
+def get_run_markdown(run_id: str) -> RunMarkdownResponse:
+    """The run as Markdown (headline, stages, failing tests, changes since its baseline).
+
+    The same text as ``testo report markdown --run-id``, so the UI's "Copy summary"
+    pastes into a pull request, Confluence, Notion or Jira the way the CLI's does.
+    """
+    from testo_core.services.run_summary_markdown import load_run_summary, render_markdown
+
+    summary = load_run_summary(run_id=run_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+    text = render_markdown(summary)
+    # The first line is a hidden marker the GitHub Action finds its comment by; a paste doesn't need it.
+    if text.startswith("<!--"):
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+    return RunMarkdownResponse(run_id=run_id, markdown=text.lstrip("\n"))
 
 
 @router.get("/runs/{run_id}/pyramid", response_model=RunPyramidResponse)

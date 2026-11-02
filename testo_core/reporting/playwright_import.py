@@ -95,6 +95,24 @@ def _ms(value: Any) -> int:
         return 0
 
 
+def _annotation_links(annotations: object) -> list[dict]:
+    """``test.info().annotations`` whose description is a URL, as Allure links.
+
+    ``{type: "issue", description: "https://.../PROJ-12"}`` is how Playwright's docs
+    link a test to its issue; any other annotation type with a URL becomes a plain link.
+    """
+    links: list[dict] = []
+    for a in annotations if isinstance(annotations, list) else []:
+        if not isinstance(a, dict):
+            continue
+        url = str(a.get("description") or "").strip()
+        if not url.lower().startswith(("http://", "https://")):
+            continue
+        kind = "issue" if str(a.get("type") or "").lower() in ("issue", "bug") else "link"
+        links.append({"name": url.rstrip("/").rsplit("/", 1)[-1], "url": url, "type": kind})
+    return links
+
+
 def _error_details(attempt: dict) -> dict[str, Any]:
     error = attempt.get("error") if isinstance(attempt.get("error"), dict) else None
     if error is None:
@@ -271,6 +289,8 @@ def _results_for_report(
                     ],
                     "steps": steps,
                 }
+                if links := _annotation_links(test.get("annotations")):
+                    result["links"] = links
                 # Last attempt's attachments also go on the test, where Allure shows them first.
                 if steps and steps[-1]["attachments"]:
                     result["attachments"] = steps[-1]["attachments"]

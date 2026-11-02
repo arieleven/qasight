@@ -145,6 +145,45 @@ def _suites(root: ET.Element) -> list[ET.Element]:
     return suites
 
 
+# Test case properties that name an issue or story rather than describe the test.
+_LINK_PROPERTIES = frozenset({"issue", "issues", "jira", "bug", "story", "requirement", "tms"})
+# Properties that carry files or runner internals, not labels.
+_SKIP_PROPERTIES = frozenset({"attachment", "attachments", "testrail_attachment"})
+
+
+def _case_properties(case: ET.Element) -> tuple[list[dict], list[dict]]:
+    """Allure labels and links from a ``<testcase>``'s own ``<properties>``.
+
+    pytest's ``record_property``, Maven Surefire and most JUnit writers put them
+    there. ``tag``/``tags`` values split on commas into one tag each; an http(s)
+    value becomes a link; ``issue=PROJ-12`` (no URL) stays a label, so the test
+    still shows which issue it covers.
+    """
+    labels: list[dict] = []
+    links: list[dict] = []
+    for prop in case.iterfind("properties/property"):
+        name = (prop.get("name") or "").strip()
+        raw = prop.get("value")
+        value = (raw if raw is not None else prop.text or "").strip()
+        key = name.lower()
+        if not name or not value or key in _SKIP_PROPERTIES:
+            continue
+        if key in ("tag", "tags"):
+            labels += [{"name": "tag", "value": t.strip()} for t in value.split(",") if t.strip()]
+        elif value.lower().startswith(("http://", "https://")):
+            kind = "issue" if key in _LINK_PROPERTIES else "link"
+            links.append(
+                {
+                    "name": name if kind == "link" else value.rsplit("/", 1)[-1],
+                    "url": value,
+                    "type": kind,
+                }
+            )
+        else:
+            labels.append({"name": "issue" if key in _LINK_PROPERTIES else name, "value": value})
+    return labels, links
+
+
 def _android_device(suite: ET.Element) -> str | None:
     """The device an Android instrumentation suite (Espresso, ``connectedAndroidTest``) ran on."""
     for prop in suite.iterfind("properties/property"):
@@ -244,6 +283,7 @@ def _results_for_root(
             full_name = f"{classname}.{name}" if classname else name
             duration = _seconds_ms(case.get("time"))
             status, message, trace = _status(case)
+            own_labels, own_links = _case_properties(case)
             result: dict = {
                 "uuid": str(uuid.uuid4()),
                 "historyId": hashlib.sha256(f"{tool}:{full_name}".encode()).hexdigest(),
@@ -259,8 +299,11 @@ def _results_for_root(
                     {"name": "framework", "value": "android" if device else tool},
                     {"name": "language", "value": "junit"},
                     *([{"name": "host", "value": device}] if device else []),
+                    *own_labels,
                 ],
             }
+            if own_links:
+                result["links"] = own_links
             if message or trace:
                 result["statusDetails"] = {
                     k: v for k, v in (("message", message), ("trace", trace)) if v

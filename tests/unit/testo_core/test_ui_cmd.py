@@ -1,4 +1,4 @@
-"""``testo ui`` (testo_core/cli/commands/ui_cmd.py) and the bundled UI lookup (testo_api/ui.py)."""
+"""``testo ui`` (testo_core/cli/commands/ui_cmd.py) and the bundled UI lookup (testo_core/ui_bundle.py)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from testo_api import ui as ui_mod
+from testo_core import ui_bundle
 from testo_core.cli.app import app
 from testo_core.cli.commands import ui_cmd
 
@@ -21,7 +22,7 @@ def _build(path: Path) -> Path:
 def test_ui_dir_prefers_the_env_then_the_bundled_build(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
     bundled = _build(tmp_path / "bundled")
     custom = _build(tmp_path / "custom")
-    monkeypatch.setattr(ui_mod, "BUNDLED_UI_DIR", bundled)
+    monkeypatch.setattr(ui_bundle, "bundled_ui_dir", lambda: bundled)
 
     monkeypatch.delenv(ui_mod.UI_DIR_ENV, raising=False)
     assert ui_mod.ui_dir() == bundled.resolve()
@@ -35,7 +36,7 @@ def test_ui_dir_prefers_the_env_then_the_bundled_build(monkeypatch, tmp_path: Pa
 
 
 def test_ui_without_a_build_explains_how_to_get_one(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
-    monkeypatch.setattr(ui_mod, "BUNDLED_UI_DIR", tmp_path / "none")
+    monkeypatch.setattr(ui_bundle, "bundled_ui_dir", lambda: tmp_path / "none")
     monkeypatch.delenv(ui_mod.UI_DIR_ENV, raising=False)
     result = CliRunner().invoke(app, ["ui", "--no-open"])
     assert result.exit_code == 2
@@ -43,7 +44,8 @@ def test_ui_without_a_build_explains_how_to_get_one(monkeypatch, tmp_path: Path)
 
 
 def test_ui_serves_locally_and_lets_only_its_own_origin_write(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
-    monkeypatch.setattr(ui_mod, "BUNDLED_UI_DIR", _build(tmp_path / "bundled"))
+    bundled = _build(tmp_path / "bundled")
+    monkeypatch.setattr(ui_bundle, "bundled_ui_dir", lambda: bundled)
     monkeypatch.delenv(ui_mod.UI_DIR_ENV, raising=False)
     monkeypatch.setenv("TESTO_API_HOST", "0.0.0.0")
     monkeypatch.delenv("TESTO_CORS_ORIGINS", raising=False)

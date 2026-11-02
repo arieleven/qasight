@@ -11,6 +11,7 @@ argument validation so ``testo --help`` stays cheap.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -87,8 +88,55 @@ def run(
             "stored with it. Cobertura or JaCoCo XML, LCOV, or a Go cover profile."
         ),
     ),
+    test: list[str] = typer.Option(
+        None,
+        "--test",
+        "-t",
+        help=(
+            "Run only this test (repeatable): its name, full name or pytest node id. "
+            "pytest, Playwright and Behave stages are narrowed to it; other stages get "
+            "ALLURE_TESTPLAN_PATH and TESTO_SELECTED_TESTS."
+        ),
+    ),
+    rerun_failed: str = typer.Option(
+        None,
+        "--rerun-failed",
+        metavar="RUN_ID",
+        help="Run only the tests that failed in this recorded run, each in the stage it failed in.",
+    ),
+    env: list[str] = typer.Option(
+        None,
+        "--env",
+        help=(
+            "What this run tests on, KEY=VALUE (repeatable): --env browser=firefox --env os=linux. "
+            "Flaky detection and the test page keep environments apart. Default: $TESTO_ENV."
+        ),
+    ),
+    release: str | None = typer.Option(
+        None,
+        "--release",
+        help=(
+            "The release this run tests (2.3, v2.3.0-rc1); the Releases page groups runs by it. "
+            "Default: $TESTO_RELEASE."
+        ),
+    ),
 ) -> None:
     """Run a plan end-to-end."""
+    from testo_core.engine.exit_codes import EngineExitCode
+    from testo_core.services.run_environment import InvalidEnvironmentPair, apply_cli_pairs
+
+    try:
+        apply_cli_pairs(env or [], os.environ)
+    except InvalidEnvironmentPair as exc:
+        typer.echo(f"error: --env: {exc}", err=True)
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
+    from testo_core.services.run_release import InvalidRelease, apply_cli_option
+
+    try:
+        apply_cli_option(release, os.environ)
+    except InvalidRelease as exc:
+        typer.echo(f"error: --release: {exc}", err=True)
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
     # Deferred imports so `testo --help` and `testo plans list` stay light.
     from testo_core.cli.runner import execute_plan_command
     from testo_core.cli.ui.console import default_console, make_console
@@ -106,5 +154,7 @@ def run(
         report_db=not no_report_db,
         async_report_db=async_report_db,
         coverage=coverage or [],
+        tests=test or [],
+        rerun_failed=rerun_failed,
     )
     raise typer.Exit(code=int(exit_code))

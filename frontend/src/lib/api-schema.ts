@@ -126,6 +126,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cycle Issues
+         * @description The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.
+         *
+         *     An issue is failing when one of its tests failed in its latest run. Read-only: the
+         *     issue tracker is never called. See ``testo_core/services/test_issues.py``.
+         */
+        get: operations["get_cycle_issues_api_v1_analytics_issues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cycle Labels
+         * @description A cycle's tests counted by label (feature, story, severity, owner, tag...).
+         *
+         *     Each label's tests, how many failed in their latest run and how many are flaky,
+         *     features first. See ``testo_core/services/test_labels.py``.
+         */
+        get: operations["get_cycle_labels_api_v1_analytics_labels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/test-history": {
         parameters: {
             query?: never;
@@ -349,7 +395,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Cycle Execution */
+        /**
+         * Create Cycle Execution
+         * @description Start a run of ``cycle``; with ``tests`` or ``rerun_failed``, only those tests.
+         */
         post: operations["create_cycle_execution_api_v1_cycles__cycle__executions_post"];
         delete?: never;
         options?: never;
@@ -369,6 +418,26 @@ export interface paths {
          * @description Red cycles (most new failures first), newly flaky tests and tests that got slower.
          */
         get: operations["get_dashboard_attention_api_v1_dashboard_attention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Delivery
+         * @description Time to fix, open failures by age, CI time and default-branch red time over the last ``days``.
+         */
+        get: operations["get_dashboard_delivery_api_v1_dashboard_delivery_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -558,6 +627,90 @@ export interface paths {
          * @description Release a test: its failures fail runs again.
          */
         delete: operations["remove_quarantine_api_v1_quarantine_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Releases
+         * @description Every release a run recorded (``testo run --release``), newest first.
+         */
+        get: operations["get_releases_api_v1_releases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases/{release}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Release
+         * @description One release: each cycle's latest run in it, its failing and flaky tests, and what
+         *     changed from the release before (new failures, fixed tests).
+         */
+        get: operations["get_release_api_v1_releases__release__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report
+         * @description How testing went over the last ``period``, against the period before, for every cycle or ``cycle``.
+         */
+        get: operations["get_report_api_v1_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Report
+         * @description The report as a file: the same as ``testo export FORMAT`` on this server's history.
+         *
+         *     PDF and PNG need the ``export`` extra and Chromium on the server; PowerPoint and
+         *     Excel need the ``export`` extra; HTML needs the built UI (bundled in released wheels).
+         */
+        get: operations["export_report_api_v1_report_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -838,6 +991,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Markdown
+         * @description The run as Markdown (headline, stages, failing tests, changes since its baseline).
+         *
+         *     The same text as ``testo report markdown --run-id``, so the UI's "Copy summary"
+         *     pastes into a pull request, Confluence, Notion or Jira the way the CLI's does.
+         */
+        get: operations["get_run_markdown_api_v1_runs__run_id__markdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/pyramid": {
         parameters: {
             query?: never;
@@ -989,6 +1165,11 @@ export interface components {
             provider: "openai" | "anthropic" | "openai_compatible" | "claude_code";
             /** Retry Count */
             retry_count: number;
+            /**
+             * Share Test Source
+             * @default false
+             */
+            share_test_source: boolean;
             /** Timeout S */
             timeout_s: number;
         };
@@ -1037,6 +1218,11 @@ export interface components {
              * @default 1
              */
             retry_count?: number;
+            /**
+             * Share Test Source
+             * @default false
+             */
+            share_test_source?: boolean;
             /**
              * Timeout S
              * @default 8
@@ -1205,8 +1391,18 @@ export interface components {
             coverage_total?: string | null;
             /** Cycle */
             cycle: string;
+            /**
+             * Environment
+             * @description What the run tested on: "browser=firefox, os=linux".
+             */
+            environment?: string | null;
             /** Files */
             files: string[];
+            /**
+             * Release
+             * @description The release it tested: "2.3".
+             */
+            release?: string | null;
             /** Repository */
             repository?: string | null;
             /**
@@ -1236,6 +1432,34 @@ export interface components {
              * @default
              */
             message: string;
+            /** Name */
+            name: string;
+        };
+        /** CostlyFlakyTest */
+        CostlyFlakyTest: {
+            /** Branches */
+            branches: string[];
+            /** Cost Minutes */
+            cost_minutes: number;
+            /** Cycle */
+            cycle: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Red Runs */
+            red_runs: number;
+            /** Retries */
+            retries: number;
+        };
+        /** CountedTest */
+        CountedTest: {
+            /** Count */
+            count: number;
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
             /** Name */
             name: string;
         };
@@ -1302,11 +1526,15 @@ export interface components {
             report_db?: boolean;
             /** Reporter Override */
             reporter_override?: string[] | null;
+            /** Rerun Failed */
+            rerun_failed?: string | null;
             /**
              * Stream
              * @default false
              */
             stream?: boolean;
+            /** Tests */
+            tests?: string[];
             /** Workers Override */
             workers_override?: number | null;
         };
@@ -1355,6 +1583,32 @@ export interface components {
             /** Tests */
             tests: number;
         };
+        /** CycleIssuesResponse */
+        CycleIssuesResponse: {
+            /** Cycle */
+            cycle: string;
+            /** Items */
+            items: components["schemas"]["IssueStatusItem"][];
+            /** Linked Tests */
+            linked_tests: number;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Total Tests */
+            total_tests: number;
+        };
+        /** CycleLabelsResponse */
+        CycleLabelsResponse: {
+            /** Cycle */
+            cycle: string;
+            /** Items */
+            items: components["schemas"]["LabelCountItem"][];
+            /** Labelled Tests */
+            labelled_tests: number;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Total Tests */
+            total_tests: number;
+        };
         /**
          * CycleLatestRun
          * @description The newest recorded run of a cycle: enough for a list card to show its result.
@@ -1387,6 +1641,19 @@ export interface components {
             config_path: string | null;
             /** Items */
             items: components["schemas"]["CycleSummary"][];
+        };
+        /** CycleSize */
+        CycleSize: {
+            /** Added */
+            added: number;
+            /** Cycle */
+            cycle: string;
+            /** Prev Tests */
+            prev_tests: number | null;
+            /** Removed */
+            removed: number;
+            /** Tests */
+            tests: number;
         };
         /** CycleSummary */
         CycleSummary: {
@@ -1558,6 +1825,111 @@ export interface components {
              */
             direction: "up" | "down" | "flat" | "unknown";
         };
+        /** DeliveryAgeBucket */
+        DeliveryAgeBucket: {
+            /** Count */
+            count: number;
+            /** Label */
+            label: string;
+        };
+        /** DeliveryCycleRow */
+        DeliveryCycleRow: {
+            /** Ci Minutes */
+            ci_minutes: number;
+            /** Cycle */
+            cycle: string;
+            /** First Try Commits */
+            first_try_commits: number;
+            /** First Try Green Pct */
+            first_try_green_pct: number | null;
+            /** Fixes */
+            fixes: number;
+            /** Grown Stage */
+            grown_stage: string | null;
+            /** Grown Stage After Ms */
+            grown_stage_after_ms: number | null;
+            /** Grown Stage Before Ms */
+            grown_stage_before_ms: number | null;
+            /** Longest Red S */
+            longest_red_s: number | null;
+            /** Median Fix S */
+            median_fix_s: number | null;
+            /** Open Failures */
+            open_failures: number;
+            /** Prev Ci Minutes */
+            prev_ci_minutes: number;
+            /** Prev Median Fix S */
+            prev_median_fix_s: number | null;
+            /** Prev Red Pct */
+            prev_red_pct: number | null;
+            /** Prev Suite Median Ms */
+            prev_suite_median_ms: number | null;
+            /** Red Pct */
+            red_pct: number | null;
+            /** Suite Median Ms */
+            suite_median_ms: number | null;
+            /** Suite P90 Ms */
+            suite_p90_ms: number | null;
+        };
+        /** DeliveryOpenFailure */
+        DeliveryOpenFailure: {
+            /** Age S */
+            age_s: number;
+            /** Cycle */
+            cycle: string;
+            /**
+             * Key
+             * @default
+             */
+            key: string;
+            /** Name */
+            name: string;
+            /** Runs */
+            runs: number;
+            /** Since */
+            since: number;
+        };
+        /**
+         * DeliveryResponse
+         * @description Time to fix failing tests, suite and CI time, and how often the default branch was red.
+         *
+         *     See ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no
+         *     run recorded a branch; then every run counts as the default branch.
+         */
+        DeliveryResponse: {
+            /** Ci Minutes */
+            ci_minutes: number;
+            /** Cycles */
+            cycles: components["schemas"]["DeliveryCycleRow"][];
+            /** Default Branch */
+            default_branch: string | null;
+            /** First Try Commits */
+            first_try_commits: number;
+            /** First Try Green Pct */
+            first_try_green_pct: number | null;
+            /** Fixes */
+            fixes: number;
+            /** Longest Red S */
+            longest_red_s: number | null;
+            /** Median Fix S */
+            median_fix_s: number | null;
+            /** Oldest Open */
+            oldest_open: components["schemas"]["DeliveryOpenFailure"][];
+            /** Open By Age */
+            open_by_age: components["schemas"]["DeliveryAgeBucket"][];
+            /** Open Failures */
+            open_failures: number;
+            /** Prev Ci Minutes */
+            prev_ci_minutes: number;
+            /** Prev First Try Green Pct */
+            prev_first_try_green_pct: number | null;
+            /** Prev Median Fix S */
+            prev_median_fix_s: number | null;
+            /** Prev Red Pct */
+            prev_red_pct: number | null;
+            /** Red Pct */
+            red_pct: number | null;
+        };
         /** DeltaCaseChange */
         DeltaCaseChange: {
             /** Baseline Status */
@@ -1693,6 +2065,22 @@ export interface components {
             /** Unknown */
             unknown: string[];
         };
+        /**
+         * EnvironmentOutcomeItem
+         * @description The test on one environment across the window.
+         */
+        EnvironmentOutcomeItem: {
+            /** Environment */
+            environment: string;
+            /** Failed */
+            failed: number;
+            /** Last Status */
+            last_status: string;
+            /** Passed */
+            passed: number;
+            /** Runs */
+            runs: number;
+        };
         /** FailingTestItem */
         FailingTestItem: {
             /** Crash Kind */
@@ -1711,6 +2099,10 @@ export interface components {
             group: string;
             /** Key */
             key: string;
+            /** Labels */
+            labels: components["schemas"]["TestLabelItem"][];
+            /** Links */
+            links: components["schemas"]["TestLinkItem"][];
             /** Message */
             message: string;
             /** Name */
@@ -1734,6 +2126,11 @@ export interface components {
         };
         /** FlakyTestItem */
         FlakyTestItem: {
+            /**
+             * Cost Minutes
+             * @default 0
+             */
+            cost_minutes: number;
             /** Failed */
             failed: number;
             /** Flip Rate */
@@ -1765,6 +2162,11 @@ export interface components {
             quarantined: boolean;
             /** Reasons */
             reasons: string[];
+            /**
+             * Red Runs
+             * @default 0
+             */
+            red_runs: number;
             /**
              * Retried
              * @default 0
@@ -1862,6 +2264,36 @@ export interface components {
             weight: number;
         };
         /**
+         * HygieneResponse
+         * @description Suite size, added and removed tests, always-skipped and slow never-failing tests.
+         *
+         *     See ``services/suite_hygiene.py``.
+         */
+        HygieneResponse: {
+            /** Added */
+            added: number;
+            /** Added Tests */
+            added_tests: components["schemas"]["NamedCycleTest"][];
+            /** Always Skipped */
+            always_skipped: components["schemas"]["NamedCycleTest"][];
+            /** Always Skipped Count */
+            always_skipped_count: number;
+            /** Cycles */
+            cycles: components["schemas"]["CycleSize"][];
+            /** Prev Tests */
+            prev_tests: number | null;
+            /** Removed */
+            removed: number;
+            /** Removed Tests */
+            removed_tests: components["schemas"]["NamedCycleTest"][];
+            /** Slow Never Failed */
+            slow_never_failed: components["schemas"]["NamedCycleTest"][];
+            /** Slow Never Failed Ms */
+            slow_never_failed_ms: number;
+            /** Tests */
+            tests: number;
+        };
+        /**
          * IngestResponse
          * @description A recorded upload (``POST /api/v1/ingest``, what ``testo ingest --server`` sends).
          */
@@ -1882,6 +2314,179 @@ export interface components {
             skipped: number;
             /** Tests */
             tests: number;
+        };
+        /**
+         * IssueStatusItem
+         * @description An issue the cycle's tests point at, and how those tests did in their latest run.
+         */
+        IssueStatusItem: {
+            /** Examples */
+            examples: components["schemas"]["IssueTestItem"][];
+            /** Failing */
+            failing: number;
+            /** Flaky */
+            flaky: number;
+            /** Issue */
+            issue: string;
+            /** State */
+            state: string;
+            /** Tests */
+            tests: number;
+            /** Url */
+            url?: string | null;
+        };
+        /** IssueTestItem */
+        IssueTestItem: {
+            /** Flaky */
+            flaky: boolean;
+            /** Key */
+            key: string;
+            /** Last Status */
+            last_status: string;
+            /** Name */
+            name: string;
+        };
+        /** LabelCountItem */
+        LabelCountItem: {
+            /** Failing */
+            failing: number;
+            /** Filter */
+            filter: string;
+            /** Flaky */
+            flaky: number;
+            /** Name */
+            name: string;
+            /** Tests */
+            tests: number;
+            /** Value */
+            value: string;
+        };
+        /**
+         * ManagerReportResponse
+         * @description How testing went over a period: the ``/report`` page and every ``testo export`` format.
+         */
+        ManagerReportResponse: {
+            /** Cycles */
+            cycles: components["schemas"]["ReportCycleRow"][];
+            /** Days */
+            days: number;
+            delivery: components["schemas"]["DeliveryResponse"];
+            /** End */
+            end: number;
+            /** Findings */
+            findings: components["schemas"]["ReportFinding"][];
+            /** Fixed */
+            fixed: components["schemas"]["ReportTest"][];
+            /** Generated At */
+            generated_at: number;
+            hygiene: components["schemas"]["HygieneResponse"];
+            kpis: components["schemas"]["ReportKpis"];
+            /** Newly Flaky */
+            newly_flaky: components["schemas"]["ReportTest"][];
+            patterns: components["schemas"]["PatternsResponse"];
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "week" | "month" | "quarter";
+            /** Scope */
+            scope: string[];
+            signal: components["schemas"]["SignalResponse"];
+            /** Slower */
+            slower: components["schemas"]["ReportTest"][];
+            /** Start */
+            start: number;
+            /** Still Failing */
+            still_failing: components["schemas"]["ReportTest"][];
+            /** Summary */
+            summary: string[];
+            teams: components["schemas"]["TeamsResponse"];
+            /** Title */
+            title: string;
+            /** Trend */
+            trend: components["schemas"]["ReportTrendPoint"][];
+        };
+        /** NamedCycleTest */
+        NamedCycleTest: {
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /** Name */
+            name: string;
+        };
+        /** OwnerRow */
+        OwnerRow: {
+            /** Failing */
+            failing: number;
+            /** Fixes */
+            fixes: number;
+            /** Flaky */
+            flaky: number;
+            /** Flaky Minutes */
+            flaky_minutes: number;
+            /** Median Fix S */
+            median_fix_s: number | null;
+            /** Oldest Open S */
+            oldest_open_s: number | null;
+            /** Open Failures */
+            open_failures: number;
+            /** Owner */
+            owner: string;
+            /** Tests */
+            tests: number;
+        };
+        /** PatternDay */
+        PatternDay: {
+            /** Coverage Pct */
+            coverage_pct: number | null;
+            /** Day */
+            day: string;
+            /** Executed */
+            executed: number;
+            /** Retried */
+            retried: number;
+            /** Retry Pct */
+            retry_pct: number | null;
+        };
+        /**
+         * PatternsResponse
+         * @description Failure concentration, repeated errors, retry rate, unstable timing, when failures
+         *     happen, tests that catch bugs and coverage by day (``services/failure_patterns.py``).
+         */
+        PatternsResponse: {
+            /** By Environment */
+            by_environment: components["schemas"]["RunSlice"][];
+            /** By Hour */
+            by_hour: components["schemas"]["RunSlice"][];
+            /** By Weekday */
+            by_weekday: components["schemas"]["RunSlice"][];
+            /** Caught Bugs */
+            caught_bugs: components["schemas"]["CountedTest"][];
+            /** Days */
+            days: components["schemas"]["PatternDay"][];
+            /** Executed */
+            executed: number;
+            /** Failures */
+            failures: number;
+            /** Only Noise */
+            only_noise: components["schemas"]["CountedTest"][];
+            /** Prev Retry Pct */
+            prev_retry_pct: number | null;
+            /** Repeated Errors */
+            repeated_errors: components["schemas"]["RepeatedError"][];
+            /** Retried */
+            retried: number;
+            /** Retry Pct */
+            retry_pct: number | null;
+            /** Top Share Pct */
+            top_share_pct: number | null;
+            /** Top Tests */
+            top_tests: components["schemas"]["CountedTest"][];
+            /** Unstable Timing */
+            unstable_timing: components["schemas"]["CountedTest"][];
+            /** When Findings */
+            when_findings: string[];
         };
         /**
          * ProjectHealthResponse
@@ -2004,6 +2609,193 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /** ReleaseCycleItem */
+        ReleaseCycleItem: {
+            /** Created At */
+            created_at: number;
+            /** Cycle */
+            cycle: string;
+            /** Failed */
+            failed: number;
+            /** Flaky */
+            flaky: number;
+            /** Passed */
+            passed: number;
+            /** Run Id */
+            run_id: string;
+            /** Runs */
+            runs: number;
+            /** Skipped */
+            skipped: number;
+            /** Total */
+            total: number;
+        };
+        /** ReleaseDetailResponse */
+        ReleaseDetailResponse: {
+            /** Cycles */
+            cycles: components["schemas"]["ReleaseCycleItem"][];
+            /** Failing */
+            failing: components["schemas"]["ReleaseTestItem"][];
+            /** Fixed */
+            fixed: components["schemas"]["ReleaseTestItem"][];
+            /** Flaky */
+            flaky: number;
+            previous?: components["schemas"]["ReleaseSummaryItem"] | null;
+            summary: components["schemas"]["ReleaseSummaryItem"];
+        };
+        /**
+         * ReleaseSummaryItem
+         * @description One release: the latest run of each cycle that tested it, added up.
+         */
+        ReleaseSummaryItem: {
+            /** Cycles */
+            cycles: number;
+            /** Failed */
+            failed: number;
+            /** First Run At */
+            first_run_at: number;
+            /** Last Run At */
+            last_run_at: number;
+            /** Pass Rate */
+            pass_rate?: number | null;
+            /** Passed */
+            passed: number;
+            /** Release */
+            release: string;
+            /** Runs */
+            runs: number;
+            /** Skipped */
+            skipped: number;
+            /** Total */
+            total: number;
+        };
+        /** ReleaseTestItem */
+        ReleaseTestItem: {
+            /** Cycle */
+            cycle: string;
+            /** Key */
+            key: string;
+            /** Message */
+            message: string;
+            /** Name */
+            name: string;
+            /**
+             * New
+             * @default false
+             */
+            new?: boolean;
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+        };
+        /** ReleasesResponse */
+        ReleasesResponse: {
+            /** Items */
+            items: components["schemas"]["ReleaseSummaryItem"][];
+        };
+        /** RepeatedError */
+        RepeatedError: {
+            /** Count */
+            count: number;
+            /** Message */
+            message: string;
+            /** Tests */
+            tests: number;
+        };
+        /** ReportCycleRow */
+        ReportCycleRow: {
+            /** Cycle */
+            cycle: string;
+            /** Failing */
+            failing: number;
+            /** Fixed */
+            fixed: number;
+            /** Green */
+            green: number;
+            /** Health Score */
+            health_score: number | null;
+            /** Newly Flaky */
+            newly_flaky: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Prev Pass Rate */
+            prev_pass_rate: number | null;
+            /** Runs */
+            runs: number;
+            /** Slower */
+            slower: number;
+        };
+        /** ReportFinding */
+        ReportFinding: {
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /** Title */
+            title: string;
+        };
+        /** ReportKpis */
+        ReportKpis: {
+            /** Coverage Pct */
+            coverage_pct: number | null;
+            /** Cycles */
+            cycles: number;
+            /** Failing Tests */
+            failing_tests: number;
+            /** Fixed */
+            fixed: number;
+            /** Green */
+            green: number;
+            /** Health Grade */
+            health_grade: string | null;
+            /** Health Score */
+            health_score: number | null;
+            /** Newly Flaky */
+            newly_flaky: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Prev Coverage Pct */
+            prev_coverage_pct: number | null;
+            /** Prev Green */
+            prev_green: number;
+            /** Prev Pass Rate */
+            prev_pass_rate: number | null;
+            /** Prev Runs */
+            prev_runs: number;
+            /** Runs */
+            runs: number;
+        };
+        /** ReportTest */
+        ReportTest: {
+            /** Cycle */
+            cycle: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Name */
+            name: string;
+        };
+        /** ReportTrendPoint */
+        ReportTrendPoint: {
+            /**
+             * Ci Minutes
+             * @default 0
+             */
+            ci_minutes: number;
+            /** Day */
+            day: string;
+            /** Green */
+            green: number;
+            /** Median Duration Ms */
+            median_duration_ms: number | null;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Runs */
+            runs: number;
         };
         /** ResourceActionItem */
         ResourceActionItem: {
@@ -2376,6 +3168,8 @@ export interface components {
             created_at: number;
             /** Cycle */
             cycle: string | null;
+            /** Environment */
+            environment: string | null;
             /** Failed */
             failed: number | null;
             /** Finished At */
@@ -2386,6 +3180,8 @@ export interface components {
             metrics_duration_ms: number | null;
             /** Passed */
             passed: number | null;
+            /** Release */
+            release: string | null;
             /** Repository */
             repository: string | null;
             /** Returncode */
@@ -2454,6 +3250,8 @@ export interface components {
             created_at: number;
             /** Cycle */
             cycle: string | null;
+            /** Environment */
+            environment: string | null;
             /** Failed */
             failed: number | null;
             /** Health Pct */
@@ -2464,6 +3262,8 @@ export interface components {
             };
             /** Passed */
             passed: number | null;
+            /** Release */
+            release: string | null;
             /** Returncode */
             returncode: number;
             /** Run Id */
@@ -2481,6 +3281,16 @@ export interface components {
             items: components["schemas"]["RunListItem"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /**
+         * RunMarkdownResponse
+         * @description A run as GitHub-flavored Markdown, the same text as ``testo report markdown``.
+         */
+        RunMarkdownResponse: {
+            /** Markdown */
+            markdown: string;
+            /** Run Id */
+            run_id: string;
         };
         /** RunPyramidResponse */
         RunPyramidResponse: {
@@ -2510,6 +3320,61 @@ export interface components {
             static_links: {
                 [key: string]: string;
             };
+        };
+        /** RunSlice */
+        RunSlice: {
+            /** Label */
+            label: string;
+            /** Red */
+            red: number;
+            /** Runs */
+            runs: number;
+        };
+        /** SignalCause */
+        SignalCause: {
+            /**
+             * Cause
+             * @enum {string}
+             */
+            cause: "product_bug" | "test_bug" | "environment" | "other" | "unmarked" | "flaky" | "no_tests";
+            /** Label */
+            label: string;
+            /** Runs */
+            runs: number;
+        };
+        /**
+         * SignalResponse
+         * @description What the red runs were (real bugs vs noise) and what flaky tests cost.
+         *
+         *     See ``testo_core/services/failure_signal.py``.
+         */
+        SignalResponse: {
+            /** By Cause */
+            by_cause: components["schemas"]["SignalCause"][];
+            /** Costly */
+            costly: components["schemas"]["CostlyFlakyTest"][];
+            /** Flaky Branches */
+            flaky_branches: number;
+            /** Flaky Minutes */
+            flaky_minutes: number;
+            /** Flaky Red Runs */
+            flaky_red_runs: number;
+            /** Noise Pct */
+            noise_pct: number | null;
+            /** Prev Flaky Minutes */
+            prev_flaky_minutes: number;
+            /** Prev Noise Pct */
+            prev_noise_pct: number | null;
+            /** Prev Real Pct */
+            prev_real_pct: number | null;
+            /** Prev Red Runs */
+            prev_red_runs: number;
+            /** Real Pct */
+            real_pct: number | null;
+            /** Red Runs */
+            red_runs: number;
+            /** Unmarked Pct */
+            unmarked_pct: number | null;
         };
         /** SkillResultItem */
         SkillResultItem: {
@@ -2562,10 +3427,22 @@ export interface components {
             /** Workers */
             workers: number | null;
         };
+        /**
+         * TeamsResponse
+         * @description Each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``).
+         */
+        TeamsResponse: {
+            /** Owners Known */
+            owners_known: boolean;
+            /** Rows */
+            rows: components["schemas"]["OwnerRow"][];
+        };
         /** TestHistoryResponse */
         TestHistoryResponse: {
             /** Cycle */
             cycle: string;
+            /** Environments */
+            environments: components["schemas"]["EnvironmentOutcomeItem"][];
             /** Issue Url */
             issue_url: string | null;
             last_failure: components["schemas"]["TestPointItem"] | null;
@@ -2577,6 +3454,31 @@ export interface components {
             points: components["schemas"]["TestPointItem"][];
             test: components["schemas"]["TestSummaryItem"];
         };
+        /**
+         * TestLabelItem
+         * @description What a test is about: ``feature=Checkout``, ``severity=critical``, ``tag=smoke``...
+         */
+        TestLabelItem: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * TestLinkItem
+         * @description A link the test's results carry: an issue or story it covers, or a doc.
+         */
+        TestLinkItem: {
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @default link
+             */
+            type: string;
+            /** Url */
+            url: string;
+        };
         /** TestPointItem */
         TestPointItem: {
             /** Branch */
@@ -2585,6 +3487,8 @@ export interface components {
             created_at: number;
             /** Duration Ms */
             duration_ms: number | null;
+            /** Environment */
+            environment: string | null;
             /** Flip Rate */
             flip_rate: number | null;
             /**
@@ -2612,14 +3516,20 @@ export interface components {
             group: string;
             /** Key */
             key: string;
+            /** Labels */
+            labels: components["schemas"]["TestLabelItem"][];
             /** Last Duration Ms */
             last_duration_ms: number | null;
             /** Last Status */
             last_status: string;
+            /** Links */
+            links: components["schemas"]["TestLinkItem"][];
             /** Median Duration Ms */
             median_duration_ms: number | null;
             /** Name */
             name: string;
+            /** P95 Duration Ms */
+            p95_duration_ms: number | null;
             /** Passed */
             passed: number;
             /** Runs */
@@ -2926,6 +3836,70 @@ export interface operations {
             };
         };
     };
+    get_cycle_issues_api_v1_analytics_issues_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleIssuesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cycle_labels_api_v1_analytics_labels_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleLabelsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_test_history_api_v1_analytics_test_history_get: {
         parameters: {
             query: {
@@ -2963,8 +3937,10 @@ export interface operations {
         parameters: {
             query: {
                 cycle: string;
-                /** @description Match in name, full name or group. */
+                /** @description Match in name, full name, group or a label's value. */
                 q?: string | null;
+                /** @description Only tests with this label: `name:value` (`feature:Checkout`) or a bare value. */
+                label?: string | null;
                 window?: number;
             };
             header?: never;
@@ -3322,6 +4298,37 @@ export interface operations {
             };
         };
     };
+    get_dashboard_delivery_api_v1_dashboard_delivery_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_dashboard_overview_api_v1_dashboard_overview_get: {
         parameters: {
             query?: {
@@ -3663,6 +4670,131 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    get_releases_api_v1_releases_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleasesResponse"];
+                };
+            };
+        };
+    };
+    get_release_api_v1_releases__release__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                release: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_api_v1_report_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "quarter";
+                /** @description Cycles to include; repeat. All when left out. */
+                cycle?: string[] | null;
+                title?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_report_api_v1_report_export_get: {
+        parameters: {
+            query?: {
+                format?: "pdf" | "png" | "html" | "pptx" | "xlsx" | "csv" | "json";
+                period?: "day" | "week" | "month" | "quarter";
+                cycle?: string[] | null;
+                title?: string | null;
+                brand?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report file, as an attachment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description This server can't make that format (the message says what to install). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4124,6 +5256,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunFailuresResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_markdown_api_v1_runs__run_id__markdown_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMarkdownResponse"];
                 };
             };
             /** @description Validation Error */

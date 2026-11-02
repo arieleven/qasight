@@ -75,6 +75,12 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
                   {item.flips} flips in {item.runs} runs
                 </Badge>
                 <Badge tone={item.last_status === "passed" ? "success" : "danger"}>last: {item.last_status}</Badge>
+                {item.cost_minutes ? (
+                  <Badge tone="danger" title="CI minutes of its retries plus its share of the red runs only flaky tests caused">
+                    cost {costLabel(item.cost_minutes)}
+                    {item.red_runs ? ` · ${item.red_runs} red ${item.red_runs === 1 ? "run" : "runs"}` : ""}
+                  </Badge>
+                ) : null}
                 <QuarantineControl
                   cycle={cycle}
                   test={item.name}
@@ -133,4 +139,11 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
       ) : null}
     </Card>
   );
+}
+
+/** "45 s", "12 min", "3.5 h": CI time a flaky test cost. */
+function costLabel(minutes: number): string {
+  if (minutes < 1) return `${Math.max(1, Math.round(minutes * 60))} s`;
+  if (minutes < 120) return `${Math.round(minutes)} min`;
+  return `${(minutes / 60).toFixed(1)} h`;
 }

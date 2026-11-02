@@ -47,6 +47,10 @@ testo run --cycle sample-pytests --workers 8 --force
 | `--workers` | `-w` | Override parallel workers (e.g. BehaveX); 1 or more |
 | `--force` | `-f` | Run even when trigger would skip the cycle |
 | `--coverage` | | Code coverage report the tests write (repeatable): Cobertura or JaCoCo XML, LCOV, or a Go cover profile. Read when the stages finish; its line coverage is stored with the run and shown on the run page, the [PR comment](#testo-report) and the [digest](#testo-notify). A missing file only logs a warning. Not with `--cycle all` |
+| `--env KEY=VALUE` | `$TESTO_ENV` | What the run tests on, repeatable (`--env browser=firefox --env os=linux`). Stored with the run as `browser=firefox, os=linux`; merged into `TESTO_ENV` (the flag wins on the same key), so the stages see it too. Without either, an Allure `environment.properties` in the results is used. Flaky detection, failing streaks and the test page keep environments apart. A flag without `=` is exit `2` |
+| `--release NAME` | `$TESTO_RELEASE` | The release the run tests (`2.3`, `v2.3.0-rc1`): letters, digits, `.`, `-`, `+` and `_`, up to 60. Stored with the run; the Releases page (`GET /api/v1/releases`) groups runs by it. Another character is exit `2` |
+| `--test NAME`, `-t` | | Run only this test (repeatable): its name, full name or pytest node id. pytest stages get the node ids (or `-k` when the stage already names a path), Playwright `--grep ... --pass-with-no-tests`, Behave and BehaveX `--name`; every stage also gets Allure's test plan file in `ALLURE_TESTPLAN_PATH` (read by Allure's own adapters) and the names in `TESTO_SELECTED_TESTS`. A pytest stage that holds none of them counts as passed. The run records `selected_tests` and `selected_from`. Not with `--cycle all` (exit `2`) |
+| `--rerun-failed RUN_ID` | | Run only the tests that failed in that recorded run, each in the stage it failed in; stages with none are skipped. A run that doesn't exist or has no failures is exit `2`. The run page's "Run these tests again" link does the same through `POST /api/v1/cycles/{cycle}/executions` with `rerun_failed` (or `tests`) |
 
 > [!warning] Roadmap flags — not implemented yet
 > `--tag`, `--fail-fast`, `--dry-run` and `--reporter` were previously listed here but are **not present in `testo_core/cli/commands/run.py`**. The API layer already accepts `fail_fast` and `reporter_override` on `POST /api/v1/cycles/{cycle}/executions` (surfaced in the React Run panel); the CLI flags remain roadmap items. (Doc corrected 2026-07-04 during the Phase 5 UI redesign.)
@@ -102,6 +106,8 @@ testo ingest 'reports/*.xml' --cycle web-unit \
 | `--server` | `$TESTO_SERVER_URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead of recording locally |
 | `--token` | `$TESTO_API_TOKEN` | The server's API token |
 | `--coverage` | none | Code coverage report to store with the run (repeatable, relative to `--repo`), as `testo run --coverage`. Checked first: no match or an unknown format is exit `2`. With `--server` only the totals are sent (the server recomputes the percentage) |
+| `--env KEY=VALUE` | `$TESTO_ENV` | What the results were tested on, as `testo run --env`. With `--server` it is sent with the upload |
+| `--release NAME` | `$TESTO_RELEASE` | The release the results tested, as `testo run --release`. With `--server` it is sent with the upload |
 
 Files it reads, with the command that writes each one (no extra package needed except where noted):
 
@@ -433,11 +439,14 @@ testo notify --to slack --cycle nightly                      # only when it need
 testo notify --to slack --to teams --cycle nightly --when change --run-url "$CI_JOB_URL"
 testo notify --to teams --cycle nightly --dry-run            # print the payload, send nothing
 testo notify --to slack --digest week --run-url https://testo.example.com   # weekly digest (cron)
+testo notify --to email --digest week --email-to cto@acme.com --attach pdf  # the manager report by email
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--to` | required | `slack` or `teams`; repeat for both. URLs come from `TESTO_SLACK_WEBHOOK_URL` and `TESTO_TEAMS_WEBHOOK_URL` |
+| `--to` | required | `slack` or `teams`; repeat for both. URLs come from `TESTO_SLACK_WEBHOOK_URL` and `TESTO_TEAMS_WEBHOOK_URL`. With `--digest` also `email`: the [manager report](#testo-export) for the period, summarised in the email and attached as a file, sent over SMTP (`TESTO_SMTP_*` below) |
+| `--email-to` | `TESTO_REPORT_EMAIL_TO` | With `--to email`: a recipient; repeat for several |
+| `--attach` | `pdf` | With `--to email`: the file to attach, `pdf`, `pptx`, `xlsx`, `html`, `png` or `none` (needs what [`testo export`](#testo-export) needs for that format) |
 | `--cycle` / `--run-id` | latest run | Which recorded run to send |
 | `--when` | `failure` | `failure`: the run failed or made a test flaky. `change`: the run's result flipped, or a test regressed, got fixed or became flaky. `always`: every run |
 | `--title` | cycle name | Name in the message |
@@ -445,7 +454,31 @@ testo notify --to slack --digest week --run-url https://testo.example.com   # we
 | `--dry-run` | off | Print the JSON payloads instead of posting |
 | `--digest` | none | `week` or `day`: instead of one run, a digest of every cycle (or `--cycle`) over that period against the one before: runs, green builds, test pass rate, line coverage, tests that turned flaky, still fail, got fixed or got slower. `--run-url` becomes the "Open Testosterone" link; `--when` and `--run-id` don't apply. Run it from cron or a scheduled CI job; a period with no runs sends nothing |
 
-Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a missing webhook variable or no recorded run, `3` when a webhook rejects the message or can't be reached (the error never includes the URL). The `slack` and `teams` [reporters](#reporter-types-reporters----reporter) send the same message right after `testo run`. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
+Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a missing webhook variable, missing SMTP settings or recipients, or no recorded run, `3` when a webhook or the mail server rejects the message or can't be reached (the error never includes the URL), or the attachment can't be made. The `slack` and `teams` [reporters](#reporter-types-reporters----reporter) send the same message right after `testo run`. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
+
+---
+
+## `testo export`
+
+Write the manager report, the same as the UI's Report page (`/report`), as a file to email, attach or present: test health score, pass rate and green builds against the period before, a written summary, pass-rate and runs-per-day charts, one row per cycle, and what is failing, turned flaky, got fixed or got slower.
+
+```bash
+testo export pdf                                   # weekly-test-report-2026-11-01.pdf
+testo export pptx --period month --brand "Acme QA" # slides with editable charts
+testo export xlsx --period quarter --cycle api --cycle web -o q4.xlsx
+testo export json -o -                             # the numbers on stdout
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `FORMAT` | required | `pdf` (A4), `png` (the whole report as one image), `html` (one file that opens offline), `pptx` (6 slides: title, headline numbers, trend charts, cycles, what needs attention, fixed and what to fix first; native charts and tables), `xlsx` (Summary, Trend with a chart, Cycles, Tests and Findings sheets), `csv` (the cycles table), `json` (the whole report) |
+| `--period` | `week` | `day`, `week`, `month` (30 days) or `quarter` (90 days), each compared with the one before |
+| `--cycle` | every cycle | Only this cycle; repeat for several |
+| `--title` | "Weekly test report" … | Report title |
+| `--brand` | `Testosterone` | Name above the title (your team or product) |
+| `--out`, `-o` | `<title>-<date>.<format>` | File to write; `-` for stdout |
+
+`pdf`, `png`, `pptx` and `xlsx` need the export extra: `pip install 'testo-core[export]'`, plus `playwright install chromium` once for `pdf` and `png` (or `TESTO_CHROMIUM` pointing at a Chrome or Chromium). `html`, `pdf` and `png` draw the report with the built web UI, which released wheels include. The server offers the same files at `GET /api/v1/report/export?format=pdf&period=week` and on the Report page's Download menu. Exit `0` when written, `2` for a bad format or period, or when the format needs something that isn't installed (the message says what). See [Exporting Results - 2026-11-01](../Specs%20&%20ADRs/Exporting%20Results%20-%202026-11-01.md).
 
 ---
 
@@ -699,10 +732,10 @@ testo ai status
 testo ai summary [--cycle NAME | --run-id ID] [--refresh]
 ```
 
-- **`setup`** detects, in order: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY` (Gemini's free tier through its OpenAI-compatible endpoint), then the Claude Code CLI. `--provider`, `--model`, `--base-url` and `--key-env` override. Only the *name* of the key's environment variable is saved, never the key. Exit `2` when nothing is found.
-- **`status`** prints the provider, model, where the settings came from and whether the key variable is set.
+- **`setup`** detects, in order: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY` (Gemini's free tier through its OpenAI-compatible endpoint), then the Claude Code CLI. `--provider`, `--model`, `--base-url` and `--key-env` override. `--share-test-source` also sends a short excerpt of each failing test's own source with the prompt (off by default; with a cloud provider it goes to that provider; see [Test Source in AI Summaries](../Specs%20&%20ADRs/Test%20Source%20in%20AI%20Summaries%20-%202026-11-01.md)). Only the *name* of the key's environment variable is saved, never the key. Exit `2` when nothing is found.
+- **`status`** prints the provider, model, where the settings came from, whether test source is shared and whether the key variable is set.
 - **`summary`** prints the AI summary of the latest failed run (of `--cycle`, or `--run-id`), generating and storing it on first use so the UI shows the same. Exit `2` when there is no failed run or the provider can't answer.
-- **In CI**, set `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`, `claude_code`) with `TESTO_AI_MODEL`, `TESTO_AI_BASE_URL`, `TESTO_AI_KEY_ENV` and `TESTO_AI_TIMEOUT_S` (default `60`): they win over the settings file. The GitHub Action's `ai-summary: "true"` input adds the summary to the job summary and comment (`testo report markdown --ai`).
+- **In CI**, set `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`, `claude_code`) with `TESTO_AI_MODEL`, `TESTO_AI_BASE_URL`, `TESTO_AI_KEY_ENV`, `TESTO_AI_TIMEOUT_S` (default `60`) and `TESTO_AI_SHARE_TEST_SOURCE=1` (send the failing tests' source too): they win over the settings file. The GitHub Action's `ai-summary: "true"` input adds the summary to the job summary and comment (`testo report markdown --ai`).
 
 ---
 
@@ -936,6 +969,9 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | `TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL` | Webhooks for `testo notify` and the `slack` / `teams` reporters |
+| `TESTO_SMTP_HOST`, `TESTO_SMTP_PORT`, `TESTO_SMTP_SECURITY`, `TESTO_SMTP_USER`, `TESTO_SMTP_PASSWORD`, `TESTO_SMTP_FROM` | Mail server for `testo notify --to email` (`TESTO_SMTP_SECURITY`: `starttls` default, `ssl` or `none`; port 587, or 465 with `ssl`) |
+| `TESTO_REPORT_EMAIL_TO` | Comma-separated recipients for `testo notify --to email` without `--email-to` |
+| `TESTO_CHROMIUM` | A Chrome or Chromium for `testo export pdf` / `png`, instead of Playwright's own download |
 | `TESTO_ISSUES` | `github`: after every recorded run, open an issue per newly flaky test and close fixed ones ([`testo issues sync`](#testo-issues-sync)) |
 | `TESTO_GITHUB_TOKEN`, `GITHUB_TOKEN` | Token for those issues (`issues: write`); the first one set wins |
 | `TESTO_ISSUES_REPO` | `owner/name` for the issues, instead of the repository the runs recorded |

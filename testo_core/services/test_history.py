@@ -43,6 +43,19 @@ class TestPoint:
     # Share of outcome changes (pass <-> fail) over the FLIP_WINDOW runs ending here;
     # None until two of them passed or failed.
     flip_rate: float | None = None
+    # What the run tested on ("browser=firefox"), when it recorded one.
+    environment: str | None = None
+
+
+@dataclass(frozen=True)
+class EnvironmentOutcome:
+    """The test's results on one environment, across the window."""
+
+    environment: str
+    runs: int
+    passed: int
+    failed: int
+    last_status: str
 
 
 @dataclass(frozen=True)
@@ -66,6 +79,12 @@ class TestSummary:
     # Recent median minus the median before; set only when that is more than noise.
     slowdown_ms: int | None
     slowdown_pct: float | None
+    # The slowest runs (95th percentile of passing and failing runs alike); far above the
+    # median means unstable timing, the next timeout or flake.
+    p95_duration_ms: int | None = None
+    # From the latest run: what the test is about ({name, value}) and its issue links.
+    labels: tuple[dict[str, str], ...] = ()
+    links: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -83,6 +102,8 @@ class TestHistory:
     summary: TestSummary
     # Newest first.
     points: tuple[TestPoint, ...]
+    # One line per environment the runs recorded, most failures first; empty when none did.
+    environments: tuple[EnvironmentOutcome, ...] = ()
 
     @property
     def last_failure(self) -> TestPoint | None:
@@ -155,6 +176,11 @@ def _summarise(key: str, observed: list[tuple[CompletedRunView, dict[str, Any]]]
         median_duration_ms=int(median(durations)) if durations else None,
         slowdown_ms=slowdown_ms,
         slowdown_pct=slowdown_pct,
+        p95_duration_ms=sorted(durations)[max(0, -(-len(durations) * 95 // 100) - 1)]
+        if durations
+        else None,
+        labels=tuple(latest.get("labels") or ()),
+        links=tuple(latest.get("links") or ()),
     )
 
 
@@ -173,19 +199,53 @@ def _flip_rates(statuses: list[str]) -> list[float | None]:
 
 def _matches(summary: TestSummary, query: str) -> bool:
     needle = query.casefold()
-    return any(
-        needle in field.casefold() for field in (summary.name, summary.full_name, summary.group)
+    fields = (
+        summary.name,
+        summary.full_name,
+        summary.group,
+        *(lab.get("value", "") for lab in summary.labels),
     )
+    return any(needle in field.casefold() for field in fields)
+
+
+def has_label(labels: tuple[dict[str, str], ...] | list[dict[str, str]], wanted: str) -> bool:
+    """Whether ``labels`` holds ``wanted``: ``name:value`` exactly, or a bare value under any name.
+
+    Case-insensitive, so ``feature:checkout`` matches the label ``feature=Checkout``
+    and ``smoke`` matches the tag ``smoke``.
+    """
+    wanted = wanted.strip().casefold()
+    if not wanted:
+        return True
+    name, sep, value = wanted.partition(":")
+    for lab in labels:
+        lab_name = str(lab.get("name", "")).casefold()
+        lab_value = str(lab.get("value", "")).casefold()
+        if sep and lab_name == name.strip() and lab_value == value.strip():
+            return True
+        if lab_value == wanted:
+            return True
+    return False
 
 
 def list_cycle_tests(
-    cycle: str, *, window: int = DEFAULT_WINDOW, query: str | None = None
+    cycle: str,
+    *,
+    window: int = DEFAULT_WINDOW,
+    query: str | None = None,
+    label: str | None = None,
 ) -> CycleTests:
-    """Every test seen in ``cycle``'s last ``window`` runs, failing first, then by name."""
+    """Every test seen in ``cycle``'s last ``window`` runs, failing first, then by name.
+
+    ``query`` matches name, full name, group or a label's value; ``label`` keeps
+    only the tests that carry that label (see :func:`has_label`).
+    """
     analysed, per_test = _observations(cycle, window)
     tests = [_summarise(key, observed) for key, observed in per_test.items()]
     if query and query.strip():
         tests = [t for t in tests if _matches(t, query.strip())]
+    if label and label.strip():
+        tests = [t for t in tests if has_label(t.labels, label)]
     tests.sort(key=lambda t: (t.last_status not in _FAIL, not t.flaky, t.name, t.key))
     return CycleTests(cycle=cycle, runs_considered=analysed, tests=tuple(tests))
 
@@ -208,10 +268,37 @@ def load_test_history(cycle: str, key: str, *, window: int = DEFAULT_WINDOW) -> 
             message=str(case.get("message") or ""),
             branch=run.branch,
             flip_rate=rate,
+            environment=run.environment,
         )
         for (run, case), rate in reversed(list(zip(observed, rates, strict=True)))
     )
-    return TestHistory(cycle=cycle, summary=_summarise(key, observed), points=points)
+    return TestHistory(
+        cycle=cycle,
+        summary=_summarise(key, observed),
+        points=points,
+        environments=_by_environment(points),
+    )
+
+
+def _by_environment(points: tuple[TestPoint, ...]) -> tuple[EnvironmentOutcome, ...]:
+    """Pass and fail counts per environment (``points`` newest first); ``()`` if none recorded one."""
+    if not any(p.environment for p in points):
+        return ()
+    groups: dict[str, list[TestPoint]] = {}
+    for p in points:
+        groups.setdefault(p.environment or "(not set)", []).append(p)
+    out = [
+        EnvironmentOutcome(
+            environment=env,
+            runs=len(members),
+            passed=sum(1 for p in members if p.status == "passed"),
+            failed=sum(1 for p in members if p.status in _FAIL),
+            last_status=members[0].status,
+        )
+        for env, members in groups.items()
+    ]
+    out.sort(key=lambda e: (-e.failed, e.environment))
+    return tuple(out)
 
 
 def cycle_source(cycle: str) -> tuple[Path | None, str | None]:

@@ -27,8 +27,11 @@ import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from testo_core.services.test_selection import Selection
 
 from testo_core import plugins
 from testo_core.config.errors import ConfigError, ConfigValidationError
@@ -71,6 +74,8 @@ class CycleRunOptions:
     run_metadata: Mapping[str, str | None] | None = None
     # Coverage reports the stages write (``--coverage``), read when they finish.
     coverage_reports: Sequence[Path] = ()
+    # Run only these tests (``--test``, ``--rerun-failed``; services/test_selection.py).
+    selection: Selection | None = None
 
 
 @dataclass(frozen=True)
@@ -143,6 +148,25 @@ class CycleRunService:
         effective_plan = apply_workers_override(plan, stages, opts.workers_override)
         effective_plan = quarantine_for_run(cfg=cfg, plan=effective_plan, stored=opts.persist)
         artifacts_root = opts.artifacts_root or cfg.defaults.artifacts_root
+        run_metadata = opts.run_metadata
+        if opts.selection is not None:
+            from testo_core.services import test_selection
+
+            # Raises SelectionError when no stage of the cycle has a chosen test.
+            effective_plan = test_selection.narrow_plan(
+                effective_plan,
+                opts.selection,
+                scratch=artifacts_root / ".testo-selection" / effective_plan.name,
+            )
+            # Listeners that show it (the CLI) implement it; the others don't need to.
+            announce = getattr(self._listener, "selection_applied", None)
+            if announce is not None:
+                announce(effective_plan, opts.selection)
+            run_metadata = {
+                **(run_metadata or {}),
+                test_selection.METADATA_KEY: str(len(opts.selection.tests)),
+                "selected_from": opts.selection.source,
+            }
 
         from testo_core.engine.cycle_lock import cycle_lock
         from testo_core.engine.orchestrator import run_plan
@@ -156,7 +180,7 @@ class CycleRunService:
                 parent_env=opts.parent_env,
                 persist=opts.persist,
                 fail_fast=opts.fail_fast,
-                run_metadata=opts.run_metadata,
+                run_metadata=run_metadata,
                 coverage_reports=opts.coverage_reports,
             )
             exit_code = int(result.exit_code)

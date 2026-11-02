@@ -16,9 +16,20 @@ export interface RunPanelProps {
   lockCycle?: boolean;
   /** Open the panel ready-to-run (e.g. arriving from a card's Run button). */
   autoFocusRun?: boolean;
+  /** Run only some tests: these names, or the failing tests of a recorded run. */
+  selection?: RunSelection | null;
+  /** Called when the person chooses to run every test instead of the selection. */
+  onClearSelection?: () => void;
 }
 
-export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
+export interface RunSelection {
+  tests?: string[];
+  rerunFailed?: string;
+  /** How the panel names it: "the 3 failing tests of run 1a2b3c4d". */
+  label: string;
+}
+
+export function RunPanel({ initialCycle, lockCycle = false, selection, onClearSelection }: RunPanelProps) {
   const cyclesQuery = useQuery({
     queryKey: ["cycles"],
     queryFn: () => apiClient.listCycles(),
@@ -68,14 +79,31 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
     if (reporters.length > 0) payload.reporter_override = reporters;
     if (configPath.trim()) payload.config_path = configPath.trim();
     if (artifactsRoot.trim()) payload.artifacts_root = artifactsRoot.trim();
+    if (selection?.rerunFailed) payload.rerun_failed = selection.rerunFailed;
+    else if (selection?.tests?.length) payload.tests = selection.tests;
 
     await execution.start(() => apiClient.createCycleExecution(cycle, payload));
   }
 
   return (
     <div className="space-y-4">
-      <Card title={lockCycle ? "Run this cycle" : "Run a cycle"}>
+      <Card title={selection ? "Run chosen tests" : lockCycle ? "Run this cycle" : "Run a cycle"}>
         <form onSubmit={onSubmit} className="space-y-4" data-testid="run-panel-form">
+          {selection ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-600/40 bg-brand-600/10 px-3 py-2 text-sm text-ink-100">
+              <span>Runs only {selection.label}.</span>
+              {onClearSelection ? (
+                <button
+                  type="button"
+                  onClick={onClearSelection}
+                  className="text-xs text-brand-300 hover:underline"
+                  disabled={busy}
+                >
+                  Run every test instead
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {!lockCycle ? (
             <label className="grid max-w-sm gap-1">
               <span className="text-xs font-medium text-ink-300">Cycle</span>

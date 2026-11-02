@@ -3,6 +3,7 @@ import { AnimatedPixelArt } from "./AnimatedPixelArt";
 import { FLEX, GLOVES, HURT, SMASH } from "./animations";
 
 export { PixelArt } from "./PixelArt";
+export { EyeLogo, EYE_BRAND_BLUE } from "./EyeLogo";
 export { AnimatedPixelArt } from "./AnimatedPixelArt";
 export { FLEX, SMASH, HURT, GLOVES, ANIMATIONS, MASCOT_PALETTE } from "./animations";
 
@@ -31,11 +32,6 @@ const SHRUG_GRID = [
   "...ossssssssso..",
   "....oooooooo....",
 ];
-
-/** Brand mark: the flexed arm at peak. */
-export function MuscleLogo({ size = 24, className }: MascotProps) {
-  return <PixelArt grid={FLEX[2]} size={size} className={className} title="Testo" />;
-}
 
 /** Bicep pump — the "run passed" celebration. */
 export function MuscleFlex({ size = 96, animate = false, className }: MascotProps) {

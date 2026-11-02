@@ -11,6 +11,8 @@ import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { ProjectHealthPage } from "../features/health/ProjectHealthPage";
 import { HistoryPage } from "../features/history/HistoryPage";
+import { ReleasePage, ReleasesPage } from "../features/releases/ReleasesPage";
+import { ReportPage } from "../features/report/ReportPage";
 import { ResourcesPage } from "../features/resources/ResourcesPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { TestPage } from "../features/tests/TestPage";
@@ -51,8 +53,20 @@ export const routes = [
         element: <ComparePage />
       },
       {
+        path: "releases",
+        element: <ReleasesPage />
+      },
+      {
+        path: "releases/:release",
+        element: <ReleasePage />
+      },
+      {
         path: "health",
         element: <ProjectHealthPage />
+      },
+      {
+        path: "report",
+        element: <ReportPage />
       },
       {
         path: "ask",

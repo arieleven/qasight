@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -49,7 +49,7 @@ describe("AppShell mobile menu", () => {
     const labels = within(panel)
       .getAllByRole("link")
       .map((link) => link.textContent);
-    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Project health", "Ask", "Quick run", "Resources", "Try a file", "AI settings"]);
+    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Releases", "Project health", "Report", "Ask", "Quick run", "Resources", "Try a file", "AI settings"]);
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -125,5 +125,41 @@ describe("AppShell user badge", () => {
     await screen.findAllByTestId("health-indicator");
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByTestId("user-badge")).not.toBeInTheDocument();
+  });
+});
+
+describe("AppShell eye logo", () => {
+  function renderAt(path: string, score: number) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        String(url).includes("/api/v1/project-health")
+          ? Promise.resolve({ ok: true, status: 200, json: async () => ({ score, cycles: 1 }) })
+          : Promise.resolve({ ok: false, status: 404, json: async () => ({}) })
+      )
+    );
+    const router = createMemoryRouter(
+      [{ path: "/", element: <AppShell />, children: [{ index: true, element: <h1>Dashboard page</h1> }, { path: "health", element: <h1>Health page</h1> }] }],
+      { initialEntries: [path] }
+    );
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
+  }
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("tints the iris with the health score colour on the health page", async () => {
+    renderAt("/health", 50);
+    await waitFor(() => expect(screen.getAllByTestId("eye-logo-iris")[0]).toHaveAttribute("fill", "#f87171"));
+  });
+
+  it("stays brand blue on other pages", async () => {
+    renderAt("/", 50);
+    await waitFor(() => expect(screen.getAllByTestId("eye-logo")[0]).toHaveAttribute("data-spinning", "false"));
+    expect(screen.getAllByTestId("eye-logo-iris")[0]).toHaveAttribute("fill", "#0075ff");
   });
 });

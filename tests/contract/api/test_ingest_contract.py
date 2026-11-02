@@ -44,6 +44,7 @@ def test_upload_is_recorded_as_a_run_with_the_clients_provenance() -> None:
             "ci_provider": "github",
             "ci_commit_sha": "abc123",
             "repository": "acme/web",
+            "environment": "os=linux,browser=firefox",
             "not_a_field": "ignored",
         },
         files=_files(("ok.xml", PASSING), ("../../bad.xml", FAILING)),
@@ -61,6 +62,7 @@ def test_upload_is_recorded_as_a_run_with_the_clients_provenance() -> None:
     assert meta["ci_provider"] == "github"
     assert meta["ci_commit_sha"] == "abc123"
     assert meta["target_repo"] == "acme/web"
+    assert meta["environment"] == "browser=firefox, os=linux"
     assert "not_a_field" not in meta
 
 

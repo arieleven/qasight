@@ -31,6 +31,12 @@ def setup(
         "--key-env",
         help="Environment variable that holds the API key (the key itself is never saved).",
     ),
+    share_test_source: bool = typer.Option(
+        False,
+        "--share-test-source",
+        help="Also send a short excerpt of each failing test's own source with the summary "
+        "prompt (off by default; with a cloud provider it goes to that provider).",
+    ),
 ) -> None:
     """Turn on AI failure summaries with a provider this machine already has."""
     from testo_core.services.ai.cli_settings import PROVIDERS, detect_settings, save_settings
@@ -60,6 +66,7 @@ def setup(
         model=model or settings.model,
         base_url=base_url or settings.base_url,
         api_key_env_var=key_env or settings.api_key_env_var,
+        share_test_source=share_test_source,
     )
     try:
         path = save_settings(settings)
@@ -67,6 +74,13 @@ def setup(
         typer.echo(f"Not saved: {exc}", err=True)
         raise typer.Exit(int(EngineExitCode.INVALID_INPUT)) from None
     typer.echo(f"AI summaries on: {settings.provider} {settings.model} ({why}).")
+    if share_test_source:
+        where = (
+            "Claude, through your own Claude Code login"
+            if settings.provider == "claude_code"
+            else f"the {settings.provider} provider"
+        )
+        typer.echo(f"Test source: on. Excerpts of failing tests are sent to {where}.")
     typer.echo(f"Saved to {path}; the UI's AI settings page shows the same.")
     typer.echo("Try it: testo ai summary  (the latest failed run)")
 
@@ -84,6 +98,8 @@ def status() -> None:
     key = settings.to_provider_config()
     key_var = key.resolved_api_key_env_var() if settings.provider != "claude_code" else ""
     typer.echo(f"AI summaries on: {settings.provider} {settings.model} (from {source})")
+    shared = "on (failing tests' excerpts)" if settings.share_test_source else "off"
+    typer.echo(f"Test source: {shared}")
     if key_var:
         import os
 

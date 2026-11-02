@@ -62,6 +62,9 @@ class FailingTest:
     triage: Triage | None = None
     # "stack_overflow" | "crash" when its message or trace shows one (engine/crash_signatures.py).
     crash_kind: str | None = None
+    # What the test is about ({name, value}: feature, severity, tag...) and its issue links.
+    labels: tuple[dict[str, str], ...] = ()
+    links: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -110,9 +113,11 @@ def _baseline(
     """A pull request's target branch's latest run, else the run before on the same branch."""
     target = run.base_branch
     if target and target != run.branch:
-        on_target = next((r for r in earlier if r.branch == target), None)
-        if on_target is not None:
-            return on_target
+        on_target = [r for r in earlier if r.branch == target]
+        # The target branch's latest run on the same environment, when there is one.
+        same_env = next((r for r in on_target if r.environment == run.environment), None)
+        if same_env is not None or on_target:
+            return same_env or on_target[0]
     return lineage[0] if lineage else None
 
 
@@ -162,6 +167,9 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
     # Streaks and flakiness follow this run's branch, so another branch's runs don't mix in.
     # Runs that recorded no branch can't be told apart, so they stay in.
     lineage = [r for r in earlier if r.branch in (run.branch, None)] if run.branch else earlier
+    # The same for the environment: a firefox run's streak counts firefox runs only.
+    if run.environment:
+        lineage = [r for r in lineage if r.environment in (run.environment, None)]
     earlier_cases = [(r, _cases(r)) for r in lineage[: window - 1]]
     earlier_cases = [(r, c) for r, c in earlier_cases if c]
     baseline = _baseline(run, earlier, lineage)
@@ -205,6 +213,8 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
                 flaky=flaky_service.classify(key, observations.get(key, [])) is not None,
                 new=new,
                 crash_kind=str(case.get("crash") or "") or None,
+                labels=tuple(case.get("labels") or ()),
+                links=tuple(case.get("links") or ()),
             )
         )
     tests = _with_triage(run.cycle, tests)

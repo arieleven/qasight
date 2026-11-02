@@ -24,6 +24,10 @@ export type StageHealth = Schemas["StageHealth"];
 export type RunDetailResponse = Schemas["RunDetailResponse"];
 export type RunReportsResponse = Schemas["RunReportsResponse"];
 export type RunPyramidResponse = Schemas["RunPyramidResponse"];
+export type RunMarkdownResponse = Schemas["RunMarkdownResponse"];
+export type ManagerReport = Schemas["ManagerReportResponse"];
+export type Delivery = Schemas["DeliveryResponse"];
+export type ReportPeriod = ManagerReport["period"];
 export type RunFailuresResponse = Schemas["RunFailuresResponse"];
 export type FailingTestItem = Schemas["FailingTestItem"];
 export type TriageItem = Schemas["TriageItem"];
@@ -46,6 +50,17 @@ export type FlakyTestItem = Schemas["FlakyTestItem"];
 export type FlakyTestsResponse = Schemas["FlakyTestsResponse"];
 export type TestSummaryItem = Schemas["TestSummaryItem"];
 export type CycleTestsResponse = Schemas["CycleTestsResponse"];
+export type TestLabelItem = Schemas["TestLabelItem"];
+export type EnvironmentOutcomeItem = Schemas["EnvironmentOutcomeItem"];
+export type TestLinkItem = Schemas["TestLinkItem"];
+export type CycleLabelsResponse = Schemas["CycleLabelsResponse"];
+export type LabelCountItem = Schemas["LabelCountItem"];
+export type CycleIssuesResponse = Schemas["CycleIssuesResponse"];
+export type IssueStatusItem = Schemas["IssueStatusItem"];
+export type ReleasesResponse = Schemas["ReleasesResponse"];
+export type ReleaseSummaryItem = Schemas["ReleaseSummaryItem"];
+export type ReleaseDetailResponse = Schemas["ReleaseDetailResponse"];
+export type ReleaseTestItem = Schemas["ReleaseTestItem"];
 export type TestPointItem = Schemas["TestPointItem"];
 export type TestHistoryResponse = Schemas["TestHistoryResponse"];
 export type AttachmentItem = Schemas["AttachmentItem"];
@@ -138,6 +153,21 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return (await resp.json()) as T;
 }
 
+/** A file from the API (a report export): its bytes and the name the server suggested. */
+async function apiFile(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const token = apiToken();
+  const resp = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!resp.ok) {
+    const body = (await resp.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new ApiError(body?.error?.message ?? `API error ${resp.status}`, resp.status);
+  }
+  const disposition = resp.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+  return { blob: await resp.blob(), filename };
+}
+
+export type ReportFormat = "pdf" | "png" | "html" | "pptx" | "xlsx" | "csv" | "json";
+
 export const apiClient = {
   createCycleExecution(cycle: string, payload: CycleExecutionRequest): Promise<CycleExecutionAccepted> {
     return api<CycleExecutionAccepted>(`/api/v1/cycles/${encodeURIComponent(cycle)}/executions`, {
@@ -202,6 +232,17 @@ export const apiClient = {
   getRunFailures(runId: string): Promise<RunFailuresResponse> {
     return api<RunFailuresResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/failures`);
   },
+  getReport(period: ReportPeriod, cycle?: string): Promise<ManagerReport> {
+    const params = new URLSearchParams({ period, ...(cycle ? { cycle } : {}) });
+    return api<ManagerReport>(`/api/v1/report?${params}`);
+  },
+  downloadReport(format: ReportFormat, period: ReportPeriod, cycle?: string): Promise<{ blob: Blob; filename: string | null }> {
+    const params = new URLSearchParams({ format, period, ...(cycle ? { cycle } : {}) });
+    return apiFile(`/api/v1/report/export?${params}`);
+  },
+  getRunMarkdown(runId: string): Promise<RunMarkdownResponse> {
+    return api<RunMarkdownResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/markdown`);
+  },
   getRunPyramid(runId: string): Promise<RunPyramidResponse> {
     return api<RunPyramidResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/pyramid`);
   },
@@ -226,6 +267,20 @@ export const apiClient = {
   getCycleTests(cycle: string): Promise<CycleTestsResponse> {
     const params = new URLSearchParams({ cycle });
     return api<CycleTestsResponse>(`/api/v1/analytics/tests?${params.toString()}`);
+  },
+  getReleases(): Promise<ReleasesResponse> {
+    return api<ReleasesResponse>("/api/v1/releases");
+  },
+  getRelease(release: string): Promise<ReleaseDetailResponse> {
+    return api<ReleaseDetailResponse>(`/api/v1/releases/${encodeURIComponent(release)}`);
+  },
+  getCycleIssues(cycle: string): Promise<CycleIssuesResponse> {
+    const params = new URLSearchParams({ cycle });
+    return api<CycleIssuesResponse>(`/api/v1/analytics/issues?${params.toString()}`);
+  },
+  getCycleLabels(cycle: string): Promise<CycleLabelsResponse> {
+    const params = new URLSearchParams({ cycle });
+    return api<CycleLabelsResponse>(`/api/v1/analytics/labels?${params.toString()}`);
   },
   getTestHistory(cycle: string, key: string): Promise<TestHistoryResponse> {
     const params = new URLSearchParams({ cycle, key });
@@ -257,6 +312,9 @@ export const apiClient = {
   },
   getVersion(): Promise<VersionResponse> {
     return api<VersionResponse>("/api/v1/version");
+  },
+  getDashboardDelivery(days = 7): Promise<Delivery> {
+    return api<Delivery>(`/api/v1/dashboard/delivery?days=${days}`);
   },
   getDashboardAttention(): Promise<DashboardAttentionResponse> {
     return api<DashboardAttentionResponse>("/api/v1/dashboard/attention");

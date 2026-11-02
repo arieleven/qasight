@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
-import { apiClient, type TestPointItem } from "../../lib/api-client";
+import { apiClient, type EnvironmentOutcomeItem, type TestPointItem } from "../../lib/api-client";
 import { Badge, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { countLabel, formatDuration, formatRunTime, shortRunId } from "../../lib/format";
 import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { QuarantineControl, matchingEntry } from "../quarantine/QuarantineControl";
 import { Attachments } from "./Attachments";
+import { TestLabels } from "../labels/TestLabels";
 
 const FAILED = new Set(["failed", "broken"]);
 
@@ -85,6 +86,33 @@ function pct(rate: number): string {
  * Shown only once the test has flipped at all, with a sentence comparing now
  * with five runs before.
  */
+/** Pass and fail counts per environment, when the runs recorded one: "fails only on firefox" at a glance. */
+export function EnvironmentsCard({ environments }: { environments: EnvironmentOutcomeItem[] }) {
+  if (environments.length === 0) return null;
+  const failingOn = environments.filter((e) => e.failed > 0);
+  const summary =
+    environments.length > 1 && failingOn.length > 0 && failingOn.length < environments.length
+      ? `Fails only on ${failingOn.map((e) => e.environment).join(" and ")}.`
+      : null;
+  return (
+    <Card title="By environment">
+      {summary ? <p className="mb-3 text-sm text-warn-300">{summary}</p> : null}
+      <ul className="divide-y divide-white/5 text-sm" aria-label="Results by environment">
+        {environments.map((e) => (
+          <li key={e.environment} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+            <span className="break-all text-ink-100">{e.environment}</span>
+            <span className="flex items-center gap-2 text-xs text-ink-300">
+              Passed {e.passed} of {countLabel(e.runs, "run")}
+              {e.failed > 0 ? <span className="text-danger-300">{e.failed} failed</span> : null}
+              <StatusPill status={e.last_status} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function FlipRate({ points }: { points: TestPointItem[] }) {
   const oldestFirst = [...points].reverse();
   const rated = oldestFirst.filter((p) => p.flip_rate != null);
@@ -199,7 +227,8 @@ export function TestPage() {
     last_failure: lastFailure,
     last_failure_attachments: attachments = [],
     owners,
-    issue_url: issueUrl
+    issue_url: issueUrl,
+    environments = []
   } = query.data;
   const passRate = test.runs > 0 ? Math.round((100 * test.passed) / test.runs) : null;
   // An older server answers without the list: then the page shows no quarantine control.
@@ -269,6 +298,11 @@ export function TestPage() {
         <DurationBars points={points} />
         <p className="mt-2 text-xs text-ink-400">
           Median {formatDuration(test.median_duration_ms)}
+          {test.p95_duration_ms != null && test.median_duration_ms != null && test.p95_duration_ms >= 3 * Math.max(1, test.median_duration_ms) && test.p95_duration_ms - test.median_duration_ms >= 1000
+            ? `, but its slowest runs take ${formatDuration(test.p95_duration_ms)}: unstable timing, a likely timeout or flake`
+            : test.p95_duration_ms != null
+              ? `, slowest runs ${formatDuration(test.p95_duration_ms)}`
+              : ""}
           {test.slowdown_ms != null
             ? `, and ${formatDuration(test.slowdown_ms)} slower over the last runs${test.slowdown_pct != null ? ` (+${test.slowdown_pct}%)` : ""}`
             : ""}
@@ -277,6 +311,8 @@ export function TestPage() {
       </Card>
 
       <FlipRate points={points} />
+
+      <EnvironmentsCard environments={environments} />
 
       <Card title={`Runs (${points.length})`}>
         <ul className="divide-y divide-white/5 text-sm">
@@ -289,6 +325,7 @@ export function TestPage() {
               <span className="font-mono text-xs text-ink-500">{shortRunId(p.run_id)}</span>
               <span className="text-xs text-ink-400">{formatDuration(p.duration_ms)}</span>
               {p.branch ? <span className="font-mono text-xs text-ink-400">{p.branch}</span> : null}
+              {p.environment ? <span className="text-xs text-ink-400">{p.environment}</span> : null}
               {p.message && FAILED.has(p.status) ? (
                 <span className="w-full break-words font-mono text-xs text-danger-300">{p.message}</span>
               ) : null}
@@ -303,6 +340,15 @@ export function TestPage() {
             { label: "Full name", value: <span className="break-all font-mono text-xs">{test.full_name || "—"}</span> },
             { label: "Group", value: test.group },
             { label: "Stage", value: test.stage || "—" },
+            {
+              label: "Labels",
+              value:
+                (test.labels ?? []).length > 0 || (test.links ?? []).length > 0 ? (
+                  <TestLabels labels={test.labels} links={test.links} cycle={cycle} />
+                ) : (
+                  "None in the results"
+                )
+            },
             { label: "Owners", value: owners.length > 0 ? owners.join(", ") : "No CODEOWNERS rule matches this test" }
           ]}
         />

@@ -5,7 +5,9 @@ import { Link } from "react-router-dom";
 import { apiClient, type FailingTestItem } from "../../lib/api-client";
 import { Badge, Button, Card } from "../../components/ui";
 import { countLabel, formatDuration, shortRunId, testPath } from "../../lib/format";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { CrashBadge } from "./CrashBadge";
+import { TestLabels } from "../labels/TestLabels";
 import { CAUSE_LABELS, TriageControl } from "./TriageControl";
 
 // Enough to read at a glance; the rest are one click away.
@@ -56,6 +58,7 @@ function FailingTestRow({
         {test.status === "broken" ? <Badge>Broken</Badge> : null}
         <CrashBadge kind={test.crash_kind} />
       </div>
+      <TestLabels labels={test.labels} links={test.links} cycle={cycle} />
       {test.message ? (
         <p className="break-words font-mono text-xs text-danger-300" title={test.message}>
           {test.message}
@@ -109,6 +112,13 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
     queryKey: ["run-failures", runId],
     queryFn: () => apiClient.getRunFailures(runId)
   });
+  // Only a cycle defined in testosterone.yaml can be run again from here (not one only recorded).
+  const cycleQuery = useQuery({
+    queryKey: ["cycle", cycle],
+    queryFn: () => apiClient.getCycle(cycle as string),
+    enabled: Boolean(cycle) && !IS_STATIC_BUILD
+  });
+  const canRerun = cycleQuery.data?.source === "config";
 
   if (query.isLoading) {
     return (
@@ -195,6 +205,14 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
           <Button variant="secondary" size="sm" onClick={() => setShowAll((value) => !value)}>
             {showAll ? "Show fewer" : `Show all ${tests.length}`}
           </Button>
+        ) : null}
+        {cycle && canRerun ? (
+          <Link
+            to={`/cycles/${encodeURIComponent(cycle)}?run=1&rerun=${encodeURIComponent(runId)}`}
+            className="text-sm font-medium text-brand-300 hover:underline"
+          >
+            Run {tests.length === 1 ? "this test" : `these ${tests.length} tests`} again
+          </Link>
         ) : null}
         {cycle && tests.some((test) => test.flaky) ? (
           <Link to={`/cycles/${encodeURIComponent(cycle)}`} className="text-sm text-brand-300 hover:underline">
