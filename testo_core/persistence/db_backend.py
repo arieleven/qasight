@@ -108,7 +108,7 @@ class DbBackend:
                 else github_repository_of(result.target_repo)
             )
             extra_metadata = result.extra.get("run_metadata")
-            from testo_core.services import run_environment
+            from testo_core.services import run_environment, run_release
 
             explicit_env = (
                 extra_metadata.get(run_environment.METADATA_KEY)
@@ -119,6 +119,12 @@ class DbBackend:
                 explicit_env,
                 os.environ,
                 plan_artifacts_dir(self._artifacts_root, result.plan_name),
+            )
+            release = run_release.resolve(
+                extra_metadata.get(run_release.METADATA_KEY)
+                if isinstance(extra_metadata, dict)
+                else None,
+                os.environ,
             )
 
             record = repo.create_run(
@@ -168,6 +174,7 @@ class DbBackend:
                     **({"repository": repository} if repository else {}),
                     **(extra_metadata if isinstance(extra_metadata, dict) else {}),
                     run_environment.METADATA_KEY: environment or None,
+                    run_release.METADATA_KEY: release or None,
                 },
             )
             run_id = str(record.id)

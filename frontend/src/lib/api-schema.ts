@@ -589,6 +589,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Releases
+         * @description Every release a run recorded (``testo run --release``), newest first.
+         */
+        get: operations["get_releases_api_v1_releases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases/{release}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Release
+         * @description One release: each cycle's latest run in it, its failing and flaky tests, and what
+         *     changed from the release before (new failures, fixed tests).
+         */
+        get: operations["get_release_api_v1_releases__release__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/report": {
         parameters: {
             query?: never;
@@ -1314,6 +1355,11 @@ export interface components {
             environment?: string | null;
             /** Files */
             files: string[];
+            /**
+             * Release
+             * @description The release it tested: "2.3".
+             */
+            release?: string | null;
             /** Repository */
             repository?: string | null;
             /**
@@ -2204,6 +2250,91 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
+        /** ReleaseCycleItem */
+        ReleaseCycleItem: {
+            /** Created At */
+            created_at: number;
+            /** Cycle */
+            cycle: string;
+            /** Failed */
+            failed: number;
+            /** Flaky */
+            flaky: number;
+            /** Passed */
+            passed: number;
+            /** Run Id */
+            run_id: string;
+            /** Runs */
+            runs: number;
+            /** Skipped */
+            skipped: number;
+            /** Total */
+            total: number;
+        };
+        /** ReleaseDetailResponse */
+        ReleaseDetailResponse: {
+            /** Cycles */
+            cycles: components["schemas"]["ReleaseCycleItem"][];
+            /** Failing */
+            failing: components["schemas"]["ReleaseTestItem"][];
+            /** Fixed */
+            fixed: components["schemas"]["ReleaseTestItem"][];
+            /** Flaky */
+            flaky: number;
+            previous?: components["schemas"]["ReleaseSummaryItem"] | null;
+            summary: components["schemas"]["ReleaseSummaryItem"];
+        };
+        /**
+         * ReleaseSummaryItem
+         * @description One release: the latest run of each cycle that tested it, added up.
+         */
+        ReleaseSummaryItem: {
+            /** Cycles */
+            cycles: number;
+            /** Failed */
+            failed: number;
+            /** First Run At */
+            first_run_at: number;
+            /** Last Run At */
+            last_run_at: number;
+            /** Pass Rate */
+            pass_rate?: number | null;
+            /** Passed */
+            passed: number;
+            /** Release */
+            release: string;
+            /** Runs */
+            runs: number;
+            /** Skipped */
+            skipped: number;
+            /** Total */
+            total: number;
+        };
+        /** ReleaseTestItem */
+        ReleaseTestItem: {
+            /** Cycle */
+            cycle: string;
+            /** Key */
+            key: string;
+            /** Message */
+            message: string;
+            /** Name */
+            name: string;
+            /**
+             * New
+             * @default false
+             */
+            new?: boolean;
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+        };
+        /** ReleasesResponse */
+        ReleasesResponse: {
+            /** Items */
+            items: components["schemas"]["ReleaseSummaryItem"][];
+        };
         /** ReportCycleRow */
         ReportCycleRow: {
             /** Cycle */
@@ -2673,6 +2804,8 @@ export interface components {
             metrics_duration_ms: number | null;
             /** Passed */
             passed: number | null;
+            /** Release */
+            release: string | null;
             /** Repository */
             repository: string | null;
             /** Returncode */
@@ -2753,6 +2886,8 @@ export interface components {
             };
             /** Passed */
             passed: number | null;
+            /** Release */
+            release: string | null;
             /** Returncode */
             returncode: number;
             /** Run Id */
@@ -4020,6 +4155,57 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_releases_api_v1_releases_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleasesResponse"];
+                };
+            };
+        };
+    };
+    get_release_api_v1_releases__release__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                release: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseDetailResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

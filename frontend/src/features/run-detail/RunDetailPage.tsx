@@ -9,6 +9,7 @@ import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-b
 import { CopySummaryButton } from "./CopySummaryButton";
 import { CrashBadge } from "./CrashBadge";
 import { FailingTestsCard } from "./FailingTestsCard";
+import { releasePath } from "../releases/ReleasesPage";
 
 type RunProvenanceFields = {
   branch?: string | null;
@@ -16,11 +17,12 @@ type RunProvenanceFields = {
   base_branch?: string | null;
   repository?: string | null;
   environment?: string | null;
+  release?: string | null;
 };
 
 /** Branch, PR target and commit the run tested, when it recorded them. */
 function RunProvenance({ run }: { run: RunProvenanceFields }) {
-  if (!run.branch && !run.commit && !run.environment) return null;
+  if (!run.branch && !run.commit && !run.environment && !run.release) return null;
   const short = run.commit ? run.commit.slice(0, 7) : null;
   const commitUrl =
     run.commit && run.repository && /^[\w.-]+\/[\w.-]+$/.test(run.repository)
@@ -54,6 +56,14 @@ function RunProvenance({ run }: { run: RunProvenanceFields }) {
           <span className="text-ink-200" title="What this run tested on">
             {run.environment}
           </span>
+        </>
+      ) : null}
+      {run.release ? (
+        <>
+          {run.branch || short || run.environment ? <span aria-hidden>·</span> : null}
+          <Link to={releasePath(run.release)} className="text-brand-300 hover:underline" title="The release this run tested">
+            release {run.release}
+          </Link>
         </>
       ) : null}
     </span>

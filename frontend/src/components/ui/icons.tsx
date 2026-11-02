@@ -113,6 +113,13 @@ export const HelpIcon = () => (
   </Icon>
 );
 
+export const TagIcon = () => (
+  <Icon>
+    <path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z" />
+    <path d="M7.5 7.5h.01" />
+  </Icon>
+);
+
 export const ReportIcon = () => (
   <Icon>
     <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" />

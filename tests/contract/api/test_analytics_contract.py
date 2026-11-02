@@ -466,3 +466,43 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
     assert body["issue_url"].startswith("https://github.com/acme/shop/issues/new?title=Flaky+test")
     missing = client.get("/api/v1/analytics/test-history", params={"cycle": "smoke", "key": "nope"})
     assert missing.status_code == 404
+
+
+def test_releases_contract(monkeypatch) -> None:  # noqa: ANN001
+    from testo_core.services.releases import (
+        ReleaseCycle,
+        ReleaseDetail,
+        ReleaseSummary,
+        ReleaseTest,
+    )
+
+    summary = ReleaseSummary("2.4", 30.0, 40.0, 3, 2, 3, 2, 1, 0)
+    previous = ReleaseSummary("2.3", 10.0, 10.0, 1, 1, 2, 1, 1, 0)
+    detail = ReleaseDetail(
+        summary=summary,
+        cycles=(ReleaseCycle("api", "a4", 40.0, 2, 2, 1, 1, 0, 0),),
+        failing=(ReleaseTest("api", "cart", "cart", "failed", "nope", "a4", new=True),),
+        fixed=(),
+        flaky=0,
+        previous=previous,
+    )
+    monkeypatch.setattr("testo_api.routes.analytics.list_releases", lambda: (summary, previous))
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.load_release", lambda r: detail if r == "2.4" else None
+    )
+    client = TestClient(create_app())
+    listed = client.get("/api/v1/releases").json()
+    assert [i["release"] for i in listed["items"]] == ["2.4", "2.3"]
+    assert listed["items"][0]["pass_rate"] == 66.7
+    body = client.get("/api/v1/releases/2.4").json()
+    assert body["previous"]["release"] == "2.3"
+    assert body["failing"][0] == {
+        "cycle": "api",
+        "key": "cart",
+        "name": "cart",
+        "status": "failed",
+        "message": "nope",
+        "run_id": "a4",
+        "new": True,
+    }
+    assert client.get("/api/v1/releases/9.9").status_code == 404

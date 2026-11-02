@@ -40,6 +40,8 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/flaky/<name>.json                 GET /api/v1/analytics/flaky?cycle={name}
     data/tests/<name>.json                 GET /api/v1/analytics/tests?cycle={name}
     data/labels/<name>.json                GET /api/v1/analytics/labels?cycle={name}
+    data/releases.json                     GET /api/v1/releases
+    data/releases/<release>.json           GET /api/v1/releases/{release}
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
                                            (<id> is test_history.stable_id(key))
     data/resources.json                    GET /api/v1/resources (with --demo-resources:
@@ -294,6 +296,12 @@ class Exporter:
                 f"test-history/{cycle}/{stable_id(key)}.json",
             )
 
+    def export_releases(self) -> None:
+        listing = self._dump("/api/v1/releases", "releases.json")
+        for item in (listing or {}).get("items", []):
+            name = str(item["release"])
+            self._dump(f"/api/v1/releases/{quote(name, safe='')}", f"releases/{name}.json")
+
     def export_dashboard(self) -> None:
         overview = self._get("/api/v1/dashboard/overview?recent_limit=6")
         if overview is not None:
@@ -405,6 +413,7 @@ class Exporter:
             return 1
         self.export_cycles(runs)
         self.export_dashboard()
+        self.export_releases()
         deltas = self.export_deltas(runs)
         copied = self.copy_reports(runs)
 

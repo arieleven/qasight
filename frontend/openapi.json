@@ -860,6 +860,19 @@
             "title": "Files",
             "type": "array"
           },
+          "release": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The release it tested: \"2.3\".",
+            "title": "Release"
+          },
           "repository": {
             "anyOf": [
               {
@@ -3686,6 +3699,234 @@
         "title": "ReadinessCheck",
         "type": "object"
       },
+      "ReleaseCycleItem": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "run_id",
+          "created_at",
+          "runs",
+          "total",
+          "passed",
+          "failed",
+          "skipped",
+          "flaky"
+        ],
+        "title": "ReleaseCycleItem",
+        "type": "object"
+      },
+      "ReleaseDetailResponse": {
+        "properties": {
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseCycleItem"
+            },
+            "title": "Cycles",
+            "type": "array"
+          },
+          "failing": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseTestItem"
+            },
+            "title": "Failing",
+            "type": "array"
+          },
+          "fixed": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseTestItem"
+            },
+            "title": "Fixed",
+            "type": "array"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "integer"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReleaseSummaryItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ReleaseSummaryItem"
+          }
+        },
+        "required": [
+          "summary",
+          "cycles",
+          "failing",
+          "fixed",
+          "flaky"
+        ],
+        "title": "ReleaseDetailResponse",
+        "type": "object"
+      },
+      "ReleaseSummaryItem": {
+        "description": "One release: the latest run of each cycle that tested it, added up.",
+        "properties": {
+          "cycles": {
+            "title": "Cycles",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "first_run_at": {
+            "title": "First Run At",
+            "type": "number"
+          },
+          "last_run_at": {
+            "title": "Last Run At",
+            "type": "number"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "release": {
+            "title": "Release",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "release",
+          "first_run_at",
+          "last_run_at",
+          "runs",
+          "cycles",
+          "total",
+          "passed",
+          "failed",
+          "skipped"
+        ],
+        "title": "ReleaseSummaryItem",
+        "type": "object"
+      },
+      "ReleaseTestItem": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "new": {
+            "default": false,
+            "title": "New",
+            "type": "boolean"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "key",
+          "name",
+          "status",
+          "message",
+          "run_id"
+        ],
+        "title": "ReleaseTestItem",
+        "type": "object"
+      },
+      "ReleasesResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseSummaryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReleasesResponse",
+        "type": "object"
+      },
       "ReportCycleRow": {
         "properties": {
           "cycle": {
@@ -4844,6 +5085,17 @@
             ],
             "title": "Passed"
           },
+          "release": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release"
+          },
           "repository": {
             "anyOf": [
               {
@@ -4965,6 +5217,7 @@
           "base_branch",
           "repository",
           "environment",
+          "release",
           "coverage_pct",
           "coverage_covered",
           "coverage_total"
@@ -5182,6 +5435,17 @@
             ],
             "title": "Passed"
           },
+          "release": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release"
+          },
           "returncode": {
             "title": "Returncode",
             "type": "integer"
@@ -5239,7 +5503,8 @@
           "links_under_static",
           "branch",
           "commit",
-          "environment"
+          "environment",
+          "release"
         ],
         "title": "RunListItem",
         "type": "object"
@@ -7607,6 +7872,71 @@
         "summary": "Add Quarantine",
         "tags": [
           "quarantine"
+        ]
+      }
+    },
+    "/api/v1/releases": {
+      "get": {
+        "description": "Every release a run recorded (``testo run --release``), newest first.",
+        "operationId": "get_releases_api_v1_releases_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleasesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Releases",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/releases/{release}": {
+      "get": {
+        "description": "One release: each cycle's latest run in it, its failing and flaky tests, and what\nchanged from the release before (new failures, fixed tests).",
+        "operationId": "get_release_api_v1_releases__release__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "release",
+            "required": true,
+            "schema": {
+              "title": "Release",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Release",
+        "tags": [
+          "analytics"
         ]
       }
     },

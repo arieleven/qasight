@@ -98,6 +98,14 @@ def ingest(
             "Flaky detection and the test page keep environments apart. Default: $TESTO_ENV."
         ),
     ),
+    release: str | None = typer.Option(
+        None,
+        "--release",
+        help=(
+            "The release this run tests (2.3, v2.3.0-rc1); the Releases page groups runs by it. "
+            "Default: $TESTO_RELEASE."
+        ),
+    ),
 ) -> None:
     """Record test results from any runner (JUnit XML or a runner's own format) as a run of a cycle."""
     from testo_core.services.run_environment import InvalidEnvironmentPair, apply_cli_pairs
@@ -106,6 +114,13 @@ def ingest(
         apply_cli_pairs(env or [], os.environ)
     except InvalidEnvironmentPair as exc:
         typer.echo(f"error: --env: {exc}", err=True)
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
+    from testo_core.services.run_release import InvalidRelease, apply_cli_option
+
+    try:
+        apply_cli_option(release, os.environ)
+    except InvalidRelease as exc:
+        typer.echo(f"error: --release: {exc}", err=True)
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
     from testo_core.cli.runner import execute_ingest_command
     from testo_core.cli.ui.console import default_console, make_console

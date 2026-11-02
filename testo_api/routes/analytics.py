@@ -23,6 +23,11 @@ from testo_api.models import (
     FlakyTestItem,
     FlakyTestsResponse,
     LabelCountItem,
+    ReleaseCycleItem,
+    ReleaseDetailResponse,
+    ReleasesResponse,
+    ReleaseSummaryItem,
+    ReleaseTestItem,
     TestHistoryResponse,
     TestPointItem,
     TestSummaryItem,
@@ -37,6 +42,7 @@ from testo_core.services.delta_service import (
     RunNotFoundComparisonError,
 )
 from testo_core.services.flaky_service import DEFAULT_WINDOW, FlakyTest, find_flaky_tests
+from testo_core.services.releases import ReleaseSummary, list_releases, load_release
 from testo_core.services.run_snapshot_diff import diff_run_snapshots
 from testo_core.services.test_attachments import attachments_for
 from testo_core.services.test_history import cycle_source, list_cycle_tests, load_test_history
@@ -328,4 +334,31 @@ def get_test_history(
             message=last.message if last else "",
             owners=owners,
         ),
+    )
+
+
+def _release_item(s: ReleaseSummary) -> ReleaseSummaryItem:
+    return ReleaseSummaryItem(**vars(s), pass_rate=s.pass_rate)
+
+
+@router.get("/releases", response_model=ReleasesResponse)
+def get_releases() -> ReleasesResponse:
+    """Every release a run recorded (``testo run --release``), newest first."""
+    return ReleasesResponse(items=[_release_item(s) for s in list_releases()])
+
+
+@router.get("/releases/{release}", response_model=ReleaseDetailResponse)
+def get_release(release: str) -> ReleaseDetailResponse:
+    """One release: each cycle's latest run in it, its failing and flaky tests, and what
+    changed from the release before (new failures, fixed tests)."""
+    found = load_release(release)
+    if found is None:
+        raise HTTPException(status_code=404, detail=f"no run recorded release {release!r}")
+    return ReleaseDetailResponse(
+        summary=_release_item(found.summary),
+        cycles=[ReleaseCycleItem(**vars(c)) for c in found.cycles],
+        failing=[ReleaseTestItem(**vars(t)) for t in found.failing],
+        fixed=[ReleaseTestItem(**vars(t)) for t in found.fixed],
+        flaky=found.flaky,
+        previous=_release_item(found.previous) if found.previous else None,
     )

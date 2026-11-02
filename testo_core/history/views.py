@@ -47,6 +47,8 @@ class CompletedRunView:
     base_branch: str | None = None
     # What it ran on, "browser=firefox, os=linux" (services/run_environment.py); None if not set.
     environment: str | None = None
+    # The release it tested, "2.3" (services/run_release.py); None if not set.
+    release: str | None = None
     # ``owner/name`` on the code host (CI variables, an upload, or a github.com ``origin``).
     repository: str | None = None
     # Line coverage from ``--coverage`` (covered lines out of all lines), when given.
@@ -74,6 +76,7 @@ class RunSessionView:
     branch: str | None = None
     commit: str | None = None
     environment: str | None = None
+    release: str | None = None
 
 
 def wall_duration_ms_from_metadata(md: dict[str, Any]) -> float:
@@ -153,6 +156,7 @@ def view_from_record(record: RunRecord) -> CompletedRunView | None:
         or _optional_str(md, "git_commit"),
         base_branch=_optional_str(md, "ci_base_ref"),
         environment=_optional_str(md, "environment"),
+        release=_optional_str(md, "release"),
         repository=_optional_str(md, "repository"),
         coverage_pct=_number(md, "coverage_pct"),
         coverage_covered=int(n) if (n := _number(md, "coverage_covered")) is not None else None,

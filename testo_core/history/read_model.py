@@ -89,6 +89,7 @@ def list_run_sessions(*, limit: int = 30, cycle: str | None = None) -> list[RunS
             branch=r.branch,
             commit=r.commit,
             environment=r.environment,
+            release=r.release,
         )
         for r in runs
     ]

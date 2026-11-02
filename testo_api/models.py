@@ -159,6 +159,8 @@ class RunListItem(ApiModel):
     commit: str | None = None
     # "browser=firefox, os=linux" (testo run --env, TESTO_ENV, Allure environment.properties).
     environment: str | None = None
+    # "2.3" (testo run --release, TESTO_RELEASE).
+    release: str | None = None
 
 
 class RunListResponse(ApiModel):
@@ -209,6 +211,8 @@ class RunDetail(ApiModel):
     repository: str | None = None
     # "browser=firefox, os=linux" (testo run --env, TESTO_ENV, Allure environment.properties).
     environment: str | None = None
+    # "2.3" (testo run --release, TESTO_RELEASE).
+    release: str | None = None
     # Line coverage stored with ``--coverage``.
     coverage_pct: float | None = None
     coverage_covered: int | None = None
@@ -1074,3 +1078,54 @@ class ManagerReportResponse(ApiModel):
     fixed: list[ReportTest]
     slower: list[ReportTest]
     findings: list[ReportFinding]
+
+
+class ReleaseSummaryItem(BaseModel):
+    """One release: the latest run of each cycle that tested it, added up."""
+
+    release: str
+    first_run_at: float
+    last_run_at: float
+    runs: int
+    cycles: int
+    total: int
+    passed: int
+    failed: int
+    skipped: int
+    pass_rate: float | None = None
+
+
+class ReleasesResponse(BaseModel):
+    items: list[ReleaseSummaryItem]
+
+
+class ReleaseCycleItem(BaseModel):
+    cycle: str
+    run_id: str
+    created_at: float
+    runs: int
+    total: int
+    passed: int
+    failed: int
+    skipped: int
+    flaky: int
+
+
+class ReleaseTestItem(BaseModel):
+    cycle: str
+    key: str
+    name: str
+    status: str
+    message: str
+    run_id: str
+    # Not failing in the previous release's latest run of this cycle.
+    new: bool = False
+
+
+class ReleaseDetailResponse(BaseModel):
+    summary: ReleaseSummaryItem
+    cycles: list[ReleaseCycleItem]
+    failing: list[ReleaseTestItem]
+    fixed: list[ReleaseTestItem]
+    flaky: int
+    previous: ReleaseSummaryItem | None = None
