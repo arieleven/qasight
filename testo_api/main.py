@@ -43,6 +43,7 @@ from testo_api.security import (
 )
 from testo_api.ui import SpaStaticFiles, ui_dir
 from testo_core import __version__
+from testo_core.config.history_section import SERVER_PRUNE_INTERVAL_S
 from testo_core.paths import STATIC_HISTORY_ROOT
 
 logger = logging.getLogger(__name__)
@@ -95,9 +96,8 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         stop_retention()
 
 
-# How often the server applies history.retention. Pruning is cheap when nothing
-# expired, and a run only ever expires by getting older, so hours are plenty.
-RETENTION_INTERVAL_S = 6 * 60 * 60
+# How often the server applies history.retention (also shown by GET /api/v1/run-settings).
+RETENTION_INTERVAL_S = SERVER_PRUNE_INTERVAL_S
 
 
 def _start_retention_timer() -> Callable[[], None]:

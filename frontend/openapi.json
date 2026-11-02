@@ -1259,7 +1259,8 @@
               "queued",
               "running",
               "completed",
-              "failed"
+              "failed",
+              "cancelled"
             ],
             "title": "Status",
             "type": "string"
@@ -2205,6 +2206,75 @@
           "delta_pct"
         ],
         "title": "DashboardTrendIndicator",
+        "type": "object"
+      },
+      "DeleteRunsRequest": {
+        "properties": {
+          "run_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Run Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_ids"
+        ],
+        "title": "DeleteRunsRequest",
+        "type": "object"
+      },
+      "DeleteRunsResponse": {
+        "description": "What ``POST /runs:delete`` removed, and the ids it left alone.",
+        "properties": {
+          "deleted": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Deleted",
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "not_found": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Found",
+            "type": "array"
+          },
+          "skipped_running": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped Running",
+            "type": "array"
+          },
+          "snapshots_deleted": {
+            "title": "Snapshots Deleted",
+            "type": "integer"
+          },
+          "test_rows_deleted": {
+            "title": "Test Rows Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted",
+          "test_rows_deleted",
+          "snapshots_deleted",
+          "skipped_running",
+          "not_found",
+          "errors"
+        ],
+        "title": "DeleteRunsResponse",
         "type": "object"
       },
       "DeliveryAgeBucket": {
@@ -5872,6 +5942,43 @@
         "title": "ResourcesResponse",
         "type": "object"
       },
+      "RetentionSettings": {
+        "properties": {
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "runs_per_cycle": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs Per Cycle"
+          }
+        },
+        "required": [
+          "days",
+          "runs_per_cycle",
+          "enabled"
+        ],
+        "title": "RetentionSettings",
+        "type": "object"
+      },
       "ReviewFindingItem": {
         "properties": {
           "detail": {
@@ -6701,6 +6808,48 @@
           "artifacts_url"
         ],
         "title": "RunReportsResponse",
+        "type": "object"
+      },
+      "RunSettingsResponse": {
+        "description": "How long runs are kept and how long a stage may take: read from ``testosterone.yaml``.",
+        "properties": {
+          "cleanup_interval_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cleanup Interval Hours"
+          },
+          "config_found": {
+            "title": "Config Found",
+            "type": "boolean"
+          },
+          "default_stage_timeout_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Stage Timeout S"
+          },
+          "retention": {
+            "$ref": "#/components/schemas/RetentionSettings"
+          }
+        },
+        "required": [
+          "config_found",
+          "retention",
+          "cleanup_interval_hours",
+          "default_stage_timeout_s"
+        ],
+        "title": "RunSettingsResponse",
         "type": "object"
       },
       "RunSlice": {
@@ -8505,6 +8654,49 @@
         ]
       }
     },
+    "/api/v1/cycle-executions/{execution_id}/cancel": {
+      "post": {
+        "description": "Stop a run: a queued one never starts; a running one's stages get SIGTERM.\n\nSend it again to kill stages that ignore SIGTERM. The run is still recorded, as\nfailed with ``interrupted_by`` set; its status here becomes ``cancelled``.",
+        "operationId": "cancel_cycle_execution_api_v1_cycle_executions__execution_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "execution_id",
+            "required": true,
+            "schema": {
+              "title": "Execution Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleExecutionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Cycle Execution",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
     "/api/v1/cycle-executions/{execution_id}/events": {
       "get": {
         "operationId": "stream_cycle_execution_events_api_v1_cycle_executions__execution_id__events_get",
@@ -9925,6 +10117,28 @@
         ]
       }
     },
+    "/api/v1/run-settings": {
+      "get": {
+        "description": "How long runs are kept (``history.retention``) and the default stage time limit.\n\nRead from ``testosterone.yaml``; change them there. The server reads retention\nwhen it starts, so restart it after an edit.",
+        "operationId": "run_settings_api_v1_run_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run Settings",
+        "tags": [
+          "history"
+        ]
+      }
+    },
     "/api/v1/runs": {
       "get": {
         "description": "Recent runs, newest first; ``cycle`` keeps only that cycle's.",
@@ -10305,6 +10519,48 @@
           }
         },
         "summary": "Get Run Reports",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/runs:delete": {
+      "post": {
+        "description": "Delete the chosen runs: rows, per-test rows and report copies. Can't be undone.\n\nA run still running is skipped. In accounts mode this needs the admin role.",
+        "operationId": "delete_runs_api_v1_runs_delete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteRunsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteRunsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Runs",
         "tags": [
           "history"
         ]

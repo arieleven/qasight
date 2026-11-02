@@ -5,8 +5,11 @@ import os
 from fastapi import APIRouter, HTTPException, Query
 
 from testo_api.models import (
+    DeleteRunsRequest,
+    DeleteRunsResponse,
     FailingTestItem,
     FailureGroupItem,
+    RetentionSettings,
     RunDetail,
     RunDetailResponse,
     RunFailuresResponse,
@@ -15,6 +18,7 @@ from testo_api.models import (
     RunMarkdownResponse,
     RunPyramidResponse,
     RunReportsResponse,
+    RunSettingsResponse,
     StageHealth,
 )
 from testo_api.routes.triage import triage_item
@@ -55,6 +59,52 @@ def list_runs(limit: int = Query(30, ge=1, le=500), cycle: str | None = None) ->
         for s in sessions
     ]
     return RunListResponse(items=items)
+
+
+@router.post("/runs:delete", response_model=DeleteRunsResponse)
+def delete_runs(body: DeleteRunsRequest) -> DeleteRunsResponse:
+    """Delete the chosen runs: rows, per-test rows and report copies. Can't be undone.
+
+    A run still running is skipped. In accounts mode this needs the admin role.
+    """
+    from testo_core.history.retention import delete_runs as delete_run_history
+
+    report = delete_run_history(body.run_ids)
+    return DeleteRunsResponse(
+        deleted=list(report.run_ids),
+        test_rows_deleted=report.test_rows_deleted,
+        snapshots_deleted=report.snapshots_deleted,
+        skipped_running=list(report.skipped_running),
+        not_found=list(report.not_found),
+        errors=list(report.errors),
+    )
+
+
+@router.get("/run-settings", response_model=RunSettingsResponse)
+def run_settings() -> RunSettingsResponse:
+    """How long runs are kept (``history.retention``) and the default stage time limit.
+
+    Read from ``testosterone.yaml``; change them there. The server reads retention
+    when it starts, so restart it after an edit.
+    """
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.history_section import SERVER_PRUNE_INTERVAL_S
+
+    try:
+        cfg = discover_and_load()
+    except ConfigError:
+        return RunSettingsResponse(config_found=False, retention=RetentionSettings(enabled=False))
+    retention = cfg.history.retention
+    return RunSettingsResponse(
+        config_found=True,
+        retention=RetentionSettings(
+            days=retention.days,
+            runs_per_cycle=retention.runs_per_cycle,
+            enabled=retention.enabled,
+        ),
+        cleanup_interval_hours=SERVER_PRUNE_INTERVAL_S / 3600 if retention.enabled else None,
+        default_stage_timeout_s=cfg.defaults.timeout_s,
+    )
 
 
 @router.get("/runs/{run_id}", response_model=RunDetailResponse)

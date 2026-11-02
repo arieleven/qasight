@@ -1,16 +1,31 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { apiClient } from "../../lib/api-client";
+import { apiClient, type DeleteRunsResponse } from "../../lib/api-client";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { formatPercent, passRateLine } from "../../lib/format";
-import { EmptyState, PageHeader, RunLabel, Spinner, StatusPill, buttonClasses } from "../../components/ui";
+import { Button, EmptyState, PageHeader, RunLabel, Spinner, StatusPill, buttonClasses } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { RunSettingsNote } from "./RunSettingsNote";
 
 const selectClass =
   "rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 text-sm text-ink-100 focus:border-brand-500 focus:outline-none";
 
 const PAGE = 30;
+
+function isRunning(status: string | null | undefined): boolean {
+  return (status ?? "").toUpperCase() === "RUNNING";
+}
+
+function deletedLine(result: DeleteRunsResponse): string {
+  const n = result.deleted.length;
+  const parts = [`Deleted ${n} run${n === 1 ? "" : "s"}.`];
+  if (result.skipped_running.length) parts.push(`${result.skipped_running.length} still running, left alone.`);
+  if (result.not_found.length) parts.push(`${result.not_found.length} were already gone.`);
+  if (result.errors.length) parts.push(`Some report files could not be removed: ${result.errors.join("; ")}`);
+  return parts.join(" ");
+}
 
 export function HistoryPage() {
   const [params, setParams] = useSearchParams();
@@ -24,6 +39,46 @@ export function HistoryPage() {
   });
   const cyclesQuery = useQuery({ queryKey: ["cycles"], queryFn: () => apiClient.listCycles() });
   const cycleNames = (cyclesQuery.data?.items ?? []).map((item) => item.name);
+
+  // Choosing runs to delete: off until "Select runs", then a checkbox per finished run.
+  const [selecting, setSelecting] = useState(false);
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const deletion = useMutation({
+    mutationFn: (runIds: string[]) => apiClient.deleteRuns(runIds),
+    onSuccess: (result) => {
+      setNotice(deletedLine(result));
+      setChosen(new Set());
+      setConfirming(false);
+      setSelecting(false);
+      // Every list that showed those runs (dashboard, cycle pages, compare) is stale now.
+      void queryClient.invalidateQueries();
+    }
+  });
+
+  function toggle(runId: string) {
+    setChosen((current) => {
+      const next = new Set(current);
+      if (next.has(runId)) next.delete(runId);
+      else next.add(runId);
+      return next;
+    });
+    setConfirming(false);
+  }
+
+  function startSelecting() {
+    setSelecting(true);
+    setNotice(null);
+  }
+
+  function stopSelecting() {
+    setSelecting(false);
+    setChosen(new Set());
+    setConfirming(false);
+    deletion.reset();
+  }
 
   function pickCycle(name: string) {
     setParams(name ? { cycle: name } : {}, { replace: true });
@@ -52,16 +107,70 @@ export function HistoryPage() {
         title="Runs"
         subtitle={cycle ? `Runs of ${cycle}, newest first.` : "Every recorded run, newest first."}
         actions={
-          latest && baseline ? (
-            <Link
-              to={`/compare?current_run_id=${latest.run_id}&baseline_run_id=${baseline.run_id}`}
-              className={buttonClasses("secondary", "sm")}
-            >
-              Compare latest two
-            </Link>
-          ) : undefined
+          <>
+            {latest && baseline ? (
+              <Link
+                to={`/compare?current_run_id=${latest.run_id}&baseline_run_id=${baseline.run_id}`}
+                className={buttonClasses("secondary", "sm")}
+              >
+                Compare latest two
+              </Link>
+            ) : null}
+            {!IS_STATIC_BUILD && items.length > 0 ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-pressed={selecting}
+                onClick={selecting ? stopSelecting : startSelecting}
+              >
+                {selecting ? "Done" : "Select runs"}
+              </Button>
+            ) : null}
+          </>
         }
       />
+      {notice ? (
+        <p role="status" className="mb-3 text-sm text-ink-200" data-testid="delete-notice">
+          {notice}
+        </p>
+      ) : null}
+      {selecting ? (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-ink-900/70 px-3 py-2 text-sm"
+          data-testid="delete-toolbar"
+        >
+          <span className="text-ink-200">
+            {chosen.size === 0 ? "Pick the runs to delete." : `${chosen.size} run${chosen.size === 1 ? "" : "s"} selected.`}
+          </span>
+          {confirming ? (
+            <>
+              <span className="text-danger-400">
+                Delete {chosen.size === 1 ? "it" : "them"} for good? Their results and report copies go too.
+              </span>
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={deletion.isPending}
+                onClick={() => deletion.mutate([...chosen])}
+              >
+                {deletion.isPending ? "Deleting…" : "Yes, delete"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deletion.isPending}>
+                Keep them
+              </Button>
+            </>
+          ) : (
+            <Button variant="danger" size="sm" disabled={chosen.size === 0} onClick={() => setConfirming(true)}>
+              Delete selected
+            </Button>
+          )}
+          {deletion.isError ? (
+            <span role="alert" className="text-danger-400">
+              Couldn't delete: {deletion.error instanceof Error ? deletion.error.message : String(deletion.error)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="grid gap-1">
           <label htmlFor="runs-cycle" className="text-xs font-medium text-ink-300">
@@ -100,6 +209,17 @@ export function HistoryPage() {
           {items.map((run) => (
             <li key={run.run_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
               <div className="flex min-w-0 items-center gap-3">
+                {selecting ? (
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-brand-500"
+                    aria-label={`Select run ${run.run_id}`}
+                    checked={chosen.has(run.run_id)}
+                    disabled={isRunning(run.status)}
+                    title={isRunning(run.status) ? "Still running: stop it first." : undefined}
+                    onChange={() => toggle(run.run_id)}
+                  />
+                ) : null}
                 <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
                 <RunLabel run={run} linked relative />
               </div>
@@ -120,6 +240,7 @@ export function HistoryPage() {
           {runsQuery.isFetching ? "Loading…" : "Show older runs"}
         </button>
       ) : null}
+      <RunSettingsNote />
     </section>
   );
 }

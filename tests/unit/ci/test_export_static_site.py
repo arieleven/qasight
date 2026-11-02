@@ -123,3 +123,29 @@ def test_a_failing_summary_does_not_stop_the_export(monkeypatch: pytest.MonkeyPa
 
     assert exporter.ai_summaries == 1
     assert exporter.skipped == ["AI summary for boom (ConnectionResetError)"]
+
+
+def test_run_cases_are_read_once_per_run_and_the_cache_ends_with_the_export() -> None:
+    """The per-test pages reread every run's cases per test; the export reads each run once."""
+    module = _load_exporter_module()
+    from testo_core.services import flaky_service
+
+    original = flaky_service._cases_for_run
+    loads: list[str] = []
+
+    class _Run:
+        run_id = "r1"
+
+    def fake_load(run: Any) -> dict[str, dict[str, Any]]:
+        loads.append(run.run_id)
+        return {"t": {"status": "passed"}}
+
+    flaky_service._cases_for_run = fake_load
+    try:
+        with module._cache_run_cases():
+            first = flaky_service._cases_for_run(_Run())
+            assert flaky_service._cases_for_run(_Run()) is first
+        assert loads == ["r1"]
+        assert flaky_service._cases_for_run is fake_load
+    finally:
+        flaky_service._cases_for_run = original

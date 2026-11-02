@@ -112,7 +112,7 @@ class CycleExecutionAcceptedResponse(ApiModel):
 class CycleExecutionStatusResponse(ApiModel):
     execution_id: str
     cycle: str
-    status: Literal["queued", "running", "completed", "failed"]
+    status: Literal["queued", "running", "completed", "failed", "cancelled"]
     artifacts_root: str | None = None
     events_path: str | None = None
     plan_result_path: str | None = None
@@ -161,6 +161,38 @@ class RunListItem(ApiModel):
     environment: str | None = None
     # "2.3" (testo run --release, TESTO_RELEASE).
     release: str | None = None
+
+
+class DeleteRunsRequest(ApiModel):
+    run_ids: list[str] = Field(min_length=1, max_length=500)
+
+
+class DeleteRunsResponse(ApiModel):
+    """What ``POST /runs:delete`` removed, and the ids it left alone."""
+
+    deleted: list[str]
+    test_rows_deleted: int
+    snapshots_deleted: int
+    # Still running: a run is deleted only once it has finished.
+    skipped_running: list[str]
+    not_found: list[str]
+    errors: list[str]
+
+
+class RetentionSettings(ApiModel):
+    days: int | None = None
+    runs_per_cycle: int | None = None
+    enabled: bool
+
+
+class RunSettingsResponse(ApiModel):
+    """How long runs are kept and how long a stage may take: read from ``testosterone.yaml``."""
+
+    config_found: bool
+    retention: RetentionSettings
+    # How often this server applies the retention rules, when they are on.
+    cleanup_interval_hours: float | None = None
+    default_stage_timeout_s: float | None = None
 
 
 class RunListResponse(ApiModel):

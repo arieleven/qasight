@@ -68,8 +68,8 @@ People then sign in at `/login` with their username and password. Admins can als
 | Role | Can |
 |------|-----|
 | `viewer` | See runs, logs, reports and the live run stream |
-| `runner` | Also start runs from the UI or API, upload results and mark failure causes |
-| `admin` | Also change the AI provider settings and read the audit log |
+| `runner` | Also start and stop runs from the UI or API, upload results and mark failure causes |
+| `admin` | Also change the AI provider settings, delete runs from the history and read the audit log |
 
 - Reads always need a session in this mode, whatever `TESTO_PROTECT_READS` says.
 - The token is an admin for CI and scripts (`Authorization: Bearer`), and it signs the session cookies: changing it signs everyone out. `testo users sign-out NAME`, `set-role` and `reset-password` sign one person out.

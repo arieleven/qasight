@@ -329,6 +329,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycle-executions/{execution_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Cycle Execution
+         * @description Stop a run: a queued one never starts; a running one's stages get SIGTERM.
+         *
+         *     Send it again to kill stages that ignore SIGTERM. The run is still recorded, as
+         *     failed with ``interrupted_by`` set; its status here becomes ``cancelled``.
+         */
+        post: operations["cancel_cycle_execution_api_v1_cycle_executions__execution_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-executions/{execution_id}/events": {
         parameters: {
             query?: never;
@@ -900,6 +923,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/run-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Run Settings
+         * @description How long runs are kept (``history.retention``) and the default stage time limit.
+         *
+         *     Read from ``testosterone.yaml``; change them there. The server reads retention
+         *     when it starts, so restart it after an edit.
+         */
+        get: operations["run_settings_api_v1_run_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs": {
         parameters: {
             query?: never;
@@ -1045,6 +1091,28 @@ export interface paths {
         get: operations["get_run_reports_api_v1_runs__run_id__reports_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs:delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete Runs
+         * @description Delete the chosen runs: rows, per-test rows and report copies. Can't be undone.
+         *
+         *     A run still running is skipped. In accounts mode this needs the admin role.
+         */
+        post: operations["delete_runs_api_v1_runs_delete_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1556,7 +1624,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "queued" | "running" | "completed" | "failed";
+            status: "queued" | "running" | "completed" | "failed" | "cancelled";
         };
         /** CycleHealthItem */
         CycleHealthItem: {
@@ -1824,6 +1892,29 @@ export interface components {
              * @enum {string}
              */
             direction: "up" | "down" | "flat" | "unknown";
+        };
+        /** DeleteRunsRequest */
+        DeleteRunsRequest: {
+            /** Run Ids */
+            run_ids: string[];
+        };
+        /**
+         * DeleteRunsResponse
+         * @description What ``POST /runs:delete`` removed, and the ids it left alone.
+         */
+        DeleteRunsResponse: {
+            /** Deleted */
+            deleted: string[];
+            /** Errors */
+            errors: string[];
+            /** Not Found */
+            not_found: string[];
+            /** Skipped Running */
+            skipped_running: string[];
+            /** Snapshots Deleted */
+            snapshots_deleted: number;
+            /** Test Rows Deleted */
+            test_rows_deleted: number;
         };
         /** DeliveryAgeBucket */
         DeliveryAgeBucket: {
@@ -3108,6 +3199,15 @@ export interface components {
             /** Pools */
             pools: components["schemas"]["ResourcePoolStatus"][];
         };
+        /** RetentionSettings */
+        RetentionSettings: {
+            /** Days */
+            days: number | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Runs Per Cycle */
+            runs_per_cycle: number | null;
+        };
         /** ReviewFindingItem */
         ReviewFindingItem: {
             /** Detail */
@@ -3320,6 +3420,19 @@ export interface components {
             static_links: {
                 [key: string]: string;
             };
+        };
+        /**
+         * RunSettingsResponse
+         * @description How long runs are kept and how long a stage may take: read from ``testosterone.yaml``.
+         */
+        RunSettingsResponse: {
+            /** Cleanup Interval Hours */
+            cleanup_interval_hours: number | null;
+            /** Config Found */
+            config_found: boolean;
+            /** Default Stage Timeout S */
+            default_stage_timeout_s: number | null;
+            retention: components["schemas"]["RetentionSettings"];
         };
         /** RunSlice */
         RunSlice: {
@@ -4118,6 +4231,37 @@ export interface operations {
         };
     };
     get_cycle_execution_api_v1_cycle_executions__execution_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleExecutionStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_cycle_execution_api_v1_cycle_executions__execution_id__cancel_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -5109,6 +5253,26 @@ export interface operations {
             };
         };
     };
+    run_settings_api_v1_run_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSettingsResponse"];
+                };
+            };
+        };
+    };
     list_runs_api_v1_runs_get: {
         parameters: {
             query?: {
@@ -5351,6 +5515,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunReportsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_runs_api_v1_runs_delete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteRunsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteRunsResponse"];
                 };
             };
             /** @description Validation Error */

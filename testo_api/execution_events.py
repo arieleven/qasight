@@ -157,13 +157,14 @@ async def iter_execution_sse(
             return
         with state.lock:
             events_path, start_offset = state.events_path, state.events_start_offset_bytes
-            done, error = state.done, state.error
+            done, error, status = state.done, state.error, state.status
         if events_path is not None:
             break
         if done:
-            # Failed before it had an events file (e.g. a config error): say why.
+            # Failed before it had an events file (a config error), or stopped while queued.
             message = error or "execution finished without events"
-            yield _sse_message({"event": "error", "code": "internal_error", "message": message})
+            code = "cancelled" if status == "cancelled" else "internal_error"
+            yield _sse_message({"event": "error", "code": code, "message": message})
             return
         await asyncio.sleep(interval)
         interval = min(interval * 2, max_poll_s)

@@ -20,6 +20,8 @@ export type CycleDetailResponse = Schemas["CycleDetailResponse"];
 
 export type RunListItem = Schemas["RunListItem"];
 export type RunListResponse = Schemas["RunListResponse"];
+export type DeleteRunsResponse = Schemas["DeleteRunsResponse"];
+export type RunSettings = Schemas["RunSettingsResponse"];
 export type StageHealth = Schemas["StageHealth"];
 export type RunDetailResponse = Schemas["RunDetailResponse"];
 export type RunReportsResponse = Schemas["RunReportsResponse"];
@@ -200,6 +202,17 @@ export const apiClient = {
   },
   getCycleExecutionStatus(executionId: string): Promise<CycleExecutionStatus> {
     return api<CycleExecutionStatus>(`/api/v1/cycle-executions/${executionId}`);
+  },
+  /** Stop a run: a queued one never starts, a running one's stages are stopped (again: killed). */
+  cancelCycleExecution(executionId: string): Promise<CycleExecutionStatus> {
+    return api<CycleExecutionStatus>(`/api/v1/cycle-executions/${executionId}/cancel`, { method: "POST" });
+  },
+  /** Delete the chosen runs from the history. Can't be undone; running runs are skipped. */
+  deleteRuns(runIds: string[]): Promise<DeleteRunsResponse> {
+    return api<DeleteRunsResponse>("/api/v1/runs:delete", { method: "POST", body: JSON.stringify({ run_ids: runIds }) });
+  },
+  getRunSettings(): Promise<RunSettings> {
+    return api<RunSettings>("/api/v1/run-settings");
   },
   listCycles(): Promise<CycleListResponse> {
     return api<CycleListResponse>("/api/v1/cycles");
