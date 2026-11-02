@@ -65,5 +65,5 @@ curl -fsS -b "$jar" "$base/" | grep -q '<div id="root">'
 curl -fsS -b "$jar" "$base/runs/anything" | grep -q '<div id="root">'
 # The backup service wrote a copy of the history when it started (`up --wait` waited
 # for its healthcheck, which needs a fresh backup file).
-"${compose[@]}" exec -T backup sh -c 'ls -l /data/backups/testo-*.tar.gz'
+"${compose[@]}" exec -T backup sh -c 'ls -l /backups/testo-*.tar.gz'
 echo "team server smoke: ok"
