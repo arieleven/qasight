@@ -140,3 +140,66 @@ export function RunsChart({ points }: { points: Point[] }) {
     </svg>
   );
 }
+
+function minutesLabel(ms: number): string {
+  const min = ms / 60000;
+  if (min >= 10) return `${Math.round(min)}m`;
+  if (min >= 1) return `${min.toFixed(1)}m`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+/** Median wall time of each day's runs as bars, so a suite that creeps slower shows. */
+export function SuiteTimeChart({ points }: { points: Point[] }) {
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const known = points.filter((p) => p.median_duration_ms != null);
+  const top = Math.max(1, ...known.map((p) => p.median_duration_ms as number));
+  const slot = innerW / Math.max(1, points.length);
+  const bar = Math.max(2, Math.min(36, slot * 0.6));
+  const y = (v: number) => PAD.top + innerH - (v / top) * innerH;
+  const step = labelStep(points.length);
+  const first = known[0];
+  const last = known[known.length - 1];
+  return (
+    <svg
+      data-chart
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label={
+        known.length
+          ? `Median suite time per day, from ${minutesLabel(first.median_duration_ms as number)} on ${first.day} to ${minutesLabel(last.median_duration_ms as number)} on ${last.day}`
+          : "Median suite time per day: no runs in this period"
+      }
+      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+    >
+      {[0, top].map((t) => (
+        <g key={t}>
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke={PAPER.rule} strokeWidth={1} />
+          <text x={PAD.left - 6} y={y(t)} fill={PAPER.muted} fontSize={12} textAnchor="end" dominantBaseline="middle">
+            {t ? minutesLabel(t) : "0"}
+          </text>
+        </g>
+      ))}
+      {points.map((p, i) => {
+        const cx = PAD.left + slot * i + slot / 2;
+        const ms = p.median_duration_ms;
+        return (
+          <g key={p.day}>
+            {ms ? <rect x={cx - bar / 2} y={y(ms)} width={bar} height={y(0) - y(ms)} fill={PAPER.brand} rx={2} /> : null}
+            {i % step === 0 || i === points.length - 1 ? (
+              <text x={cx} y={H - 8} fill={PAPER.muted} fontSize={12} textAnchor={i === points.length - 1 && points.length > 7 ? "end" : "middle"}>
+                {dayLabel(p.day, points.length > 14)}
+              </text>
+            ) : null}
+          </g>
+        );
+      })}
+      {!known.length ? (
+        <text x={W / 2} y={H / 2} fill={PAPER.faint} fontSize={13} textAnchor="middle">
+          No runs in this period
+        </text>
+      ) : null}
+    </svg>
+  );
+}

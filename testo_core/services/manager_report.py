@@ -8,6 +8,9 @@ compute, so the numbers match ``testo notify --digest`` and the ``/health`` page
 * headline numbers for the period against the one before (pass rate, green
   builds, runs, line coverage) and the project health score;
 * a day-by-day trend of runs, green runs and pass rate;
+* delivery metrics: time to fix failing tests, open failures by age, suite and CI
+  time, and how much of the period the default branch was red
+  (``services/delivery_metrics.py``);
 * one row per cycle;
 * what needs attention (still failing, turned flaky, got slower) and good news
   (fixed), plus the health score's own findings.
@@ -17,10 +20,12 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
+from statistics import median
 from typing import Any
 
 from testo_core.history.read_model import list_recent_runs
 from testo_core.services import run_digest
+from testo_core.services.delivery_metrics import Delivery, build_delivery, span
 from testo_core.services.project_health import grade_for, project_health
 
 PERIOD_DAYS: dict[str, int] = {"day": 1, "week": 7, "month": 30, "quarter": 90}
@@ -40,6 +45,9 @@ class TrendPoint:
     runs: int
     green: int
     pass_rate: float | None
+    # Median wall time of that day's runs, and every run's time together (CI minutes).
+    median_duration_ms: int | None = None
+    ci_minutes: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -106,6 +114,7 @@ class ManagerReport:
     fixed: list[NamedTest] = field(default_factory=list)
     slower: list[NamedTest] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
+    delivery: Delivery = field(default_factory=Delivery)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -150,12 +159,15 @@ def _trend(start: float, end: float, days: int, wanted: set[str]) -> list[TrendP
         runs = buckets[day]
         passed = sum(r.passed or 0 for r in runs)
         bad = sum((r.failed or 0) + (r.broken or 0) for r in runs)
+        took = [r.wall_duration_ms for r in runs if r.wall_duration_ms > 0]
         points.append(
             TrendPoint(
                 day=day,
                 runs=len(runs),
                 green=sum(1 for r in runs if r.returncode == 0),
                 pass_rate=_pct(passed, passed + bad),
+                median_duration_ms=int(median(took)) if took else None,
+                ci_minutes=round(sum(took) / 60000, 1),
             )
         )
     return points[-days:]
@@ -177,7 +189,30 @@ def _plural(n: int, one: str, many: str | None = None) -> str:
     return f"{n} {one if n == 1 else (many or one + 's')}"
 
 
-def _summary(k: Kpis, period: str) -> list[str]:
+def _delivery_lines(d: Delivery, period: str) -> list[str]:
+    lines = []
+    if d.median_fix_s is not None:
+        was = f" (was {span(d.prev_median_fix_s)})" if d.prev_median_fix_s is not None else ""
+        lines.append(
+            f"Failing tests were fixed in a median of {span(d.median_fix_s)}{was}, "
+            f"over {_plural(d.fixes, 'fix', 'fixes')}."
+        )
+    if d.open_failures:
+        week_plus = sum(b.count for b in d.open_by_age[2:])
+        older = f", {week_plus} of them older than a week" if week_plus else ""
+        lines.append(f"{_plural(d.open_failures, 'failing test')} still open{older}.")
+    if d.red_pct is not None:
+        where = d.default_branch or "The default branch"
+        was = f" (was {d.prev_red_pct:.0f}%)" if d.prev_red_pct is not None else ""
+        longest = f"; longest red spell {span(d.longest_red_s)}" if d.longest_red_s else ""
+        lines.append(f"{where} was red {d.red_pct:.0f}% of the {period}{was}{longest}.")
+    if d.ci_minutes:
+        was = f" (was {d.prev_ci_minutes:.0f})" if d.prev_ci_minutes else ""
+        lines.append(f"Test runs took {d.ci_minutes:.0f} CI minutes in total{was}.")
+    return lines
+
+
+def _summary(k: Kpis, period: str, delivery: Delivery | None = None) -> list[str]:
     if not k.runs:
         return [f"No runs were recorded this {period}."]
     lines = [
@@ -201,6 +236,8 @@ def _summary(k: Kpis, period: str) -> list[str]:
         lines.append(", ".join(changes).capitalize() + ".")
     else:
         lines.append("No failing or newly flaky tests.")
+    if delivery is not None:
+        lines += _delivery_lines(delivery, period)
     if k.health_score is not None:
         lines.append(f"Test health score: {k.health_score}/100 (grade {k.health_grade}).")
     return lines
@@ -251,6 +288,9 @@ def build_report(
         fixed=sum(len(d.fixed) for d in rows),
     )
     in_scope = set(wanted)
+    delivery = build_delivery(
+        list_recent_runs(limit=_SCAN_LIMIT), start=digest.start, end=digest.end, cycles=in_scope
+    )
     findings = [
         Finding(cycle=f.cycle, title=f.title, detail=f.detail)
         for f in health.findings
@@ -264,7 +304,7 @@ def build_report(
         end=digest.end,
         generated_at=digest.end if now is not None else datetime.now(tz=UTC).timestamp(),
         scope=wanted,
-        summary=_summary(kpis, period),
+        summary=_summary(kpis, period, delivery),
         kpis=kpis,
         trend=_trend(digest.start, digest.end, days, in_scope),
         cycles=[
@@ -295,4 +335,5 @@ def build_report(
             for s in d.slower
         ][:MAX_ITEMS],
         findings=findings,
+        delivery=delivery,
     )

@@ -5,6 +5,7 @@ import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from ".
 import { Card, HealthBar, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 import { formatDuration, formatPercent } from "../../lib/format";
+import { DeliveryCard } from "./DeliveryCard";
 import { NeedsAttention } from "./NeedsAttention";
 import { TONE_TEXT, scoreTone } from "../health/score";
 
@@ -85,6 +86,8 @@ export function DashboardPage() {
           lowerIsBetter
         />
       </div>
+
+      <DeliveryCard />
 
       <Card title="Recent runs" actions={<ReportLinks links={data.report_links} />}>
         {recentRuns.length === 0 ? (

@@ -403,6 +403,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Delivery
+         * @description Time to fix, open failures by age, CI time and default-branch red time over the last ``days``.
+         */
+        get: operations["get_dashboard_delivery_api_v1_dashboard_delivery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/overview": {
         parameters: {
             query?: never;
@@ -1682,6 +1702,106 @@ export interface components {
              */
             direction: "up" | "down" | "flat" | "unknown";
         };
+        /** DeliveryAgeBucket */
+        DeliveryAgeBucket: {
+            /** Count */
+            count: number;
+            /** Label */
+            label: string;
+        };
+        /** DeliveryCycleRow */
+        DeliveryCycleRow: {
+            /** Ci Minutes */
+            ci_minutes: number;
+            /** Cycle */
+            cycle: string;
+            /** First Try Commits */
+            first_try_commits: number;
+            /** First Try Green Pct */
+            first_try_green_pct: number | null;
+            /** Fixes */
+            fixes: number;
+            /** Grown Stage */
+            grown_stage: string | null;
+            /** Grown Stage After Ms */
+            grown_stage_after_ms: number | null;
+            /** Grown Stage Before Ms */
+            grown_stage_before_ms: number | null;
+            /** Longest Red S */
+            longest_red_s: number | null;
+            /** Median Fix S */
+            median_fix_s: number | null;
+            /** Open Failures */
+            open_failures: number;
+            /** Prev Ci Minutes */
+            prev_ci_minutes: number;
+            /** Prev Median Fix S */
+            prev_median_fix_s: number | null;
+            /** Prev Red Pct */
+            prev_red_pct: number | null;
+            /** Prev Suite Median Ms */
+            prev_suite_median_ms: number | null;
+            /** Red Pct */
+            red_pct: number | null;
+            /** Suite Median Ms */
+            suite_median_ms: number | null;
+            /** Suite P90 Ms */
+            suite_p90_ms: number | null;
+        };
+        /** DeliveryOpenFailure */
+        DeliveryOpenFailure: {
+            /** Age S */
+            age_s: number;
+            /** Cycle */
+            cycle: string;
+            /** Name */
+            name: string;
+            /** Runs */
+            runs: number;
+            /** Since */
+            since: number;
+        };
+        /**
+         * DeliveryResponse
+         * @description Time to fix failing tests, suite and CI time, and how often the default branch was red.
+         *
+         *     See ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no
+         *     run recorded a branch; then every run counts as the default branch.
+         */
+        DeliveryResponse: {
+            /** Ci Minutes */
+            ci_minutes: number;
+            /** Cycles */
+            cycles: components["schemas"]["DeliveryCycleRow"][];
+            /** Default Branch */
+            default_branch: string | null;
+            /** First Try Commits */
+            first_try_commits: number;
+            /** First Try Green Pct */
+            first_try_green_pct: number | null;
+            /** Fixes */
+            fixes: number;
+            /** Longest Red S */
+            longest_red_s: number | null;
+            /** Median Fix S */
+            median_fix_s: number | null;
+            /** Oldest Open */
+            oldest_open: components["schemas"]["DeliveryOpenFailure"][];
+            /** Open By Age */
+            open_by_age: components["schemas"]["DeliveryAgeBucket"][];
+            /** Open Failures */
+            open_failures: number;
+            /** Prev Ci Minutes */
+            prev_ci_minutes: number;
+            /** Prev First Try Green Pct */
+            prev_first_try_green_pct: number | null;
+            /** Prev Median Fix S */
+            prev_median_fix_s: number | null;
+            /** Prev Red Pct */
+            prev_red_pct: number | null;
+            /** Red Pct */
+            red_pct: number | null;
+        };
         /** DeltaCaseChange */
         DeltaCaseChange: {
             /** Baseline Status */
@@ -2051,6 +2171,7 @@ export interface components {
             cycles: components["schemas"]["ReportCycleRow"][];
             /** Days */
             days: number;
+            delivery: components["schemas"]["DeliveryResponse"];
             /** End */
             end: number;
             /** Findings */
@@ -2281,10 +2402,17 @@ export interface components {
         };
         /** ReportTrendPoint */
         ReportTrendPoint: {
+            /**
+             * Ci Minutes
+             * @default 0
+             */
+            ci_minutes: number;
             /** Day */
             day: string;
             /** Green */
             green: number;
+            /** Median Duration Ms */
+            median_duration_ms: number | null;
             /** Pass Rate */
             pass_rate: number | null;
             /** Runs */
@@ -3684,6 +3812,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardAttentionResponse"];
+                };
+            };
+        };
+    };
+    get_dashboard_delivery_api_v1_dashboard_delivery_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

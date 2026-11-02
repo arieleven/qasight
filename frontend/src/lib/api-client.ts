@@ -26,6 +26,7 @@ export type RunReportsResponse = Schemas["RunReportsResponse"];
 export type RunPyramidResponse = Schemas["RunPyramidResponse"];
 export type RunMarkdownResponse = Schemas["RunMarkdownResponse"];
 export type ManagerReport = Schemas["ManagerReportResponse"];
+export type Delivery = Schemas["DeliveryResponse"];
 export type ReportPeriod = ManagerReport["period"];
 export type RunFailuresResponse = Schemas["RunFailuresResponse"];
 export type FailingTestItem = Schemas["FailingTestItem"];
@@ -295,6 +296,9 @@ export const apiClient = {
   },
   getVersion(): Promise<VersionResponse> {
     return api<VersionResponse>("/api/v1/version");
+  },
+  getDashboardDelivery(days = 7): Promise<Delivery> {
+    return api<Delivery>(`/api/v1/dashboard/delivery?days=${days}`);
   },
   getDashboardAttention(): Promise<DashboardAttentionResponse> {
     return api<DashboardAttentionResponse>("/api/v1/dashboard/attention");

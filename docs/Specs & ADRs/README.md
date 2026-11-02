@@ -32,6 +32,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Getting Started guide and the MkDocs docs site | [Docs Site - 2026-10-19](Docs%20Site%20-%202026-10-19.md) |
 | Third-party frameworks and reporters through entry points | [Plugin API - 2026-10-19](Plugin%20API%20-%202026-10-19.md) |
 | Playwright as its own equipment | [Playwright Adapter - 2026-10-19](Playwright%20Adapter%20-%202026-10-19.md) |
+| Time to fix failing tests, suite and CI time, default-branch red time, and the waves of report metrics after them | [Test Delivery Metrics - 2026-11-02](Test%20Delivery%20Metrics%20-%202026-11-02.md) |
 | Getting results out: copy menus, a manager report, PDF, PNG, CSV, XLSX and PowerPoint | [Exporting Results - 2026-11-01](Exporting%20Results%20-%202026-11-01.md) |
 | Quarantining flaky tests so they don't fail the run | [Flaky Test Quarantine - 2026-10-22](Flaky%20Test%20Quarantine%20-%202026-10-22.md) |
 | Quarantine from the UI, API or `testo quarantine`, kept on the server and applied to ingest and `pytest --testo` too | [Quarantine From the UI - 2026-11-01](Quarantine%20From%20the%20UI%20-%202026-11-01.md) |

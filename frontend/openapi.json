@@ -2044,6 +2044,393 @@
         "title": "DashboardTrendIndicator",
         "type": "object"
       },
+      "DeliveryAgeBucket": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "count"
+        ],
+        "title": "DeliveryAgeBucket",
+        "type": "object"
+      },
+      "DeliveryCycleRow": {
+        "properties": {
+          "ci_minutes": {
+            "title": "Ci Minutes",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "first_try_commits": {
+            "title": "First Try Commits",
+            "type": "integer"
+          },
+          "first_try_green_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Try Green Pct"
+          },
+          "fixes": {
+            "title": "Fixes",
+            "type": "integer"
+          },
+          "grown_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grown Stage"
+          },
+          "grown_stage_after_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grown Stage After Ms"
+          },
+          "grown_stage_before_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grown Stage Before Ms"
+          },
+          "longest_red_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Red S"
+          },
+          "median_fix_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Fix S"
+          },
+          "open_failures": {
+            "title": "Open Failures",
+            "type": "integer"
+          },
+          "prev_ci_minutes": {
+            "title": "Prev Ci Minutes",
+            "type": "number"
+          },
+          "prev_median_fix_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Median Fix S"
+          },
+          "prev_red_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Red Pct"
+          },
+          "prev_suite_median_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Suite Median Ms"
+          },
+          "red_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Red Pct"
+          },
+          "suite_median_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suite Median Ms"
+          },
+          "suite_p90_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suite P90 Ms"
+          }
+        },
+        "required": [
+          "cycle",
+          "fixes",
+          "median_fix_s",
+          "prev_median_fix_s",
+          "open_failures",
+          "suite_median_ms",
+          "suite_p90_ms",
+          "prev_suite_median_ms",
+          "ci_minutes",
+          "prev_ci_minutes",
+          "grown_stage",
+          "grown_stage_before_ms",
+          "grown_stage_after_ms",
+          "red_pct",
+          "prev_red_pct",
+          "longest_red_s",
+          "first_try_green_pct",
+          "first_try_commits"
+        ],
+        "title": "DeliveryCycleRow",
+        "type": "object"
+      },
+      "DeliveryOpenFailure": {
+        "properties": {
+          "age_s": {
+            "title": "Age S",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "since": {
+            "title": "Since",
+            "type": "number"
+          }
+        },
+        "required": [
+          "cycle",
+          "name",
+          "since",
+          "age_s",
+          "runs"
+        ],
+        "title": "DeliveryOpenFailure",
+        "type": "object"
+      },
+      "DeliveryResponse": {
+        "description": "Time to fix failing tests, suite and CI time, and how often the default branch was red.\n\nSee ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no\nrun recorded a branch; then every run counts as the default branch.",
+        "properties": {
+          "ci_minutes": {
+            "title": "Ci Minutes",
+            "type": "number"
+          },
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryCycleRow"
+            },
+            "title": "Cycles",
+            "type": "array"
+          },
+          "default_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Branch"
+          },
+          "first_try_commits": {
+            "title": "First Try Commits",
+            "type": "integer"
+          },
+          "first_try_green_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Try Green Pct"
+          },
+          "fixes": {
+            "title": "Fixes",
+            "type": "integer"
+          },
+          "longest_red_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Red S"
+          },
+          "median_fix_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Fix S"
+          },
+          "oldest_open": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryOpenFailure"
+            },
+            "title": "Oldest Open",
+            "type": "array"
+          },
+          "open_by_age": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryAgeBucket"
+            },
+            "title": "Open By Age",
+            "type": "array"
+          },
+          "open_failures": {
+            "title": "Open Failures",
+            "type": "integer"
+          },
+          "prev_ci_minutes": {
+            "title": "Prev Ci Minutes",
+            "type": "number"
+          },
+          "prev_first_try_green_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev First Try Green Pct"
+          },
+          "prev_median_fix_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Median Fix S"
+          },
+          "prev_red_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Red Pct"
+          },
+          "red_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Red Pct"
+          }
+        },
+        "required": [
+          "default_branch",
+          "fixes",
+          "median_fix_s",
+          "prev_median_fix_s",
+          "open_failures",
+          "open_by_age",
+          "oldest_open",
+          "ci_minutes",
+          "prev_ci_minutes",
+          "red_pct",
+          "prev_red_pct",
+          "longest_red_s",
+          "first_try_green_pct",
+          "prev_first_try_green_pct",
+          "first_try_commits",
+          "cycles"
+        ],
+        "title": "DeliveryResponse",
+        "type": "object"
+      },
       "DeltaCaseChange": {
         "properties": {
           "baseline_status": {
@@ -3173,6 +3560,9 @@
             "title": "Days",
             "type": "integer"
           },
+          "delivery": {
+            "$ref": "#/components/schemas/DeliveryResponse"
+          },
           "end": {
             "title": "End",
             "type": "number"
@@ -3275,7 +3665,8 @@
           "newly_flaky",
           "fixed",
           "slower",
-          "findings"
+          "findings",
+          "delivery"
         ],
         "title": "ManagerReportResponse",
         "type": "object"
@@ -3934,6 +4325,11 @@
       },
       "ReportTrendPoint": {
         "properties": {
+          "ci_minutes": {
+            "default": 0.0,
+            "title": "Ci Minutes",
+            "type": "number"
+          },
           "day": {
             "title": "Day",
             "type": "string"
@@ -3941,6 +4337,17 @@
           "green": {
             "title": "Green",
             "type": "integer"
+          },
+          "median_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Duration Ms"
           },
           "pass_rate": {
             "anyOf": [
@@ -3962,7 +4369,9 @@
           "day",
           "runs",
           "green",
-          "pass_rate"
+          "pass_rate",
+          "median_duration_ms",
+          "ci_minutes"
         ],
         "title": "ReportTrendPoint",
         "type": "object"
@@ -7140,6 +7549,52 @@
           }
         },
         "summary": "Get Dashboard Attention",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/dashboard/delivery": {
+      "get": {
+        "description": "Time to fix, open failures by age, CI time and default-branch red time over the last ``days``.",
+        "operationId": "get_dashboard_delivery_api_v1_dashboard_delivery_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Dashboard Delivery",
         "tags": [
           "dashboard"
         ]

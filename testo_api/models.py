@@ -1028,6 +1028,8 @@ class ReportTrendPoint(ApiModel):
     runs: int
     green: int
     pass_rate: float | None
+    median_duration_ms: int | None = None
+    ci_minutes: float = 0.0
 
 
 class ReportCycleRow(ApiModel):
@@ -1055,6 +1057,65 @@ class ReportFinding(ApiModel):
     detail: str
 
 
+class DeliveryAgeBucket(ApiModel):
+    label: str
+    count: int
+
+
+class DeliveryOpenFailure(ApiModel):
+    cycle: str
+    name: str
+    since: float
+    age_s: float
+    runs: int
+
+
+class DeliveryCycleRow(ApiModel):
+    cycle: str
+    fixes: int
+    median_fix_s: float | None
+    prev_median_fix_s: float | None
+    open_failures: int
+    suite_median_ms: int | None
+    suite_p90_ms: int | None
+    prev_suite_median_ms: int | None
+    ci_minutes: float
+    prev_ci_minutes: float
+    grown_stage: str | None
+    grown_stage_before_ms: int | None
+    grown_stage_after_ms: int | None
+    red_pct: float | None
+    prev_red_pct: float | None
+    longest_red_s: float | None
+    first_try_green_pct: float | None
+    first_try_commits: int
+
+
+class DeliveryResponse(ApiModel):
+    """Time to fix failing tests, suite and CI time, and how often the default branch was red.
+
+    See ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no
+    run recorded a branch; then every run counts as the default branch.
+    """
+
+    default_branch: str | None
+    fixes: int
+    median_fix_s: float | None
+    prev_median_fix_s: float | None
+    open_failures: int
+    open_by_age: list[DeliveryAgeBucket]
+    oldest_open: list[DeliveryOpenFailure]
+    ci_minutes: float
+    prev_ci_minutes: float
+    red_pct: float | None
+    prev_red_pct: float | None
+    longest_red_s: float | None
+    first_try_green_pct: float | None
+    prev_first_try_green_pct: float | None
+    first_try_commits: int
+    cycles: list[DeliveryCycleRow]
+
+
 class ManagerReportResponse(ApiModel):
     """How testing went over a period: the ``/report`` page and every ``testo export`` format."""
 
@@ -1074,3 +1135,4 @@ class ManagerReportResponse(ApiModel):
     fixed: list[ReportTest]
     slower: list[ReportTest]
     findings: list[ReportFinding]
+    delivery: DeliveryResponse
