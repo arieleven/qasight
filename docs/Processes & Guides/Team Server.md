@@ -206,7 +206,7 @@ docker compose cp backup:/backups ./testo-backups
 docker compose run --rm --entrypoint testo backup restore /backups/testo-<time>.tar.gz --replace --yes
 ```
 
-Compose files from before 1.6 kept backups in `/data/backups`; after updating the compose file, copy any you want to keep out of that folder, then delete it.
+Compose files from before 1.6 kept backups in `/data/backups`; after updating the compose file (it needs the 1.6 image, which owns `/backups`), copy any you want to keep out of that folder, then delete it.
 
 They hold password hashes when [accounts](#accounts) are on; keep them as private as the database. Don't want it: `docker compose up -d --scale backup=0`.
 

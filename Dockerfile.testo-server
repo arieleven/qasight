@@ -55,7 +55,7 @@ RUN WHEEL="$(ls /tmp/*.whl)" && python -m pip install "${WHEEL}[api,db]" "python
     fi && \
     rm -f /tmp/*.whl && \
     useradd --create-home --uid 10001 testo && \
-    mkdir -p /data/artifacts /repos && chown testo:testo /data /data/artifacts /repos
+    mkdir -p /data/artifacts /repos /backups && chown testo:testo /data /data/artifacts /repos /backups
 COPY --from=ui /ui/dist /app/ui
 
 USER testo
