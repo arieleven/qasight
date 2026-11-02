@@ -1435,6 +1435,23 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CostlyFlakyTest */
+        CostlyFlakyTest: {
+            /** Branches */
+            branches: string[];
+            /** Cost Minutes */
+            cost_minutes: number;
+            /** Cycle */
+            cycle: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Red Runs */
+            red_runs: number;
+            /** Retries */
+            retries: number;
+        };
         /** CycleDetailResponse */
         CycleDetailResponse: {
             /** Description */
@@ -2080,6 +2097,11 @@ export interface components {
         };
         /** FlakyTestItem */
         FlakyTestItem: {
+            /**
+             * Cost Minutes
+             * @default 0
+             */
+            cost_minutes: number;
             /** Failed */
             failed: number;
             /** Flip Rate */
@@ -2111,6 +2133,11 @@ export interface components {
             quarantined: boolean;
             /** Reasons */
             reasons: string[];
+            /**
+             * Red Runs
+             * @default 0
+             */
+            red_runs: number;
             /**
              * Retried
              * @default 0
@@ -2303,6 +2330,7 @@ export interface components {
             period: "day" | "week" | "month" | "quarter";
             /** Scope */
             scope: string[];
+            signal: components["schemas"]["SignalResponse"];
             /** Slower */
             slower: components["schemas"]["ReportTest"][];
             /** Start */
@@ -3139,6 +3167,52 @@ export interface components {
             static_links: {
                 [key: string]: string;
             };
+        };
+        /** SignalCause */
+        SignalCause: {
+            /**
+             * Cause
+             * @enum {string}
+             */
+            cause: "product_bug" | "test_bug" | "environment" | "other" | "unmarked" | "flaky" | "no_tests";
+            /** Label */
+            label: string;
+            /** Runs */
+            runs: number;
+        };
+        /**
+         * SignalResponse
+         * @description What the red runs were (real bugs vs noise) and what flaky tests cost.
+         *
+         *     See ``testo_core/services/failure_signal.py``.
+         */
+        SignalResponse: {
+            /** By Cause */
+            by_cause: components["schemas"]["SignalCause"][];
+            /** Costly */
+            costly: components["schemas"]["CostlyFlakyTest"][];
+            /** Flaky Branches */
+            flaky_branches: number;
+            /** Flaky Minutes */
+            flaky_minutes: number;
+            /** Flaky Red Runs */
+            flaky_red_runs: number;
+            /** Noise Pct */
+            noise_pct: number | null;
+            /** Prev Flaky Minutes */
+            prev_flaky_minutes: number;
+            /** Prev Noise Pct */
+            prev_noise_pct: number | null;
+            /** Prev Real Pct */
+            prev_real_pct: number | null;
+            /** Prev Red Runs */
+            prev_red_runs: number;
+            /** Real Pct */
+            real_pct: number | null;
+            /** Red Runs */
+            red_runs: number;
+            /** Unmarked Pct */
+            unmarked_pct: number | null;
         };
         /** SkillResultItem */
         SkillResultItem: {

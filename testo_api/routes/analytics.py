@@ -247,6 +247,8 @@ def get_flaky_tests(
                 ),
                 reasons=list(t.reasons),
                 retried=t.retried,
+                red_runs=t.red_runs,
+                cost_minutes=t.cost_minutes,
                 quarantined=t.key in quarantine,
                 quarantine_entry=quarantine.get(t.key),
             )

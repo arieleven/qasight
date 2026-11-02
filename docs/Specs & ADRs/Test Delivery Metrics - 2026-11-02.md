@@ -33,8 +33,19 @@ Where it shows:
 - `GET /api/v1/report` has a `delivery` object, and its trend points carry `median_duration_ms` and `ci_minutes`. The `/report` page has a **Speed and stability** row (time to fix, open failures, red time, CI time), **Suite time by day**, **Open failures by age** with the oldest ones, and **Speed and stability by cycle**. The summary sentences mention them, so email, slides and the spreadsheet carry them too.
 - `GET /api/v1/dashboard/delivery?days=7` feeds the dashboard's **Last 7 days** card. The static demo serves it from `dashboard/delivery.json`.
 
+### Wave 2: real failures vs noise, cost of flakiness
+
+`testo_core/services/failure_signal.py`:
+
+- **Why runs were red.** Each red run in the period gets one cause from what made it red: the cause someone marked on its failures (triage memory, `services/triage.py`, matched by message signature), the flaky classification, or nothing. The most decisive wins: product bug, test bug, environment, other, not marked yet, then flaky, so a run counts as flaky only when every failure in it was a flaky test. A red run with no failing test is "crash or setup". The report gives the counts, the share that were real bugs, and the share that was noise (test bugs, environment, flaky, crashes), against the period before. Flakiness is judged over both periods together.
+- **Cost of flakiness.** Per flaky test: the time of its passing retries plus its share of the wall time of red runs that only flaky tests caused (someone reran those jobs), the number of such runs, and the branches they held up. Runs whose failures were marked as another cause are not charged. `flaky_service.flaky_costs()` does the sum for both the report and the cycle page.
+
+Where it shows: the `/report` page's **Why runs were red** (a bar by cause and the counts) and **Cost of flakiness** (CI minutes, red runs, branches held up, the most costly tests), the `signal` object of `GET /api/v1/report`, two summary sentences, and on the cycle page's flaky card a cost badge per test, which is now sorted most costly first (`red_runs` and `cost_minutes` on `GET /api/v1/analytics/flaky`).
+
 ## Consequences
 
 - No new tables or settings: the metrics are read-side only and recomputed on each request from up to 5000 recent runs (the manager report's existing scan limit) and at most 400 runs of test results per cycle.
 - A project that never sends branch data gets red time over all runs, which is right for a single-branch setup and noisy when feature branches run too. `ci_base_ref` (sent by the GitHub Action, GitLab template and `testo ingest` in CI) fixes it.
 - Time to fix needs per-test results; a cycle whose runs have none shows red time and suite time only.
+- The real-bug share is only as good as the causes people mark. Unmarked failures are shown as their own group, not guessed, and the page says how to mark them.
+- Cost is CI time, not people's time: a rerun someone waited on costs more than its minutes, so the number is a floor.

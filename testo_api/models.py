@@ -462,6 +462,10 @@ class FlakyTestItem(ApiModel):
     reasons: list[str] = Field(default_factory=list)
     # Runs in which it failed and then passed on a retry.
     retried: int = 0
+    # Red runs only flaky tests caused that this one was in, and the CI minutes of its
+    # retries plus its share of those runs (services/flaky_service.flaky_costs).
+    red_runs: int = 0
+    cost_minutes: float = 0.0
     # Matches the cycle's quarantine: the list kept on the server, or testosterone.yaml when it is readable.
     quarantined: bool = False
     # The stored entry it matches exactly, which the UI can release (null for config rules and globs).
@@ -1120,6 +1124,45 @@ class DeliveryResponse(ApiModel):
     cycles: list[DeliveryCycleRow]
 
 
+class SignalCause(ApiModel):
+    cause: Literal[
+        "product_bug", "test_bug", "environment", "other", "unmarked", "flaky", "no_tests"
+    ]
+    label: str
+    runs: int
+
+
+class CostlyFlakyTest(ApiModel):
+    cycle: str
+    key: str
+    name: str
+    cost_minutes: float
+    retries: int
+    red_runs: int
+    branches: list[str]
+
+
+class SignalResponse(ApiModel):
+    """What the red runs were (real bugs vs noise) and what flaky tests cost.
+
+    See ``testo_core/services/failure_signal.py``.
+    """
+
+    red_runs: int
+    prev_red_runs: int
+    by_cause: list[SignalCause]
+    real_pct: float | None
+    noise_pct: float | None
+    unmarked_pct: float | None
+    prev_real_pct: float | None
+    prev_noise_pct: float | None
+    flaky_minutes: float
+    prev_flaky_minutes: float
+    flaky_red_runs: int
+    flaky_branches: int
+    costly: list[CostlyFlakyTest]
+
+
 class ManagerReportResponse(ApiModel):
     """How testing went over a period: the ``/report`` page and every ``testo export`` format."""
 
@@ -1140,6 +1183,7 @@ class ManagerReportResponse(ApiModel):
     slower: list[ReportTest]
     findings: list[ReportFinding]
     delivery: DeliveryResponse
+    signal: SignalResponse
 
 
 class ReleaseSummaryItem(BaseModel):

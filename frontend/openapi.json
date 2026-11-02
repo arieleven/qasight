@@ -937,6 +937,52 @@
         "title": "BrokenTestItem",
         "type": "object"
       },
+      "CostlyFlakyTest": {
+        "properties": {
+          "branches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branches",
+            "type": "array"
+          },
+          "cost_minutes": {
+            "title": "Cost Minutes",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "red_runs": {
+            "title": "Red Runs",
+            "type": "integer"
+          },
+          "retries": {
+            "title": "Retries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "key",
+          "name",
+          "cost_minutes",
+          "retries",
+          "red_runs",
+          "branches"
+        ],
+        "title": "CostlyFlakyTest",
+        "type": "object"
+      },
       "CycleDetailResponse": {
         "properties": {
           "description": {
@@ -3143,6 +3189,11 @@
       },
       "FlakyTestItem": {
         "properties": {
+          "cost_minutes": {
+            "default": 0.0,
+            "title": "Cost Minutes",
+            "type": "number"
+          },
           "failed": {
             "title": "Failed",
             "type": "integer"
@@ -3223,6 +3274,11 @@
             "title": "Reasons",
             "type": "array"
           },
+          "red_runs": {
+            "default": 0,
+            "title": "Red Runs",
+            "type": "integer"
+          },
           "retried": {
             "default": 0,
             "title": "Retried",
@@ -3248,6 +3304,8 @@
           "issue_url",
           "reasons",
           "retried",
+          "red_runs",
+          "cost_minutes",
           "quarantined",
           "quarantine_entry"
         ],
@@ -3742,6 +3800,9 @@
             "title": "Scope",
             "type": "array"
           },
+          "signal": {
+            "$ref": "#/components/schemas/SignalResponse"
+          },
           "slower": {
             "items": {
               "$ref": "#/components/schemas/ReportTest"
@@ -3796,7 +3857,8 @@
           "fixed",
           "slower",
           "findings",
-          "delivery"
+          "delivery",
+          "signal"
         ],
         "title": "ManagerReportResponse",
         "type": "object"
@@ -6167,6 +6229,153 @@
           "artifacts_url"
         ],
         "title": "RunReportsResponse",
+        "type": "object"
+      },
+      "SignalCause": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "product_bug",
+              "test_bug",
+              "environment",
+              "other",
+              "unmarked",
+              "flaky",
+              "no_tests"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cause",
+          "label",
+          "runs"
+        ],
+        "title": "SignalCause",
+        "type": "object"
+      },
+      "SignalResponse": {
+        "description": "What the red runs were (real bugs vs noise) and what flaky tests cost.\n\nSee ``testo_core/services/failure_signal.py``.",
+        "properties": {
+          "by_cause": {
+            "items": {
+              "$ref": "#/components/schemas/SignalCause"
+            },
+            "title": "By Cause",
+            "type": "array"
+          },
+          "costly": {
+            "items": {
+              "$ref": "#/components/schemas/CostlyFlakyTest"
+            },
+            "title": "Costly",
+            "type": "array"
+          },
+          "flaky_branches": {
+            "title": "Flaky Branches",
+            "type": "integer"
+          },
+          "flaky_minutes": {
+            "title": "Flaky Minutes",
+            "type": "number"
+          },
+          "flaky_red_runs": {
+            "title": "Flaky Red Runs",
+            "type": "integer"
+          },
+          "noise_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Noise Pct"
+          },
+          "prev_flaky_minutes": {
+            "title": "Prev Flaky Minutes",
+            "type": "number"
+          },
+          "prev_noise_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Noise Pct"
+          },
+          "prev_real_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Real Pct"
+          },
+          "prev_red_runs": {
+            "title": "Prev Red Runs",
+            "type": "integer"
+          },
+          "real_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Real Pct"
+          },
+          "red_runs": {
+            "title": "Red Runs",
+            "type": "integer"
+          },
+          "unmarked_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unmarked Pct"
+          }
+        },
+        "required": [
+          "red_runs",
+          "prev_red_runs",
+          "by_cause",
+          "real_pct",
+          "noise_pct",
+          "unmarked_pct",
+          "prev_real_pct",
+          "prev_noise_pct",
+          "flaky_minutes",
+          "prev_flaky_minutes",
+          "flaky_red_runs",
+          "flaky_branches",
+          "costly"
+        ],
+        "title": "SignalResponse",
         "type": "object"
       },
       "SkillResultItem": {

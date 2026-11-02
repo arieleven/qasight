@@ -193,6 +193,7 @@ export function ReportDocument({ report, brand = "Testosterone", copy = true }: 
       </section>
 
       <DeliverySection report={report} copy={copy} />
+      <SignalSection report={report} copy={copy} />
 
       <Section copy={copy} title="Summary">
         <ul className="list-disc space-y-1 pl-5 text-[15px] leading-relaxed" style={{ color: PAPER.ink }}>
@@ -457,5 +458,110 @@ function DeliveryByCycle({ report, copy }: { report: ManagerReport; copy: boolea
         </table>
       </div>
     </Section>
+  );
+}
+
+const CAUSE_COLORS: Record<string, string> = {
+  product_bug: PAPER.bad,
+  test_bug: PAPER.warn,
+  environment: PAPER.brand,
+  other: PAPER.muted,
+  unmarked: PAPER.faint,
+  flaky: "#d97706",
+  no_tests: "#7c3aed"
+};
+
+/** Why the red runs were red (real bugs vs noise) and what flaky tests cost. */
+function SignalSection({ report, copy }: { report: ManagerReport; copy: boolean }) {
+  const s = report.signal;
+  if (!s.red_runs && !s.flaky_minutes) return null;
+  const real = s.by_cause.find((c) => c.cause === "product_bug")?.runs ?? 0;
+  return (
+    <div className="grid gap-x-8 md:grid-cols-2">
+      <Section copy={copy} title="Why runs were red">
+        {s.red_runs ? (
+          <>
+            <p className="text-sm" style={{ color: PAPER.ink }}>
+              <span className="text-2xl font-bold tabular-nums">{real}</span> of {s.red_runs} red {s.red_runs === 1 ? "run was a real bug" : "runs were real bugs"}
+              {s.noise_pct !== null ? (
+                <span style={{ color: PAPER.muted }}>
+                  {" "}
+                  · {Math.round(s.noise_pct)}% noise
+                  {s.prev_noise_pct !== null ? `, was ${Math.round(s.prev_noise_pct)}%` : ""}
+                </span>
+              ) : null}
+            </p>
+            <div
+              className="mt-3 flex h-3 overflow-hidden rounded"
+              role="img"
+              aria-label={`Red runs by cause: ${s.by_cause.map((c) => `${c.label} ${c.runs}`).join(", ")}`}
+              style={{ background: PAPER.wash }}
+            >
+              {s.by_cause.map((c) => (
+                <span key={c.cause} style={{ width: `${(100 * c.runs) / s.red_runs}%`, background: CAUSE_COLORS[c.cause] }} />
+              ))}
+            </div>
+            <ul className="mt-3 space-y-1 text-sm">
+              {s.by_cause.map((c) => (
+                <li key={c.cause} className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: CAUSE_COLORS[c.cause] }} />
+                    {c.label}
+                  </span>
+                  <span className="tabular-nums">{c.runs}</span>
+                </li>
+              ))}
+            </ul>
+            {s.unmarked_pct ? (
+              <p className="mt-2 text-xs" style={{ color: PAPER.muted }}>
+                Mark a failure's cause on its run page and later failures like it are counted too.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-sm" style={{ color: PAPER.muted }}>
+            No red runs this period.
+          </p>
+        )}
+      </Section>
+      <Section copy={copy} title="Cost of flakiness">
+        <p className="text-sm" style={{ color: PAPER.ink }}>
+          <span className="text-2xl font-bold tabular-nums">{Math.round(s.flaky_minutes)}</span> CI minutes
+          {was(s.flaky_minutes, s.prev_flaky_minutes || null, `${Math.round(s.prev_flaky_minutes)}`)}
+          <span style={{ color: PAPER.muted }}>
+            {" "}
+            · {s.flaky_red_runs} red {s.flaky_red_runs === 1 ? "run" : "runs"}
+            {s.flaky_branches ? `, ${s.flaky_branches} ${s.flaky_branches === 1 ? "branch" : "branches"} held up` : ""}
+          </span>
+        </p>
+        {s.costly.length ? (
+          <table className="mt-3 w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs" style={{ color: PAPER.muted }}>
+                <th className="py-1 pr-3 font-semibold">Most costly</th>
+                <th className="py-1 pr-3 text-right font-semibold">Red runs</th>
+                <th className="py-1 text-right font-semibold">Minutes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.costly.slice(0, 5).map((t) => (
+                <tr key={`${t.cycle}:${t.key}`} className="border-t align-top" style={{ borderColor: PAPER.rule }}>
+                  <td className="py-1.5 pr-3">
+                    <span className="font-mono text-[12px] break-all">{t.name}</span>
+                    <span style={{ color: PAPER.muted }}> · {t.cycle}</span>
+                  </td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{t.red_runs}</td>
+                  <td className="py-1.5 text-right tabular-nums">{t.cost_minutes.toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="mt-2 text-sm" style={{ color: PAPER.muted }}>
+            No flaky test cost CI time this period.
+          </p>
+        )}
+      </Section>
+    </div>
   );
 }

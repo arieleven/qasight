@@ -11,6 +11,8 @@ compute, so the numbers match ``testo notify --digest`` and the ``/health`` page
 * delivery metrics: time to fix failing tests, open failures by age, suite and CI
   time, and how much of the period the default branch was red
   (``services/delivery_metrics.py``);
+* the failure signal: what the red runs were (real bugs, test bugs, environment,
+  flaky, not marked yet) and what flaky tests cost (``services/failure_signal.py``);
 * one row per cycle;
 * what needs attention (still failing, turned flaky, got slower) and good news
   (fixed), plus the health score's own findings.
@@ -26,6 +28,7 @@ from typing import Any
 from testo_core.history.read_model import list_recent_runs
 from testo_core.services import run_digest
 from testo_core.services.delivery_metrics import Delivery, build_delivery, span
+from testo_core.services.failure_signal import NOISE, Signal, build_signal
 from testo_core.services.project_health import grade_for, project_health
 
 PERIOD_DAYS: dict[str, int] = {"day": 1, "week": 7, "month": 30, "quarter": 90}
@@ -115,6 +118,7 @@ class ManagerReport:
     slower: list[NamedTest] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
     delivery: Delivery = field(default_factory=Delivery)
+    signal: Signal = field(default_factory=Signal)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -212,7 +216,26 @@ def _delivery_lines(d: Delivery, period: str) -> list[str]:
     return lines
 
 
-def _summary(k: Kpis, period: str, delivery: Delivery | None = None) -> list[str]:
+def _signal_lines(s: Signal) -> list[str]:
+    lines = []
+    if s.red_runs:
+        real = next((c.runs for c in s.by_cause if c.cause == "product_bug"), 0)
+        unmarked = next((c.runs for c in s.by_cause if c.cause == "unmarked"), 0)
+        noise = sum(c.runs for c in s.by_cause if c.cause in NOISE)
+        parts = [f"{real} {'was a real bug' if real == 1 else 'were real bugs'}"]
+        parts.append(f"{noise} {'was' if noise == 1 else 'were'} noise")
+        if unmarked:
+            parts.append(f"{unmarked} not marked yet")
+        lines.append(f"Of {_plural(s.red_runs, 'red run')}, " + ", ".join(parts) + ".")
+    if s.flaky_minutes or s.flaky_red_runs:
+        red = f" and caused {_plural(s.flaky_red_runs, 'red run')}" if s.flaky_red_runs else ""
+        lines.append(f"Flaky tests cost about {s.flaky_minutes:.0f} CI minutes{red}.")
+    return lines
+
+
+def _summary(
+    k: Kpis, period: str, delivery: Delivery | None = None, signal: Signal | None = None
+) -> list[str]:
     if not k.runs:
         return [f"No runs were recorded this {period}."]
     lines = [
@@ -238,6 +261,8 @@ def _summary(k: Kpis, period: str, delivery: Delivery | None = None) -> list[str
         lines.append("No failing or newly flaky tests.")
     if delivery is not None:
         lines += _delivery_lines(delivery, period)
+    if signal is not None:
+        lines += _signal_lines(signal)
     if k.health_score is not None:
         lines.append(f"Test health score: {k.health_score}/100 (grade {k.health_grade}).")
     return lines
@@ -288,8 +313,14 @@ def build_report(
         fixed=sum(len(d.fixed) for d in rows),
     )
     in_scope = set(wanted)
-    delivery = build_delivery(
-        list_recent_runs(limit=_SCAN_LIMIT), start=digest.start, end=digest.end, cycles=in_scope
+    recent = list_recent_runs(limit=_SCAN_LIMIT)
+    delivery = build_delivery(recent, start=digest.start, end=digest.end, cycles=in_scope)
+    signal = build_signal(
+        recent,
+        start=digest.start,
+        end=digest.end,
+        cycles=in_scope,
+        default_branch=delivery.default_branch,
     )
     findings = [
         Finding(cycle=f.cycle, title=f.title, detail=f.detail)
@@ -304,7 +335,7 @@ def build_report(
         end=digest.end,
         generated_at=digest.end if now is not None else datetime.now(tz=UTC).timestamp(),
         scope=wanted,
-        summary=_summary(kpis, period, delivery),
+        summary=_summary(kpis, period, delivery, signal),
         kpis=kpis,
         trend=_trend(digest.start, digest.end, days, in_scope),
         cycles=[
@@ -336,4 +367,5 @@ def build_report(
         ][:MAX_ITEMS],
         findings=findings,
         delivery=delivery,
+        signal=signal,
     )
