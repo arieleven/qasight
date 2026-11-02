@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
-import { Badge, Card, StatusPill } from "../../components/ui";
+import { Badge, Button, Card, StatusPill } from "../../components/ui";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { MuscleDefeated, MuscleFlex } from "../../components/mascot";
 import type { CycleExecution } from "./useCycleExecution";
 
@@ -16,10 +17,33 @@ export function ExecutionProgress({
   /** Whether the run was persisted, so the Runs page has it. */
   persisted: boolean;
 }) {
-  const { phase, exitCode, errorMessage, events, stageRows, finished } = execution;
+  const { phase, exitCode, errorMessage, events, stageRows, finished, busy, executionId, stopping, stopError } = execution;
 
   return (
     <>
+      {busy && executionId && !IS_STATIC_BUILD ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-ink-900/70 px-3 py-2 text-sm"
+          data-testid="run-stop"
+        >
+          <span className="text-ink-200">
+            {stopping ? "Stopping…" : `${noun} in progress.`}
+          </span>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => void execution.stop()}
+            title={stopping ? "Press again to kill stages that ignore the first stop." : undefined}
+          >
+            {stopping ? "Force stop" : "Stop"}
+          </Button>
+          {stopError ? (
+            <span role="alert" className="w-full text-danger-400">
+              Couldn't stop: {stopError}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {finished ? (
         <Card>
           <div className="flex items-center gap-4" data-testid="run-outcome">
@@ -30,7 +54,9 @@ export function ExecutionProgress({
                   ? `${noun} passed. Gains secured. 💪`
                   : phase === "aborted"
                     ? `${noun} aborted (fail fast).`
-                    : `${noun} failed.`}
+                    : phase === "stopped"
+                      ? `${noun} stopped.`
+                      : `${noun} failed.`}
               </p>
               <p className="mt-0.5 text-sm text-ink-300">
                 {exitCode !== null ? `Exit code ${exitCode}. ` : ""}

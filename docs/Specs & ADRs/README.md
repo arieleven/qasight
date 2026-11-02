@@ -34,6 +34,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Playwright as its own equipment | [Playwright Adapter - 2026-10-19](Playwright%20Adapter%20-%202026-10-19.md) |
 | Time to fix failing tests, suite and CI time, default-branch red time, and the waves of report metrics after them | [Test Delivery Metrics - 2026-11-02](Test%20Delivery%20Metrics%20-%202026-11-02.md) |
 | Getting results out: copy menus, a manager report, PDF, PNG, CSV, XLSX and PowerPoint | [Exporting Results - 2026-11-01](Exporting%20Results%20-%202026-11-01.md) |
+| Deleting chosen runs, stopping a run from the UI, and showing how long runs are kept | [Run Deletion and Stop - 2026-11-02](Run%20Deletion%20and%20Stop%20-%202026-11-02.md) |
 | Quarantining flaky tests so they don't fail the run | [Flaky Test Quarantine - 2026-10-22](Flaky%20Test%20Quarantine%20-%202026-10-22.md) |
 | Quarantine from the UI, API or `testo quarantine`, kept on the server and applied to ingest and `pytest --testo` too | [Quarantine From the UI - 2026-11-01](Quarantine%20From%20the%20UI%20-%202026-11-01.md) |
 | Running only the tests a change can affect (`testo affected`, `pytest --testo-affected`) | [Affected Test Selection - 2026-10-30](Affected%20Test%20Selection%20-%202026-10-30.md) |

@@ -421,7 +421,7 @@ def _run_process_stage(
             interrupt.unregister(proc)
         stopped_by = interrupt.requested()
         if stopped_by is not None and not timed_out:
-            error = f"stopped by {interrupt.signal_name(stopped_by)}"
+            error = f"stopped by {interrupt.stop_reason()}"
             returncode = 128 + stopped_by  # 130 for Ctrl-C, 143 for SIGTERM, like a shell
         if timed_out or stopped_by is not None:
             # Only when Testosterone stopped the stage: a stage may leave a server

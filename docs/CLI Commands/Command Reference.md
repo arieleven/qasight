@@ -617,6 +617,7 @@ testo clean --history --dry-run          # list what would go, delete nothing
 testo clean --history --yes              # apply history.retention from testosterone.yaml
 testo clean --history -y --keep-days 30  # override (or set) the limits for this call
 testo clean --history -y --keep-runs 200
+testo clean --history -y --run 3f2a... --run 9c1b...  # delete just these runs
 ```
 
 The limits come from the top-level `history:` section (either or both; a run goes when it breaks any):
@@ -629,7 +630,9 @@ history:
   max_file_mb: 100      # files bigger than this aren't kept in a run's history copy
 ```
 
-`TESTO_RETENTION_DAYS` and `TESTO_RETENTION_RUNS_PER_CYCLE` override the file (`0` switches that limit off), so a server without a config file can still have limits; `--keep-days` / `--keep-runs` override both. `max_file_mb` (or `TESTO_HISTORY_MAX_FILE_MB`) applies when a run is recorded: bigger files are left out of its history copy and report archive, and the run lists them in `snapshot_skipped_files`. Without any limit (no `history:` section, variable or flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted.
+`TESTO_RETENTION_DAYS` and `TESTO_RETENTION_RUNS_PER_CYCLE` override the file (`0` switches that limit off), so a server without a config file can still have limits; `--keep-days` / `--keep-runs` override both. `max_file_mb` (or `TESTO_HISTORY_MAX_FILE_MB`) applies when a run is recorded: bigger files are left out of its history copy and report archive, and the run lists them in `snapshot_skipped_files`. Without any limit (no `history:` section, variable or flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section or the variables nothing is ever deleted by age or count.
+
+`--run ID` (repeat it for more) deletes exactly those runs, the same way, whatever the retention rules say; `--keep-days` / `--keep-runs` are ignored then. A run still running is skipped with a warning and an unknown id is reported; when nothing was deleted it exits **2**. The Runs page in the UI does the same with **Select runs** (`POST /api/v1/runs:delete`).
 
 ---
 

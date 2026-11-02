@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Deep Dive — Execution Logic
@@ -289,6 +289,11 @@ Stages run one at a time, in config order, unless the cycle sets `max_parallel_s
 - Only the calling thread writes `events.ndjson` and calls the renderer, so both stay consistent without locks.
 - Output is buffered: each stage's panel prints when it finishes (no live interleaving).
 - `fail_fast` starts no new stage after a failure; running ones finish, then `plan_aborted` is written.
+- Each stage thread runs in a copy of the caller's `contextvars` context, so it sees the run's stop scope (below).
+
+### Stopping a run
+
+`testo_core/engine/interrupt.py` keeps a `StopScope` per run: the stage processes it runs and what asked it to stop. The CLI uses one process-wide scope, which the SIGINT/SIGTERM handlers pull. Each API run enters its own scope (`interrupt.scoped`, in `CycleExecutionManager`), so `POST /api/v1/cycle-executions/{id}/cancel` terminates that run's stages only (a second call kills them), and the run's next stages are skipped. A queued run is dropped before it starts. Interpreter exit still kills every scope's stages.
 - Stage names must be unique (each writes `artifacts/<cycle>/<stage>/`). Stages sharing a `target_repo` share its caches, ports and databases, so only mark a cycle parallel when its stages are independent. N stages with `workers: 4` can start 4N test processes.
 
 See [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%20Stages%20-%202026-10-24.md).

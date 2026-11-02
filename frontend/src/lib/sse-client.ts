@@ -12,7 +12,14 @@ export type CycleNdjsonEvent =
       internal_failure?: boolean;
       error?: string | null;
     }
-  | { event: "plan_aborted"; plan: string; reason: "fail_fast"; completed_stages: number }
+  | {
+      event: "plan_aborted";
+      plan: string;
+      /** fail_fast; stopped (the Stop button / API); signal (Ctrl-C, SIGTERM) */
+      reason: "fail_fast" | "stopped" | "signal";
+      completed_stages: number;
+      signal?: string;
+    }
   | {
       event: "plan_finished";
       plan: string;

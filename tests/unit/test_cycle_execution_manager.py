@@ -387,3 +387,58 @@ def test_execution_sse_streams_the_run_and_closes(
     names = _event_names(messages)
     assert names[0] == "plan_started"
     assert names[-1] == "plan_finished"
+
+
+# --- Stop -------------------------------------------------------------------
+
+
+def test_cancel_drops_a_queued_run_and_frees_its_cycle() -> None:
+    manager = CycleExecutionManager(max_concurrent=1)
+    release = threading.Event()
+    running = _start_blocked(manager, "busy", release)
+    _wait_status(running, "running")
+    queued = _start_blocked(manager, "waiting", threading.Event())
+    assert queued.status == "queued"
+
+    got = manager.cancel(queued.execution_id)
+
+    assert got is queued and queued.done
+    assert queued.status == "cancelled"
+    assert queued.error == "Stopped before it started."
+    # The cycle can be queued again at once, and the old job never runs.
+    again = _start_blocked(manager, "waiting", release)
+    release.set()
+    _wait(running)
+    _wait(again)
+    assert queued.status == "cancelled"
+
+
+def test_cancel_stops_a_running_run_and_marks_it_cancelled(tmp_path: Path) -> None:
+    import sys
+
+    marker = tmp_path / "started"
+    script = f"import pathlib, time; pathlib.Path({str(marker)!r}).touch(); time.sleep(60)"
+    config = write_cycles_config(
+        tmp_path,
+        cycles={
+            "long": [
+                {"name": "sleepy", "equipment": "command", "args": [sys.executable, "-c", script]}
+            ]
+        },
+    )
+    manager = CycleExecutionManager()
+    state = manager.create_execution(cycle="long", config_path=config, report_db=False)
+    deadline = time.monotonic() + 20
+    while not marker.exists():
+        assert time.monotonic() < deadline, state.error
+        time.sleep(0.05)
+
+    manager.cancel(state.execution_id)
+    _wait(state)
+
+    assert state.status == "cancelled"
+    events = read_artifact_events(tmp_path / "artifacts", "long")
+    finished = [e for e in events if e["event"] == "stage_finished"]
+    assert finished and finished[-1]["returncode"] == 143
+    assert manager.cancel(state.execution_id) is state  # a finished run is left as it is
+    assert manager.cancel("no-such-run") is None

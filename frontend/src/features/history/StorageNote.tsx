@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient, type StorageResponse } from "../../lib/api-client";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 
 export function formatBytes(value: number | null | undefined): string {
   if (value == null) return "unknown";
@@ -28,7 +29,13 @@ export function storageLine(storage: StorageResponse): string {
 
 /** How much the run history takes, under the Runs list, with a warning when the disk is low. */
 export function StorageNote() {
-  const query = useQuery({ queryKey: ["storage"], queryFn: () => apiClient.getStorage(), staleTime: 60_000 });
+  const query = useQuery({
+    queryKey: ["storage"],
+    queryFn: () => apiClient.getStorage(),
+    staleTime: 60_000,
+    // The demo snapshot has no server to measure.
+    enabled: !IS_STATIC_BUILD
+  });
   const storage = query.data;
   if (!storage) return null;
   const line = storageLine(storage);

@@ -88,3 +88,50 @@ describe("QuickRunPage", () => {
     expect(screen.getByText("1.5s")).toBeInTheDocument();
   });
 });
+
+describe("QuickRunPage Stop button", () => {
+  it("stops a running run and says it stopped", async () => {
+    const source = new FakeEventSource();
+    vi.stubGlobal("EventSource", vi.fn(function () { return source; }));
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/cancel")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ execution_id: "adhoc-2", cycle: "adhoc", status: "running" })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 202,
+        json: async () => ({
+          execution_id: "adhoc-2",
+          status: "running",
+          events_url: "http://localhost:8000/api/v1/cycle-executions/adhoc-2/events",
+          summary_url: "http://localhost:8000/api/v1/cycle-executions/adhoc-2"
+        })
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <QuickRunPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    await waitFor(() => expect(screen.getByTestId("run-stop")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Force stop" })).toBeInTheDocument());
+    const cancel = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/cancel"));
+    expect(String(cancel?.[0])).toContain("/api/v1/cycle-executions/adhoc-2/cancel");
+    expect((cancel?.[1] as RequestInit).method).toBe("POST");
+
+    source.emit("plan_aborted", { event: "plan_aborted", plan: "adhoc", reason: "stopped", completed_stages: 1 });
+    await waitFor(() => expect(screen.getByText("Run stopped.")).toBeInTheDocument());
+    expect(screen.queryByTestId("run-stop")).not.toBeInTheDocument();
+  });
+});
