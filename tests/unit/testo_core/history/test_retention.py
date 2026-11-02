@@ -242,3 +242,49 @@ def test_cli_history_leaves_artifacts_alone(
     result = CliRunner().invoke(app, ["clean", "--history", "-y", "-c", str(cfg)])
     assert result.exit_code == 0, result.output
     assert artifacts.is_dir()
+
+
+# --- chosen runs -------------------------------------------------------------------
+
+
+def test_delete_runs_removes_only_the_chosen_finished_runs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(paths, "STATIC_HISTORY_ROOT", tmp_path / "history")
+    gone, kept = _record_run(cycle="unit", days_ago=1), _record_run(cycle="unit", days_ago=2)
+    running = get_repository().create_run(status=RunStatus.RUNNING, metadata={"plan": "unit"})
+    (tmp_path / "history" / gone).mkdir(parents=True)
+
+    dry = retention.delete_runs([gone, gone, str(running.id), "nope"], dry_run=True)
+    assert dry.run_ids == (gone,)
+    assert get_repository().get_run(gone) is not None
+
+    report = retention.delete_runs([gone, str(running.id), "nope"])
+    assert (report.runs_deleted, report.test_rows_deleted, report.snapshots_deleted) == (1, 1, 1)
+    assert report.skipped_running == (str(running.id),)
+    assert report.not_found == ("nope",)
+    assert get_repository().get_run(gone) is None
+    assert get_repository().get_run(kept) is not None
+    assert get_repository().get_run(str(running.id)) is not None
+
+
+def test_cli_history_run_deletes_just_those_runs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(paths, "STATIC_HISTORY_ROOT", tmp_path / "history")
+    gone, kept = _record_run(cycle="unit", days_ago=1), _record_run(cycle="unit", days_ago=2)
+
+    no_yes = CliRunner().invoke(app, ["clean", "--history", "--run", gone])
+    assert no_yes.exit_code == 2 and "--yes" in no_yes.output
+
+    result = CliRunner().invoke(app, ["clean", "--history", "--run", gone, "-y"])
+    assert result.exit_code == 0, result.output
+    assert "Deleted 1 run(s)" in result.output
+    assert get_repository().get_run(gone) is None
+    assert get_repository().get_run(kept) is not None
+
+    missing = CliRunner().invoke(app, ["clean", "--history", "--run", gone, "-y"])
+    assert missing.exit_code == 2 and "No run" in missing.output
+
+    without_history = CliRunner().invoke(app, ["clean", "--run", kept, "-y"])
+    assert without_history.exit_code == 2 and "--history" in without_history.output

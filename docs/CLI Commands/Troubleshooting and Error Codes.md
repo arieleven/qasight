@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Troubleshooting and Error Codes
@@ -152,6 +152,8 @@ Written to the artifact `events.ndjson` when `run_plan(fail_fast=True)` aborts a
 ```
 
 A run stopped by Ctrl-C or SIGTERM writes the same event with `"reason":"signal"` and `"signal":"SIGINT"` (or `"SIGTERM"`), then `plan_finished` with `exit_code` 130 or 143.
+
+A run stopped from the UI's Stop button (`POST /api/v1/cycle-executions/{id}/cancel`) writes `"reason":"stopped"` with `"signal":"SIGTERM"` and exits 143; its stages' error says `stopped by a stop request`, the recorded run is failed with `interrupted_by: a stop request`, and the execution's status is `cancelled`. Only that run's stages are stopped, not other runs on the same server. A run stopped while still queued writes no events: its event stream sends `{"event":"error","code":"cancelled"}`.
 
 ---
 

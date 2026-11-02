@@ -20,6 +20,10 @@ from typing import Any
 
 from testo_core.config.errors import ConfigValidationError
 
+# How often the API server applies history.retention. Pruning is cheap when nothing
+# expired, and a run only ever expires by getting older, so hours are plenty.
+SERVER_PRUNE_INTERVAL_S = 6 * 60 * 60
+
 _RETENTION_KEYS = frozenset({"days", "runs_per_cycle"})
 
 

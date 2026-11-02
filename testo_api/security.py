@@ -67,7 +67,8 @@ _OPEN_PATHS = frozenset({LOGIN_PATH, LOGIN_POST_PATH, LOGOUT_PATH})
 _OPEN_PREFIXES = ("/api/v1/health/",)
 # Writes under these need the admin role in accounts mode; every other write needs runner.
 # Taking a key back from its holder is an admin's call; taking and giving back your own is a runner's.
-_ADMIN_WRITE_PREFIXES = ("/api/v1/ai/", "/api/v1/resources/items/release")
+# Deleting run history can't be undone, so it is an admin's call too.
+_ADMIN_WRITE_PREFIXES = ("/api/v1/ai/", "/api/v1/resources/items/release", "/api/v1/runs:delete")
 SESSION_MAX_AGE = 30 * 24 * 3600
 
 AuthMode = Literal["token", "accounts"]

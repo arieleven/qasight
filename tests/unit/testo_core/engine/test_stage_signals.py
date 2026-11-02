@@ -125,3 +125,81 @@ def test_the_next_run_starts_clean(tmp_path: Path) -> None:
     )
     result = run_plan(plan, renderer=NoopRenderer(), artifacts_root=tmp_path, persist=False)
     assert result.exit_code == EngineExitCode.SUCCESS
+
+
+def _run_in_scope(plan: Plan, scope: interrupt.StopScope, root: Path, out: dict) -> None:
+    with interrupt.scoped(scope):
+        out[plan.name] = run_plan(plan, renderer=NoopRenderer(), artifacts_root=root, persist=False)
+
+
+@pytest.mark.parametrize("parallel", [1, 2])
+def test_a_stop_request_only_stops_its_own_run(tmp_path: Path, parallel: int) -> None:
+    """Two API runs at once: the Stop button on one leaves the other alone."""
+    pid_file = tmp_path / "grandchild.pid"
+    marker = tmp_path / "other.done"
+    stopped = Plan(
+        name="stopped",
+        description=None,
+        stages=(
+            _stage("s1", (sys.executable, "-c", _TREE, str(pid_file))),
+            _stage("s2", (sys.executable, "-c", "print('s2 ran')")),
+        ),
+        max_parallel_stages=parallel,
+    )
+    other = Plan(
+        name="other",
+        description=None,
+        stages=(
+            _stage(
+                "slow",
+                (
+                    sys.executable,
+                    "-c",
+                    f"import time, pathlib; time.sleep(1.0); pathlib.Path({str(marker)!r}).touch()",
+                ),
+            ),
+        ),
+    )
+    stop, keep = interrupt.StopScope(), interrupt.StopScope()
+    results: dict = {}
+    threads = [
+        threading.Thread(target=_run_in_scope, args=(stopped, stop, tmp_path / "a", results)),
+        threading.Thread(target=_run_in_scope, args=(other, keep, tmp_path / "b", results)),
+    ]
+    for t in threads:
+        t.start()
+    _wait_for(pid_file)
+    stop.request(reason="a stop request")
+    for t in threads:
+        t.join(30)
+
+    assert results["other"].exit_code == EngineExitCode.SUCCESS
+    assert marker.is_file()
+    assert keep.signum is None
+    got = results["stopped"]
+    assert got.exit_code == EngineExitCode.TERMINATED
+    assert got.stages[0].error == "stopped by a stop request"
+    assert got.extra["run_metadata"]["interrupted_by"] == "a stop request"
+    assert _gone(int(pid_file.read_text()))
+    if parallel == 1:  # with two slots s2 already ran; nothing was left to skip
+        assert [s.stage_name for s in got.stages] == ["s1"]
+        events = [
+            json.loads(line)
+            for line in (tmp_path / "a" / "stopped" / "events.ndjson").read_text().splitlines()
+        ]
+        aborted = [e for e in events if e["event"] == "plan_aborted"]
+        assert aborted and aborted[-1]["reason"] == "stopped"
+
+
+def test_a_stop_asked_before_the_first_stage_still_stands(tmp_path: Path) -> None:
+    plan = Plan(
+        name="early",
+        description=None,
+        stages=(_stage("s1", (sys.executable, "-c", "print('ran')")),),
+    )
+    scope = interrupt.StopScope()
+    scope.request(reason="a stop request")
+    with interrupt.scoped(scope):
+        result = run_plan(plan, renderer=NoopRenderer(), artifacts_root=tmp_path, persist=False)
+    assert result.stages == ()
+    assert result.exit_code == EngineExitCode.TERMINATED

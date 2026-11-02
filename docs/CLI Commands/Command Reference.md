@@ -614,6 +614,7 @@ testo clean --history --dry-run          # list what would go, delete nothing
 testo clean --history --yes              # apply history.retention from testosterone.yaml
 testo clean --history -y --keep-days 30  # override (or set) the limits for this call
 testo clean --history -y --keep-runs 200
+testo clean --history -y --run 3f2a... --run 9c1b...  # delete just these runs
 ```
 
 The limits come from the top-level `history:` section (either or both; a run goes when it breaks any):
@@ -625,7 +626,9 @@ history:
     runs_per_cycle: 200 # beyond each cycle's newest 200 runs
 ```
 
-`--keep-days` / `--keep-runs` override the file's values. Without any limit (no `history:` section and no flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted.
+`--keep-days` / `--keep-runs` override the file's values. Without any limit (no `history:` section and no flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted by age or count.
+
+`--run ID` (repeat it for more) deletes exactly those runs, the same way, whatever the retention rules say; `--keep-days` / `--keep-runs` are ignored then. A run still running is skipped with a warning and an unknown id is reported; when nothing was deleted it exits **2**. The Runs page in the UI does the same with **Select runs** (`POST /api/v1/runs:delete`).
 
 ---
 
