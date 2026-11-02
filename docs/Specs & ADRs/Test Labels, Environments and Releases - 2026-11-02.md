@@ -18,7 +18,7 @@ The comparison ranked five gaps, and Taltal chose to build all of them in waves:
 | N1 | Test labels and issue links | Built (this note) |
 | N2 | Environments per run, pass and flake rate split by environment | Built (this note) |
 | N3 | Run a chosen set of tests | Built (this note) |
-| N4 | Releases: runs tagged with an app version, a release page | Planned |
+| N4 | Releases: runs tagged with an app version, a release page | Built (this note) |
 | N5 | Which issues have red tests | Planned |
 
 Manual test case management stays out of scope, as the [comparison page](../Compared%20With%20Other%20Tools.md) says.
@@ -50,10 +50,18 @@ Manual test case management stays out of scope, as the [comparison page](../Comp
 - **No match is not a failure.** pytest exits 5 when it collects nothing; with a selection the executor counts that as passed for the stage, because it only means none of the chosen tests lives there. A selection from a recorded run skips stages with no failing test.
 - **Not a scheduler.** Nothing here splits tests across machines or calls a CI provider's "re-run failed jobs" (F11 in the paid-features note); the run happens where `testo run` or the team server runs.
 
+### N4: releases
+
+- **One value per run.** `services/run_release.py` stores the release a run tested as run metadata `release` (`"2.3"`). It comes from `--release` on `testo run` and `testo ingest`, else `TESTO_RELEASE`; `POST /api/v1/ingest` takes a `release` field and the GitHub Action a `release` input. Names are letters, digits, `.`, `-`, `+` and `_` (up to 60), because they go into URLs and the static demo's file names. Nothing is guessed from git tags: a run without one belongs to no release. Like the environment, it needs no migration.
+- **A release is its latest runs.** `services/releases.py` groups every cycle's stored runs by release. A release's pass rate and failing count add up the latest run of each cycle that tested it; its flaky count is the tests flaky detection flags across that cycle's runs of the release. Releases are ordered by when they were first tested, not by parsing version numbers, so `2.10` after `2.9` and date-style names both work.
+- **Compared with the release before.** Each release's page lists its failing tests, marking the ones that passed (or did not run) in the previous release's latest run of the same cycle as new, and the tests the previous release failed and this one passes as fixed.
+- **UI and API.** `GET /api/v1/releases` and `GET /api/v1/releases/{release}`, `release` on run items and the run detail. A Releases page in the navigation lists them; a release page shows pass rate, failing and flaky counts, the change from the release before, each cycle's latest run, and the failing and fixed tests. The run page links its release. The static demo export writes `releases.json` and `releases/<name>.json`.
+
 ## Consequences
 
 - A suite that already uses Allure, Playwright tags or JUnit properties gets the breakdown with no config change. A plain pytest JUnit file has no labels until tests call `record_property("feature", "Checkout")` or use allure-pytest.
 - `test_result` rows are a little larger (two small JSON values per test).
 - N5 builds directly on the `issue` labels and links stored here.
 - A run of chosen tests is a run like any other in the history. Its absent tests are simply absent: flaky detection and per-test history skip runs a test isn't in, and Compare lists them as not run.
+- A release page is only as complete as the runs tagged with it: a cycle that never ran with `--release 2.3` is not part of 2.3.
 - Environments split flaky lanes only when runs record one. A team that sets `TESTO_ENV` on some jobs and not others gets an extra "not set" lane until every job sets it.

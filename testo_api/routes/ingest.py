@@ -34,6 +34,7 @@ def ingest_reports(
     environment: str | None = Form(
         None, max_length=500, description='What the run tested on: "browser=firefox, os=linux".'
     ),
+    release: str | None = Form(None, max_length=60, description='The release it tested: "2.3".'),
     coverage_covered: str | None = Form(None),
     coverage_total: str | None = Form(None),
 ) -> IngestResponse:
@@ -64,6 +65,7 @@ def ingest_reports(
             "ci_base_ref": ci_base_ref,
             "repository": repository,
             "environment": environment,
+            "release": release,
             "coverage_covered": coverage_covered,
             "coverage_total": coverage_total,
         }

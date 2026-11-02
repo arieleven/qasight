@@ -236,7 +236,7 @@ source_modules = ["testo_api"]
 forbidden_modules = ["testo_core.cli"]
 
 [[tool.importlinter.contracts]]
-name = "nothing below the analytics imports services or cli (db_backend's stdlib-only CI provenance and run environment lookups are the exceptions)"
+name = "nothing below the analytics imports services or cli (db_backend's stdlib-only CI provenance, run environment and release lookups are the exceptions)"
 type = "forbidden"
 source_modules = [
     "testo_core.paths",
@@ -252,6 +252,7 @@ forbidden_modules = ["testo_core.services", "testo_core.cli"]
 ignore_imports = [
     "testo_core.persistence.db_backend -> testo_core.services.ci_provenance",
     "testo_core.persistence.db_backend -> testo_core.services.run_environment",
+    "testo_core.persistence.db_backend -> testo_core.services.run_release",
 ]
 
 [[tool.importlinter.contracts]]

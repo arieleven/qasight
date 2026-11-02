@@ -37,6 +37,11 @@ def client_run_metadata(env: Mapping[str, str] | None = None) -> dict[str, str]:
 
     if environment := from_environ(source):
         metadata["environment"] = environment
+    from testo_core.services.run_release import ENV_VAR as RELEASE_VAR
+    from testo_core.services.run_release import clean as clean_release
+
+    if release := clean_release(source.get(RELEASE_VAR)):
+        metadata["release"] = release
     return metadata
 
 
