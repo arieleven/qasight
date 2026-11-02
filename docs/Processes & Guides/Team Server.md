@@ -30,11 +30,17 @@ cd deploy/server
 docker compose up -d          # pulls ghcr.io/taltal-beep/testo-server; add --build to build from the checkout
 ```
 
-Open <http://localhost:8000> and sign in with the token on the `/login` page. That sets an HttpOnly session cookie (30 days, `SameSite=Strict`), so the UI, report links and the live run stream all work; the cookie is derived from the token, so changing `TESTO_API_TOKEN` signs everyone out. CI and scripts send `Authorization: Bearer $TESTO_API_TOKEN` instead. Signing out only clears that browser's cookie; change the token to sign everyone out. Every write (uploads, starting runs, AI settings) needs one of the two, and so does every read while `TESTO_PROTECT_READS` is on, which the image and the compose file do by default; only the health checks and the login page stay open. Run logs and report files can carry whatever a test printed, so keep reads protected unless the server is on a network you already trust.
+Open <http://localhost:8000> and sign in with the token on the `/login` page. That sets an HttpOnly session cookie (30 days, `SameSite=Strict`), so the UI, report links and the live run stream all work; the cookie is derived from the token, so changing `TESTO_API_TOKEN` signs out everyone who signed in with it ([Rotating the token](#rotating-the-token)). CI and scripts send `Authorization: Bearer $TESTO_API_TOKEN` instead. Signing out only clears that browser's cookie; change the token to sign everyone out. Every write (uploads, starting runs, AI settings) needs one of the two, and so does every read while `TESTO_PROTECT_READS` is on, which the image and the compose file do by default; only the health checks and the login page stay open. Run logs and report files can carry whatever a test printed, so keep reads protected unless the server is on a network you already trust.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `TESTO_API_TOKEN` | required | Bearer token for every write. The image binds `0.0.0.0`, so without it `testo-api` refuses to start unless `TESTO_ALLOW_UNAUTHENTICATED=1` |
+| `TESTO_API_TOKEN_PREVIOUS` | unset | The old token, still accepted while CI secrets move to a new `TESTO_API_TOKEN` ([Rotating the token](#rotating-the-token)) |
+| `TESTO_SESSION_KEY` | unset | Signs account sign-in cookies and report tickets instead of the token, so a new token keeps people signed in. `testo server init` generates one |
+| `TESTO_RETENTION_DAYS` | unset (`180` from `testo server init`) | Delete runs and report archives that started more than this many days ago. Overrides `history.retention.days`; `0` keeps everything ([Storage](#storage)) |
+| `TESTO_RETENTION_RUNS_PER_CYCLE` | unset | Keep at most this many of each cycle's newest runs and archives. Overrides `history.retention.runs_per_cycle` |
+| `TESTO_HISTORY_MAX_FILE_MB` | unset (`100` from `testo server init`) | Files bigger than this (videos, traces) aren't kept in a run's history copy or report archive. Overrides `history.max_file_mb` |
+| `TESTO_LOW_DISK_PCT` | `10` | Below this share of free disk, `/api/v1/health/ready` reports a `disk` warning and the Runs page says the disk is getting full |
 | `TESTO_PROTECT_READS` | `1` (set in the image) | `1`: reads need the token or the `/login` cookie too. `0`: anyone who can reach the server can read runs, logs and reports |
 | `TESTO_MAX_CONCURRENT_RUNS` | `2` | Runs started from the UI or API that execute at once; the rest wait as `queued` |
 | `TESTO_AUTH` | `token` | `token`: everyone shares `TESTO_API_TOKEN`. `accounts`: people sign in with their own username and password, with roles and an audit log ([Accounts](#accounts)) |
@@ -169,18 +175,38 @@ The upload carries the job's CI provenance (provider, pipeline, job, commit, bra
 
 The database schema is upgraded in place when the server starts: the API runs the Alembic revisions in `testo_core/repository/migrations/` against its Postgres (or SQLite), adopting a database from 1.5.0 or earlier without dropping anything. Upgrade the image, restart, done; see [Repository Pattern § Schema migrations](../Specs%20&%20ADRs/Repository%20Pattern%20-%20Database-Agnostic%20Refactor.md#schema-migrations-2026-11-01).
 
-With a `history:` section in the server's `testosterone.yaml` (`retention: {days: 90, runs_per_cycle: 200}`, either limit alone is fine) the server deletes expired runs, their per-test rows and their report copies at startup and every 6 hours; without it history is kept forever. The same pruning runs by hand as [`testo clean --history`](../CLI%20Commands/Command%20Reference.md#testo-clean---history).
+If the server or a `testo run` on its machine dies in the middle of a run (`kill -9`, out of memory, the machine going down), the run is recorded as failed with the reason "stopped without finishing" when the server starts again, or when that cycle next runs. Its test results are lost; the run no longer disappears without a trace.
 
 The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React UI at `/` (unknown paths fall back to `index.html`, so `/runs/<id>` loads directly). With a token set, the UI may write to its own origin; without one, only the `TESTO_CORS_ORIGINS` allow-list may, and `*` in that list counts only when a token is set.
 
+## Storage
+
+History grows with every run: a row per run and per test in Postgres, a copy of each run's result files under `/data/static/history/`, and a zip of the cycle folder per server-started run (a report archive, `testo report list`). Without limits it is kept forever.
+
+- **Limits.** `TESTO_RETENTION_DAYS` and `TESTO_RETENTION_RUNS_PER_CYCLE` (or a `history:` section in the server's `testosterone.yaml`; the variables win) delete expired runs, their per-test rows, their file copies and old report archives at startup and every 6 hours. `TESTO_HISTORY_MAX_FILE_MB` leaves big files (videos, traces) out of the history copies; the run records which ones. `testo server init` sets 180 days and 100 MB. The same pruning runs by hand as [`testo clean --history`](../CLI%20Commands/Command%20Reference.md#testo-clean---history), and single archives go with `testo report delete --id`.
+- **Seeing it.** The Runs page ends with a storage line: runs, database size, file size, report archives and free disk (`GET /api/v1/storage`, measured at most every 5 minutes). It warns when free space drops under `TESTO_LOW_DISK_PCT`. `/api/v1/health/ready` reports a `disk` check: `warning` (still 200) when low, `degraded` (503) under 200 MB free. `testo doctor` prints the same numbers.
+- **When a copy fails** (a full disk), the run is still recorded, the half copy is removed and the run notes `snapshot_error`, so a run missing from Compare or flaky detection says why.
+
+## Rotating the token
+
+`TESTO_API_TOKEN` is what CI uploads with and an admin login. To replace it (someone who knew it left, a CI log leaked it):
+
+1. Set the new value as `TESTO_API_TOKEN` and the old one as `TESTO_API_TOKEN_PREVIOUS` in `.env`, then `docker compose up -d`. Both are accepted.
+2. Update the CI secret in every pipeline.
+3. Remove `TESTO_API_TOKEN_PREVIOUS` and restart. The old token stops working.
+
+With `TESTO_SESSION_KEY` set (servers made by `testo server init` 1.6 or later have one), account sign-ins are signed with it, so people stay signed in through the rotation. Without it, they stay signed in only while the previous token is set. Changing `TESTO_SESSION_KEY` itself signs every account out. To remove one person, use `testo users remove` ([Accounts](#accounts)); that needs no token change unless they also knew the token.
+
 ## Backups
 
-The compose file's `backup` service runs [`testo backup`](../CLI%20Commands/Command%20Reference.md#testo-backup--testo-restore) when it starts and then every `TESTO_BACKUP_EVERY_S` seconds (default a day), keeping the newest `TESTO_BACKUP_KEEP` files (default `7`) in the `testo_data` volume under `/data/backups`. Each is the whole history: every table and each run's stored results. Copy them off the machine, since a backup on the same disk doesn't survive losing it:
+The compose file's `backup` service runs [`testo backup`](../CLI%20Commands/Command%20Reference.md#testo-backup--testo-restore) when it starts and then every `TESTO_BACKUP_EVERY_S` seconds (default a day), keeping the newest `TESTO_BACKUP_KEEP` files (default `7`) in their own `testo_backups` volume at `/backups`, so backups never fill the disk the server writes to; put that volume on another disk if you can. A backup cut short leaves a `.partial` file, which the next round removes. Each backup is the whole history: every table and each run's stored results. Copy them off the machine, since a backup on the same disk doesn't survive losing it:
 
 ```bash
-docker compose cp backup:/data/backups ./testo-backups
-docker compose run --rm --entrypoint testo backup restore /data/backups/testo-<time>.tar.gz --replace --yes
+docker compose cp backup:/backups ./testo-backups
+docker compose run --rm --entrypoint testo backup restore /backups/testo-<time>.tar.gz --replace --yes
 ```
+
+Compose files from before 1.6 kept backups in `/data/backups`; after updating the compose file, copy any you want to keep out of that folder, then delete it.
 
 They hold password hashes when [accounts](#accounts) are on; keep them as private as the database. Don't want it: `docker compose up -d --scale backup=0`.
 

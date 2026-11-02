@@ -66,5 +66,6 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Engineering health review: tests, CI, docs accuracy and dependencies, fixes in #222 and ranked proposals | [Engineering Health Review - 2026-10-31](Engineering%20Health%20Review%20-%202026-10-31.md) |
 | UI review fixes: cycle results, run labels, Compare test list, test page charts, quieter cards | [UI Review Fixes - 2026-11-01](UI%20Review%20Fixes%20-%202026-11-01.md) |
 | Automating the new user journey: setup pull request, fork comments, AI summaries in CI, automatic quarantine, MCP install, backups | [New User Journey Automation - 2026-11-01](New%20User%20Journey%20Automation%20-%202026-11-01.md) |
+| Lifecycle fixes from the year-two review: storage limits and visibility, runs that die mid-way, token rotation | [Lifecycle Fixes - 2026-11-02](Lifecycle%20Fixes%20-%202026-11-02.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

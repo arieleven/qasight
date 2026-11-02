@@ -15,7 +15,7 @@ def test_health_endpoints() -> None:
     assert ready.status_code in {200, 503}
     payload = ready.json()
     assert set(payload.keys()) == {"status", "checks"}
-    assert set(payload["checks"]) == {"db", "repository"}
+    assert set(payload["checks"]) == {"db", "repository", "disk"}
 
 
 def test_readiness_is_ready_with_file_sqlite(monkeypatch, tmp_path) -> None:  # noqa: ANN001

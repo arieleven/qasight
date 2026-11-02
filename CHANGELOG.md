@@ -8,7 +8,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Storage limits: report archives (`testo report list`) now follow `history.retention` like runs, and `testo report delete --id` removes them by hand. `TESTO_RETENTION_DAYS` and `TESTO_RETENTION_RUNS_PER_CYCLE` set (or override) the limits without a `testosterone.yaml`, so the Docker team server can be limited by its environment. `history.max_file_mb` / `TESTO_HISTORY_MAX_FILE_MB` leaves big files (videos, traces) out of a run's history copy and report archive. `testo server init` sets 180 days and 100 MB for new servers; existing servers keep everything until a limit is set
+- Storage visibility: the Runs page shows how many runs there are, the database and file sizes, report archives and free disk, and warns when the disk is getting full (`GET /api/v1/storage`, `TESTO_LOW_DISK_PCT`). `/api/v1/health/ready` has a `disk` check, and `testo doctor` prints `Disk` and `History size` rows
+- A run that dies mid-way (`kill -9`, out of memory, a crashed server) is recorded as a failed run ("stopped without finishing") when its cycle next runs or the API server starts, instead of leaving no trace
+- Token rotation: `TESTO_API_TOKEN_PREVIOUS` is accepted next to a new `TESTO_API_TOKEN` while CI secrets are updated, and `TESTO_SESSION_KEY` signs sign-in cookies instead of the token so a new token keeps people signed in. `testo server init` generates a session key
+
 ### Changed
+- The team server compose file keeps backups in their own `testo_backups` volume at `/backups` (was `/data/backups` in the data volume) and removes `.partial` files left by a backup cut short. Copy any backups you want to keep out of `/data/backups` after updating the compose file
+- A run whose result files couldn't be copied into the history (a full disk) is still recorded, the half copy is removed, and the run notes `snapshot_error`
+
 - Web UI: the logo is now an eye instead of the flexed arm. On the Project health page its iris takes the health score colour (green, amber or red), it blinks when you hover it, and its pupil spins while the UI is loading data (no motion with reduced-motion settings)
 - Compare, `testo diff`, `testo try` and the pull request comment match a test recorded two different ways (`testo run`, then `pytest --testo` or `testo ingest` of the same suite) by its name, instead of listing it as removed and added. The comment also says when the cycle's stages changed since the run it is compared with
 - `testo init` is now the first thing the README, Getting Started, the Setup Prompts (new prompt 0), the dashboard's first-run guide and the `/try` page suggest; they also show how to run it without a virtualenv (`uvx --from testo-core testo init`). Getting Started has an Upgrading section

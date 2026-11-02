@@ -181,6 +181,7 @@ testo report pyramid <run-id>
 |---------|---------|
 | `testo report list` | Table of archived runs (needs DB); columns: id, cycle, created, exit, tests, pass, fail |
 | `testo report open --id <uuid>` | Extract archive and regenerate/serve Allure |
+| `testo report delete --id <uuid> [--id ...] --yes` | Delete archived reports. Exit `2` without `--yes` or when no id matches. Old archives also go by [`history.retention`](#testo-clean---history) |
 | `testo report compare` | Rich diff + Allure comparison (optional baseline/current UUIDs) |
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
 | `testo report markdown [--cycle NAME \| --run-id ID] [--out FILE] [--run-url URL] [--baseline-branch BRANCH]` | The cycle's latest run (or one run) as GitHub-flavored Markdown: headline counts, per-stage table, failing tests, and per-test changes since its baseline: the latest run on `--baseline-branch`, else on the pull request's recorded target branch (`ci_base_ref`), else the cycle's previous run. When the run stored [coverage](#options), the headline adds it and its change against the same baseline (`coverage 81.2% (▼ 0.4)`). The first line is a hidden `<!-- testo-summary:<cycle> -->` marker. Exit `2` when no run is recorded. The GitHub Action uses it for the job summary and the PR comment |
@@ -571,6 +572,8 @@ testo doctor -c testosterone.yaml
 
 **Output:** Rich table with Check / Status / Detail rows (`PASS`, `FAIL`, `WARN`, `SKIP`).
 
+A `Disk` row shows the free space where the history is kept (`WARN` under `TESTO_LOW_DISK_PCT`, default 10%), and with a database a `History size` row shows the runs, database size, file size and report archives.
+
 The `testo-core` row says when PyPI has a newer release (`WARN`, with the `pip install -U` line; never a failure). The check asks `https://pypi.org/pypi/testo-core/json` at most once a day (the answer is cached in `~/.cache/testosterone/update-check.json`), sends nothing about the project, and is off in CI (`CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, ... set) and with `TESTO_NO_UPDATE_CHECK=1`. The web UI's sidebar shows the same (`GET /api/v1/version`).
 
 Exits **2** on hard failures (config or missing required executables) — see [Troubleshooting and Error Codes § Commands that use exit codes](Troubleshooting%20and%20Error%20Codes.md#commands-that-use-exit-codes).
@@ -607,7 +610,7 @@ Without `--yes` / `-y`: refuses with exit **2**. It also refuses (exit **2**, no
 
 ### `testo clean --history`
 
-Deletes expired run history instead of artifacts: each expired run's row, its `test_result` rows and its report copy under `static/history/<run_id>/`, oldest first. Runs still `RUNNING` are never touched; report archives (`testo report list`) are separate and stay.
+Deletes expired run history instead of artifacts: each expired run's row, its `test_result` rows and its report copy under `static/history/<run_id>/`, oldest first, and the report archives (`testo report list`) that break the same limits. Runs still `RUNNING` are never touched.
 
 ```bash
 testo clean --history --dry-run          # list what would go, delete nothing
@@ -623,9 +626,10 @@ history:
   retention:
     days: 90            # runs that started more than 90 days ago
     runs_per_cycle: 200 # beyond each cycle's newest 200 runs
+  max_file_mb: 100      # files bigger than this aren't kept in a run's history copy
 ```
 
-`--keep-days` / `--keep-runs` override the file's values. Without any limit (no `history:` section and no flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted.
+`TESTO_RETENTION_DAYS` and `TESTO_RETENTION_RUNS_PER_CYCLE` override the file (`0` switches that limit off), so a server without a config file can still have limits; `--keep-days` / `--keep-runs` override both. `max_file_mb` (or `TESTO_HISTORY_MAX_FILE_MB`) applies when a run is recorded: bigger files are left out of its history copy and report archive, and the run lists them in `snapshot_skipped_files`. Without any limit (no `history:` section, variable or flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted.
 
 ---
 

@@ -117,6 +117,7 @@ nav:
       - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
       - Importer and Integration Bug Hunt: Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md
       - Engine Fixes: Specs & ADRs/Engine Fixes - 2026-11-01.md
+      - Lifecycle Fixes: Specs & ADRs/Lifecycle Fixes - 2026-11-02.md
       - MCP Server: Specs & ADRs/MCP Server - 2026-11-01.md
       - Affected Test Selection: Specs & ADRs/Affected Test Selection - 2026-10-30.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md

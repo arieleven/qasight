@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Troubleshooting and Error Codes
@@ -26,6 +26,8 @@ Defined in `testo_core/engine/exit_codes.py` as `EngineExitCode`. The process ex
 | `4` | `INTERNAL_ERROR` | Unexpected engine error | Orchestrator `internal_failure` on uncaught engine exception; empty return-code list in classifier |
 | `130` | `INTERRUPTED` | Stopped by Ctrl-C (SIGINT) | The running stages were stopped, later stages skipped, and the run recorded as failed with `interrupted_by: SIGINT` in its metadata |
 | `143` | `TERMINATED` | Stopped by SIGTERM | A CI job's cancel button or `kill`; handled like `130` |
+
+A run killed outright (`kill -9`, out of memory, the machine or the API server going down) can't record itself. Its marker stays in the cycle's lock file (`<artifacts>/<cycle>/.lock`), and the next run of that cycle, or the API server when it starts, records it as a failed run with `error: interrupted` and exit `3` ("stopped without finishing"). It has no test results.
 
 ### Classification logic
 

@@ -212,3 +212,7 @@ New ADR [New User Journey Automation - 2026-11-01](Specs%20&%20ADRs/New%20User%2
 ## 2026-11-01: test source in AI summaries
 
 New ADR [Test Source in AI Summaries - 2026-11-01](Specs%20&%20ADRs/Test%20Source%20in%20AI%20Summaries%20-%202026-11-01.md) (opt-in failing test source in the AI failure summary), linked from the Specs README, Phase 4 BYOK and Failure Analysis, the Command Reference and the docs site menu.
+
+## 2026-11-02: lifecycle fixes
+
+New ADR [Lifecycle Fixes - 2026-11-02](Specs%20&%20ADRs/Lifecycle%20Fixes%20-%202026-11-02.md) (storage limits and visibility, unfinished runs, token rotation), linked from the Specs README, Team Server and the docs site menu. Team Server gains Storage and Rotating the token sections.
