@@ -27,11 +27,19 @@ if str(REPO_ROOT) not in sys.path:
 from testo_api.static_site import (  # noqa: E402
     DEFAULT_DEMO_AI_MODEL,
     Exporter,
+    _cache_run_cases,
     _ran_cycles_only,
     _scrub,
 )
 
-__all__ = ["DEFAULT_DEMO_AI_MODEL", "Exporter", "_ran_cycles_only", "_scrub", "main"]
+__all__ = [
+    "DEFAULT_DEMO_AI_MODEL",
+    "Exporter",
+    "_cache_run_cases",
+    "_ran_cycles_only",
+    "_scrub",
+    "main",
+]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
         "so the Resources page shows something. Only for a throwaway demo database.",
     )
     args = parser.parse_args(argv)
+    # CI pipes stdout; without this a slow or cancelled export shows no progress at all.
+    sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
 
     out_dir = Path(args.out).expanduser().resolve()
     exporter = Exporter(

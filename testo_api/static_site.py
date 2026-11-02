@@ -74,6 +74,8 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -136,6 +138,33 @@ def _scrub(payload: Any, root: str) -> Any:
     if isinstance(payload, dict):
         return {key: _scrub(value, root) for key, value in payload.items()}
     return payload
+
+
+@contextmanager
+def _cache_run_cases() -> Iterator[None]:
+    """Read each run's test cases from the database once for the whole export.
+
+    The per-test pages ask ``/analytics/test-history`` once per test, and each call
+    reloads every test of the cycle's last 20 runs. With a couple of thousand tests
+    that is tests x runs x tests row loads, which pushed the Pages demo past its
+    job's 30-minute limit. Recorded runs do not change while the export reads
+    them, so a cache by run id for the length of one export is safe.
+    """
+    from testo_core.services import flaky_service
+
+    load = flaky_service._cases_for_run
+    cache: dict[str, dict[str, dict[str, Any]]] = {}
+
+    def cached(run: Any) -> dict[str, dict[str, Any]]:
+        if run.run_id not in cache:
+            cache[run.run_id] = load(run)
+        return cache[run.run_id]
+
+    flaky_service._cases_for_run = cached  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        flaky_service._cases_for_run = load  # type: ignore[assignment]
 
 
 def _ran_cycles_only(listing: dict[str, Any], runs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -283,6 +312,7 @@ class Exporter:
         self._write("cycles.json", listing)
         for cycle in listing["items"]:
             name = cycle["name"]
+            print(f"[export] cycle {name}")
             self._dump(f"/api/v1/cycles/{quote(name, safe='')}", f"cycles/{name}.json")
             self._dump(
                 f"/api/v1/analytics/flaky?cycle={quote(name, safe='')}", f"flaky/{name}.json"
@@ -428,6 +458,10 @@ class Exporter:
     # --- entry point --------------------------------------------------------
 
     def run(self) -> int:
+        with _cache_run_cases():
+            return self._run()
+
+    def _run(self) -> int:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         # Before export_runs(): generating AI summaries switches the in-process
         # provider on, and the published settings should describe the snapshot.

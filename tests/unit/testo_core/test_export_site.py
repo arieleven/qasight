@@ -228,3 +228,29 @@ def test_api_requirements_reads_the_installed_extra() -> None:
     reqs = _wrapper().api_requirements()
     assert any(r.startswith("fastapi") for r in reqs)
     assert all("extra" not in r for r in reqs)
+
+
+def test_run_cases_are_read_once_per_run_and_the_cache_ends_with_the_export() -> None:
+    """The per-test pages reread every run's cases per test; the export reads each run once."""
+    from testo_api.static_site import _cache_run_cases
+    from testo_core.services import flaky_service
+
+    original = flaky_service._cases_for_run
+    loads: list[str] = []
+
+    class _Run:
+        run_id = "r1"
+
+    def fake_load(run: object) -> dict[str, dict[str, object]]:
+        loads.append(run.run_id)  # type: ignore[attr-defined]
+        return {"t": {"status": "passed"}}
+
+    flaky_service._cases_for_run = fake_load  # type: ignore[assignment]
+    try:
+        with _cache_run_cases():
+            first = flaky_service._cases_for_run(_Run())  # type: ignore[arg-type]
+            assert flaky_service._cases_for_run(_Run()) is first  # type: ignore[arg-type]
+        assert loads == ["r1"]
+        assert flaky_service._cases_for_run is fake_load
+    finally:
+        flaky_service._cases_for_run = original  # type: ignore[assignment]
