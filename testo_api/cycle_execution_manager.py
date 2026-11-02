@@ -19,6 +19,7 @@ from testo_core.config.errors import ConfigDiscoveryError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Defaults, Plan, TestosteroneConfig
+from testo_core.engine import interrupt
 from testo_core.services.cycle_run import (
     ADHOC_PLAN_NAME,
     CycleRunOptions,
@@ -26,7 +27,10 @@ from testo_core.services.cycle_run import (
     single_stage_plan,
 )
 
-CycleExecutionStatus = Literal["queued", "running", "completed", "failed"]
+CycleExecutionStatus = Literal["queued", "running", "completed", "failed", "cancelled"]
+
+# What a stopped stage's error and the run's `interrupted_by` say (instead of SIGTERM).
+STOP_REASON = "a stop request"
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +130,8 @@ class CycleExecutionState:
     done: bool = False
     error: str | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
+    # This run's stop switch: `cancel` pulls it, and only this run's stages stop.
+    stop: interrupt.StopScope = field(default_factory=interrupt.StopScope)
 
     def mark_done(self, *, status: CycleExecutionStatus, error: str | None = None) -> None:
         with self.lock:
@@ -343,6 +349,33 @@ class CycleExecutionManager:
         with self._states_lock:
             return self._states.get(execution_id)
 
+    def cancel(self, execution_id: str) -> CycleExecutionState | None:
+        """Stop an execution: drop it if it is still queued, stop its stages if it runs.
+
+        A running run's stages get SIGTERM (a second call kills them), the stages not
+        started yet are skipped, and the run is still recorded, as stopped. Returns the
+        state (``None`` when the id is unknown); a finished run is left as it is.
+        """
+        state = self.get(execution_id)
+        if state is None:
+            return None
+        with state.lock:
+            if state.done:
+                return state
+            was_queued = state.status == "queued"
+            if was_queued:
+                # The worker that picks it up sees this and leaves it alone.
+                state.status = "cancelled"
+        state.stop.request(reason=STOP_REASON)
+        if was_queued:
+            try:
+                self._store.claim(execution_id)  # off the durable queue too
+            except Exception:
+                # Broad on purpose: the run is stopped either way; a stale row is only logged.
+                logger.warning("could not remove queued run %s", execution_id, exc_info=True)
+            self._finish(state, status="cancelled", error="Stopped before it started.")
+        return state
+
     def _ensure_workers(self) -> None:
         with self._states_lock:
             # Drop workers that died, so the pool is topped back up to `max_concurrent`.
@@ -371,6 +404,10 @@ class CycleExecutionManager:
     def _claim_and_run(
         self, state: CycleExecutionState, request: RunRequest, load_plan: PlanLoader
     ) -> None:
+        with state.lock:
+            if state.status != "queued":  # stopped while it waited (`cancel`)
+                return
+            state.status = "running"
         try:
             claimed = self._store.claim(state.execution_id)
         except Exception as exc:
@@ -396,80 +433,10 @@ class CycleExecutionManager:
         status: CycleExecutionStatus = "failed"
         error: str | None = "execution interrupted"
         try:
-            with state.lock:
-                state.status = "running"
-
-            cfg, plan = load_plan()
-            artifacts_root = (
-                (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
-            )
-            plan_artifacts = (artifacts_root / plan.name).resolve()
-            events_path = plan_artifacts / "events.ndjson"
-            plan_result_path = plan_artifacts / "plan_result.json"
-
-            plan_artifacts.mkdir(parents=True, exist_ok=True)
-            start_offset = 0
-            try:
-                start_offset = int(events_path.stat().st_size) if events_path.exists() else 0
-            except OSError:
-                start_offset = 0
-
-            with state.lock:
-                state.artifacts_root = artifacts_root
-                state.events_path = events_path
-                state.plan_result_path = plan_result_path
-                state.events_start_offset_bytes = start_offset
-
-            # Stage subprocesses resolve tools (pytest/behave/...) via PATH. The API server
-            # may be launched without an activated venv, so prepend this interpreter's bin
-            # dir to guarantee stages run against the same environment as the engine.
-            parent_env = dict(os.environ)
-            # Note: do not resolve() — in a venv, sys.executable is a symlink into the
-            # base interpreter; resolving it would point PATH at the wrong bin dir.
-            exe_bin = str(Path(sys.executable).parent)
-            path_entries = parent_env.get("PATH", "").split(os.pathsep)
-            if exe_bin not in path_entries:
-                parent_env["PATH"] = os.pathsep.join([exe_bin, *path_entries])
-
-            # Same use case as `testo run`; `run_plan` persists events.ndjson and
-            # plan_result.json under artifacts/<cycle>/, which the SSE route tails.
-            outcome = CycleRunService(listener=NdjsonCycleListener(events_path, ci=request.ci)).run(
-                cfg=cfg,
-                plan=plan,
-                renderer=_NullRenderer(),
-                options=CycleRunOptions(
-                    persist=request.persist,
-                    force=request.force,
-                    fail_fast=request.fail_fast,
-                    workers_override=request.workers_override,
-                    reporter_override=list(request.reporter_override)
-                    if request.reporter_override
-                    else None,
-                    report_db=request.report_db,
-                    async_report_db=request.async_report_db,
-                    artifacts_root=artifacts_root,
-                    parent_env=parent_env,
-                    ci=request.ci,
-                    selection=_selection(request),
-                ),
-            )
-            if outcome.skipped:
-                # Contract: treat resting as success (exit_code 0). Emit a minimal `plan_finished`
-                # so UIs relying on a terminal event can close the stream.
-                append_ndjson_line(
-                    events_path,
-                    {
-                        "event": "plan_finished",
-                        "plan": plan.name,
-                        "aggregate_returncode": 0,
-                        "exit_code": 0,
-                        "duration_s": 0.0,
-                        "stages": [],
-                        "error": None,
-                    },
+            with interrupt.scoped(state.stop):
+                status, error = self._run_in_scope(
+                    state, request, load_plan, artifacts_root_override
                 )
-
-            status, error = "completed", None
         except Exception as exc:  # pragma: no cover (defensive: surfaces in API)
             # Broad on purpose: a background run's crash must reach the client as an error event.
             # Keep error exposure minimal (redaction happens upstream in API error formatting where needed).
@@ -488,6 +455,87 @@ class CycleExecutionManager:
             error = err
         finally:
             self._finish(state, status=status, error=error)
+
+    def _run_in_scope(
+        self,
+        state: CycleExecutionState,
+        request: RunRequest,
+        load_plan: PlanLoader,
+        artifacts_root_override: Path | None,
+    ) -> tuple[CycleExecutionStatus, str | None]:
+        cfg, plan = load_plan()
+        artifacts_root = (
+            (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
+        )
+        plan_artifacts = (artifacts_root / plan.name).resolve()
+        events_path = plan_artifacts / "events.ndjson"
+        plan_result_path = plan_artifacts / "plan_result.json"
+
+        plan_artifacts.mkdir(parents=True, exist_ok=True)
+        start_offset = 0
+        try:
+            start_offset = int(events_path.stat().st_size) if events_path.exists() else 0
+        except OSError:
+            start_offset = 0
+
+        with state.lock:
+            state.artifacts_root = artifacts_root
+            state.events_path = events_path
+            state.plan_result_path = plan_result_path
+            state.events_start_offset_bytes = start_offset
+
+        # Stage subprocesses resolve tools (pytest/behave/...) via PATH. The API server
+        # may be launched without an activated venv, so prepend this interpreter's bin
+        # dir to guarantee stages run against the same environment as the engine.
+        parent_env = dict(os.environ)
+        # Note: do not resolve() — in a venv, sys.executable is a symlink into the
+        # base interpreter; resolving it would point PATH at the wrong bin dir.
+        exe_bin = str(Path(sys.executable).parent)
+        path_entries = parent_env.get("PATH", "").split(os.pathsep)
+        if exe_bin not in path_entries:
+            parent_env["PATH"] = os.pathsep.join([exe_bin, *path_entries])
+
+        # Same use case as `testo run`; `run_plan` persists events.ndjson and
+        # plan_result.json under artifacts/<cycle>/, which the SSE route tails.
+        outcome = CycleRunService(listener=NdjsonCycleListener(events_path, ci=request.ci)).run(
+            cfg=cfg,
+            plan=plan,
+            renderer=_NullRenderer(),
+            options=CycleRunOptions(
+                persist=request.persist,
+                force=request.force,
+                fail_fast=request.fail_fast,
+                workers_override=request.workers_override,
+                reporter_override=list(request.reporter_override)
+                if request.reporter_override
+                else None,
+                report_db=request.report_db,
+                async_report_db=request.async_report_db,
+                artifacts_root=artifacts_root,
+                parent_env=parent_env,
+                ci=request.ci,
+                selection=_selection(request),
+            ),
+        )
+        if outcome.skipped:
+            # Contract: treat resting as success (exit_code 0). Emit a minimal `plan_finished`
+            # so UIs relying on a terminal event can close the stream.
+            append_ndjson_line(
+                events_path,
+                {
+                    "event": "plan_finished",
+                    "plan": plan.name,
+                    "aggregate_returncode": 0,
+                    "exit_code": 0,
+                    "duration_s": 0.0,
+                    "stages": [],
+                    "error": None,
+                },
+            )
+
+        if state.stop.signum is not None:
+            return "cancelled", "Stopped by a stop request."
+        return "completed", None
 
     def _finish(
         self, state: CycleExecutionState, *, status: CycleExecutionStatus, error: str | None

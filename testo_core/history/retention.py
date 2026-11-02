@@ -7,7 +7,9 @@ separate store with their own ids and are not affected.
 
 Used by ``testo clean --history`` and by the API server on a timer
 (:func:`testo_api.main._lifespan`). Without a ``history:`` section in
-``testosterone.yaml`` nothing is ever deleted.
+``testosterone.yaml`` nothing is ever deleted by age or count.
+:func:`delete_runs` deletes runs a person picked the same way (``testo clean
+--history --run``, ``POST /api/v1/runs:delete``, the Runs page).
 """
 
 from __future__ import annotations
@@ -102,8 +104,55 @@ def prune_history(retention: HistoryRetention, *, dry_run: bool = False) -> Prun
     run_ids = expired_run_ids(repo.list_run_keys(), retention)
     if not run_ids or dry_run:
         return PruneReport(run_ids=tuple(run_ids))
+    report = _remove(run_ids)
+    logger.info(
+        "history retention deleted %s run(s), %s test row(s), %s snapshot(s)",
+        report.runs_deleted,
+        report.test_rows_deleted,
+        report.snapshots_deleted,
+    )
+    return report
+
+
+@dataclass(frozen=True)
+class DeleteReport(PruneReport):
+    """What :func:`delete_runs` did, plus the ids it left alone."""
+
+    skipped_running: tuple[str, ...] = ()
+    not_found: tuple[str, ...] = ()
+
+
+def delete_runs(run_ids: list[str], *, dry_run: bool = False) -> DeleteReport:
+    """Delete these runs (rows, test rows and snapshot folder), as retention would.
+
+    The ``testo clean --history --run`` and ``POST /api/v1/runs:delete`` path: the
+    person picked the runs, so no retention rule is needed. A run still ``RUNNING``
+    is skipped, and so is an id the history doesn't have.
+    """
+    wanted = list(dict.fromkeys(r.strip() for r in run_ids if r and r.strip()))
+    status_by_id = {run_id: status for run_id, _c, _s, status in get_repository().list_run_keys()}
+    chosen = [r for r in wanted if r in status_by_id and status_by_id[r] != RunStatus.RUNNING]
+    running = tuple(r for r in wanted if status_by_id.get(r) == RunStatus.RUNNING)
+    missing = tuple(r for r in wanted if r not in status_by_id)
+    if not chosen or dry_run:
+        return DeleteReport(run_ids=tuple(chosen), skipped_running=running, not_found=missing)
+    done = _remove(chosen)
+    logger.info("deleted %s chosen run(s)", done.runs_deleted)
+    return DeleteReport(
+        run_ids=done.run_ids,
+        runs_deleted=done.runs_deleted,
+        test_rows_deleted=done.test_rows_deleted,
+        snapshots_deleted=done.snapshots_deleted,
+        errors=done.errors,
+        skipped_running=running,
+        not_found=missing,
+    )
+
+
+def _remove(run_ids: list[str]) -> PruneReport:
+    """Delete the rows, then the snapshot folders; a folder that won't go is reported."""
     test_rows = get_test_result_store().delete_runs(run_ids)
-    runs = repo.delete_runs(run_ids)
+    runs = get_repository().delete_runs(run_ids)
     snapshots = 0
     errors: list[str] = []
     for run_id in run_ids:
@@ -116,13 +165,7 @@ def prune_history(retention: HistoryRetention, *, dry_run: bool = False) -> Prun
         except OSError as exc:
             errors.append(f"{folder}: {exc}")
     if errors:
-        logger.warning("history retention could not remove %s folder(s)", len(errors))
-    logger.info(
-        "history retention deleted %s run(s), %s test row(s), %s snapshot(s)",
-        runs,
-        test_rows,
-        snapshots,
-    )
+        logger.warning("could not remove %s run history folder(s)", len(errors))
     return PruneReport(
         run_ids=tuple(run_ids),
         runs_deleted=runs,

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiClient, type CycleExecutionAccepted } from "../../lib/api-client";
 import { subscribeToCycleExecutionEvents, type CycleNdjsonEvent } from "../../lib/sse-client";
 
-export type RunPhase = "idle" | "starting" | "running" | "passed" | "failed" | "aborted";
+export type RunPhase = "idle" | "starting" | "running" | "passed" | "failed" | "aborted" | "stopped";
 
 export type StageRow = {
   stage: string;
@@ -29,6 +29,9 @@ export function useCycleExecution() {
   const [exitCode, setExitCode] = useState<number | null>(null);
   const [events, setEvents] = useState<CycleNdjsonEvent[]>([]);
   const [stages, setStages] = useState<Record<string, StageRow>>({});
+  // Asked to stop (the Stop button); the run ends when its stages have.
+  const [stopping, setStopping] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
   const unsubscribeRef = useRef<null | (() => void)>(null);
 
   useEffect(() => () => unsubscribeRef.current?.(), []);
@@ -37,7 +40,7 @@ export function useCycleExecution() {
   // runs page, the dashboard). The run is recorded just after the engine's last
   // event, so refetch now and once more a moment later.
   const queryClient = useQueryClient();
-  const finished = phase === "passed" || phase === "failed" || phase === "aborted";
+  const finished = phase === "passed" || phase === "failed" || phase === "aborted" || phase === "stopped";
   useEffect(() => {
     if (!finished) return;
     void queryClient.invalidateQueries();
@@ -73,7 +76,7 @@ export function useCycleExecution() {
       }));
     }
     if (evt.event === "plan_aborted") {
-      setPhase("aborted");
+      setPhase(evt.reason === "fail_fast" ? "aborted" : "stopped");
       stopStream();
     }
     if (evt.event === "plan_finished") {
@@ -83,7 +86,7 @@ export function useCycleExecution() {
     }
     if (evt.event === "error") {
       setErrorMessage(evt.message);
-      setPhase("failed");
+      setPhase(evt.code === "cancelled" ? "stopped" : "failed");
       stopStream();
     }
   }
@@ -95,6 +98,7 @@ export function useCycleExecution() {
         if (current !== "running" && current !== "starting") return current;
         if (status.status === "completed") return "passed";
         if (status.status === "failed") return "failed";
+        if (status.status === "cancelled") return "stopped";
         return current;
       });
       if (status.error) setErrorMessage(status.error);
@@ -110,6 +114,8 @@ export function useCycleExecution() {
     setEvents([]);
     setStages({});
     setExecutionId(null);
+    setStopping(false);
+    setStopError(null);
     stopStream();
 
     try {
@@ -131,6 +137,25 @@ export function useCycleExecution() {
     }
   }
 
+  /** Stop the run (again: kill stages that ignore the first stop). */
+  async function stop() {
+    if (!executionId) return;
+    setStopping(true);
+    setStopError(null);
+    try {
+      const status = await apiClient.cancelCycleExecution(executionId);
+      if (status.status === "cancelled") {
+        // Stopped while queued: no event will come, so finish here.
+        setPhase("stopped");
+        if (status.error) setErrorMessage(status.error);
+        stopStream();
+      }
+    } catch (err) {
+      setStopping(false);
+      setStopError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const stageRows = useMemo(
     () => Object.values(stages).sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
     [stages]
@@ -145,7 +170,10 @@ export function useCycleExecution() {
     stageRows,
     busy: phase === "starting" || phase === "running",
     finished,
-    start
+    stopping,
+    stopError,
+    start,
+    stop
   };
 }
 

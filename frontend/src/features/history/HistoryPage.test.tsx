@@ -73,3 +73,58 @@ describe("HistoryPage paging", () => {
     expect(screen.queryByRole("button", { name: "Show older runs" })).not.toBeInTheDocument();
   });
 });
+
+describe("HistoryPage deleting runs", () => {
+  it("deletes the chosen runs after a confirm, and never offers a running one", async () => {
+    const items = [run("a-2", "a", 3), { ...run("a-1", "a", 2), status: "RUNNING" }, run("b-1", "b", 1)];
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/v1/runs:delete")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ deleted: ["a-2", "b-1"], test_rows_deleted: 2, snapshots_deleted: 0, skipped_running: [], not_found: [], errors: [], echo: init?.body })
+        });
+      }
+      if (url.includes("/api/v1/run-settings")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            config_found: true,
+            retention: { days: 30, runs_per_cycle: null, enabled: true },
+            cleanup_interval_hours: 6,
+            default_stage_timeout_s: 600
+          })
+        });
+      }
+      if (url.includes("/api/v1/cycles")) return Promise.resolve({ ok: true, json: async () => ({ items: [] }) });
+      return Promise.resolve({ ok: true, json: async () => ({ items }) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/runs"]}>
+          <HistoryPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => expect(screen.getByTestId("run-settings")).toHaveTextContent("Runs older than 30 days are deleted automatically every 6 hours."));
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Select runs" }));
+    expect(screen.getByLabelText("Select run a-1")).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("Select run a-2"));
+    fireEvent.click(screen.getByLabelText("Select run b-1"));
+    expect(screen.getByTestId("delete-toolbar")).toHaveTextContent("2 runs selected.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete selected" }));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("runs:delete"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+
+    await waitFor(() => expect(screen.getByTestId("delete-notice")).toHaveTextContent("Deleted 2 runs."));
+    const call = fetchMock.mock.calls.find(([url]) => String(url).includes("runs:delete"));
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ run_ids: ["a-2", "b-1"] });
+    expect((call?.[1] as RequestInit).method).toBe("POST");
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+});

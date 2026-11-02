@@ -9,6 +9,7 @@ thread, so the NDJSON stream and the terminal stay consistent. See
 
 from __future__ import annotations
 
+import contextvars
 import dataclasses
 import json
 import logging
@@ -124,11 +125,13 @@ def run_plan(
 
         def abort(completed: int) -> None:
             stopped_by = interrupt.requested()
+            scope = interrupt.current()
+            reason = "fail_fast" if stopped_by is None else "stopped" if scope.reason else "signal"
             recorder.write(
                 {
                     "event": "plan_aborted",
                     "plan": plan.name,
-                    "reason": "fail_fast" if stopped_by is None else "signal",
+                    "reason": reason,
                     "completed_stages": completed,
                     **({} if stopped_by is None else {"signal": interrupt.signal_name(stopped_by)}),
                 }
@@ -172,7 +175,7 @@ def run_plan(
                 if stopped_by == signal.SIGTERM
                 else EngineExitCode.INTERRUPTED
             )
-            metadata["interrupted_by"] = interrupt.signal_name(stopped_by)
+            metadata["interrupted_by"] = interrupt.stop_reason()
         target_repos = {s.target_repo for s in stage_results if s.target_repo is not None}
         target_repo = next(iter(target_repos)) if len(target_repos) == 1 else None
         plan_result = PlanResult(
@@ -310,7 +313,10 @@ def _run_parallel(
             while pending and not aborted and len(running) < max_parallel:
                 idx, stage = pending.popleft()
                 start(idx, stage)
-                running[pool.submit(execute, stage)] = idx
+                # A copy of this thread's context per stage, so the stage sees the run's
+                # stop scope (interrupt.scoped) and the Stop button reaches it.
+                ctx = contextvars.copy_context()
+                running[pool.submit(ctx.run, execute, stage)] = idx
             if not running:
                 break
             done, _ = wait(running, return_when=FIRST_COMPLETED)

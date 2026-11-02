@@ -295,3 +295,19 @@ def stream_cycle_execution_events(
         iter_execution_sse(manager, execution_id),
         media_type="text/event-stream",
     )
+
+
+@router.post("/cycle-executions/{execution_id}/cancel", response_model=CycleExecutionStatusResponse)
+def cancel_cycle_execution(
+    execution_id: str,
+    manager: CycleExecutionManager = Depends(get_cycle_execution_manager),
+) -> CycleExecutionStatusResponse:
+    """Stop a run: a queued one never starts; a running one's stages get SIGTERM.
+
+    Send it again to kill stages that ignore SIGTERM. The run is still recorded, as
+    failed with ``interrupted_by`` set; its status here becomes ``cancelled``.
+    """
+    state = manager.cancel(execution_id)
+    if state is None:
+        raise _execution_not_found(execution_id, manager)
+    return get_cycle_execution(execution_id, manager)

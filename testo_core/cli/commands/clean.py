@@ -3,6 +3,7 @@
 ``testo clean --history`` instead deletes expired run history (``history.retention``
 in ``testosterone.yaml``, or ``--keep-days`` / ``--keep-runs``): run rows, per-test
 rows and ``static/history/<run_id>/`` together. Artifacts are left alone then.
+``testo clean --history --run <id>`` deletes just the runs named, whatever the rules say.
 """
 
 from __future__ import annotations
@@ -51,8 +52,21 @@ def clean(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="With --history: list the runs that would go, delete nothing."
     ),
+    run: list[str] = typer.Option(
+        [],
+        "--run",
+        help="With --history: delete this run (repeat for more), instead of the expired ones.",
+    ),
 ) -> None:
     """Delete local artifacts and temp output (or, with --history, expired run history)."""
+    if run and not history:
+        from testo_core.cli.ui.console import default_console
+
+        default_console().print("[fail]--run needs --history (testo clean --history --run ID).[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    if history and run:
+        _delete_chosen_runs(run, yes=yes, dry_run=dry_run)
+        return
     if history:
         _clean_history(
             yes=yes, config=config, keep_days=keep_days, keep_runs=keep_runs, dry_run=dry_run
@@ -183,4 +197,42 @@ def _clean_history(
     if report.errors:
         raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
     console.print("[ok]Clean finished.[/]")
+    raise typer.Exit(code=0)
+
+
+def _delete_chosen_runs(run_ids: list[str], *, yes: bool, dry_run: bool) -> None:
+    from testo_core.cli.ui.console import default_console
+    from testo_core.history.retention import delete_runs
+
+    console = default_console()
+    if not yes and not dry_run:
+        console.print(
+            "[fail]Refusing to delete without --yes (or -y); --dry-run shows what would go.[/]"
+        )
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    report = delete_runs(run_ids, dry_run=dry_run)
+    for run_id in report.not_found:
+        console.print(f"[warn]No run {run_id} in the run history.[/]")
+    for run_id in report.skipped_running:
+        console.print(f"[warn]Run {run_id} is still running; left alone.[/]")
+    if dry_run:
+        if report.run_ids:
+            console.print(f"[warn]{report.runs_selected} run(s) would be deleted:[/]")
+            for run_id in report.run_ids:
+                console.print(f"  {run_id}")
+        else:
+            console.print("[ok]Nothing to delete.[/]")
+        raise typer.Exit(code=0)
+    if report.run_ids:
+        console.print(
+            f"[ok]Deleted {report.runs_deleted} run(s), {report.test_rows_deleted} test row(s) "
+            f"and {report.snapshots_deleted} report cop{'y' if report.snapshots_deleted == 1 else 'ies'}.[/]"
+        )
+    for error in report.errors:
+        console.print(f"[warn]Could not remove {error}[/]")
+    if report.errors:
+        raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
+    if not report.run_ids:
+        # Every id was wrong or still running: say so with a non-zero exit.
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     raise typer.Exit(code=0)
