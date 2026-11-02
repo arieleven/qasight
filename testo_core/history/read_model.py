@@ -88,6 +88,7 @@ def list_run_sessions(*, limit: int = 30, cycle: str | None = None) -> list[RunS
             links_under_static=local_report_links(r.run_id),
             branch=r.branch,
             commit=r.commit,
+            environment=r.environment,
         )
         for r in runs
     ]

@@ -19,6 +19,7 @@ from testo_api.models import (
     DeltaReliabilityMetrics,
     DeltaStageDelta,
     DeltaStatusSummaryResponse,
+    EnvironmentOutcomeItem,
     FlakyTestItem,
     FlakyTestsResponse,
     LabelCountItem,
@@ -317,6 +318,7 @@ def get_test_history(
         points=[TestPointItem(**vars(p)) for p in history.points],
         last_failure=TestPointItem(**vars(last)) if last else None,
         last_failure_attachments=[AttachmentItem(**vars(a)) for a in attachments],
+        environments=[EnvironmentOutcomeItem(**vars(e)) for e in history.environments],
         owners=list(owners),
         issue_url=issue_url(
             repository,

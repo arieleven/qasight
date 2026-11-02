@@ -36,6 +36,7 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "notify-when",
         "flaky-issues",
         "coverage",
+        "environment",
         "github-token",
         "ai-summary",
         "comment-artifact",

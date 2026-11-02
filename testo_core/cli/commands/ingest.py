@@ -18,6 +18,7 @@ every CI job of a team records into one history.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -89,8 +90,23 @@ def ingest(
             "Cobertura or JaCoCo XML, LCOV, or a Go cover profile."
         ),
     ),
+    env: list[str] = typer.Option(
+        None,
+        "--env",
+        help=(
+            "What this run tests on, KEY=VALUE (repeatable): --env browser=firefox --env os=linux. "
+            "Flaky detection and the test page keep environments apart. Default: $TESTO_ENV."
+        ),
+    ),
 ) -> None:
     """Record test results from any runner (JUnit XML or a runner's own format) as a run of a cycle."""
+    from testo_core.services.run_environment import InvalidEnvironmentPair, apply_cli_pairs
+
+    try:
+        apply_cli_pairs(env or [], os.environ)
+    except InvalidEnvironmentPair as exc:
+        typer.echo(f"error: --env: {exc}", err=True)
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
     from testo_core.cli.runner import execute_ingest_command
     from testo_core.cli.ui.console import default_console, make_console
 

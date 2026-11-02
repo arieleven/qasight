@@ -47,6 +47,7 @@ testo run --cycle sample-pytests --workers 8 --force
 | `--workers` | `-w` | Override parallel workers (e.g. BehaveX); 1 or more |
 | `--force` | `-f` | Run even when trigger would skip the cycle |
 | `--coverage` | | Code coverage report the tests write (repeatable): Cobertura or JaCoCo XML, LCOV, or a Go cover profile. Read when the stages finish; its line coverage is stored with the run and shown on the run page, the [PR comment](#testo-report) and the [digest](#testo-notify). A missing file only logs a warning. Not with `--cycle all` |
+| `--env KEY=VALUE` | `$TESTO_ENV` | What the run tests on, repeatable (`--env browser=firefox --env os=linux`). Stored with the run as `browser=firefox, os=linux`; merged into `TESTO_ENV` (the flag wins on the same key), so the stages see it too. Without either, an Allure `environment.properties` in the results is used. Flaky detection, failing streaks and the test page keep environments apart. A flag without `=` is exit `2` |
 
 > [!warning] Roadmap flags — not implemented yet
 > `--tag`, `--fail-fast`, `--dry-run` and `--reporter` were previously listed here but are **not present in `testo_core/cli/commands/run.py`**. The API layer already accepts `fail_fast` and `reporter_override` on `POST /api/v1/cycles/{cycle}/executions` (surfaced in the React Run panel); the CLI flags remain roadmap items. (Doc corrected 2026-07-04 during the Phase 5 UI redesign.)
@@ -102,6 +103,7 @@ testo ingest 'reports/*.xml' --cycle web-unit \
 | `--server` | `$TESTO_SERVER_URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead of recording locally |
 | `--token` | `$TESTO_API_TOKEN` | The server's API token |
 | `--coverage` | none | Code coverage report to store with the run (repeatable, relative to `--repo`), as `testo run --coverage`. Checked first: no match or an unknown format is exit `2`. With `--server` only the totals are sent (the server recomputes the percentage) |
+| `--env KEY=VALUE` | `$TESTO_ENV` | What the results were tested on, as `testo run --env`. With `--server` it is sent with the upload |
 
 Files it reads, with the command that writes each one (no extra package needed except where noted):
 

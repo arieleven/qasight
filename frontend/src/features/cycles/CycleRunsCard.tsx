@@ -69,6 +69,7 @@ export function CycleRunsCard({ cycle }: { cycle: string }) {
             <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
             <RunLabel run={run} linked />
             {run.branch ? <span className="font-mono text-xs text-ink-400">{run.branch}</span> : null}
+            {run.environment ? <span className="text-xs text-ink-400">{run.environment}</span> : null}
           </li>
         ))}
       </ul>

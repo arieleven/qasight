@@ -16,7 +16,7 @@ The comparison ranked five gaps, and Taltal chose to build all of them in waves:
 | Id | Gap | Status |
 | --- | --- | --- |
 | N1 | Test labels and issue links | Built (this note) |
-| N2 | Environments per run, pass and flake rate split by environment | Planned |
+| N2 | Environments per run, pass and flake rate split by environment | Built (this note) |
 | N3 | Run a chosen set of tests | Planned |
 | N4 | Releases: runs tagged with an app version, a release page | Planned |
 | N5 | Which issues have red tests | Planned |
@@ -34,8 +34,17 @@ Manual test case management stays out of scope, as the [comparison page](../Comp
 - **UI.** Label chips and issue links on the run page's failing tests and the test page; a chip links to the cycle page with `?label=`, where the Tests card lists only those tests. A "By label" card on the cycle page shows the counts and is hidden when no test has a label. The static demo export writes `labels/<cycle>.json`; the UI filters by label on the client, so the static site works too.
 - **Plain names.** The UI and API say *labels* and *links*, never a competitor's feature name.
 
+### N2: environments per run
+
+- **One string per run.** `services/run_environment.py` stores what a run tested on as run metadata `environment`, `"browser=firefox, os=linux"`: keys cleaned to lower case and sorted, at most 8 pairs, so two runs on the same environment compare equal as plain strings. No migration: it lives in the run's metadata JSON like the CI provenance.
+- **Where it comes from**, first to last: `--env KEY=VALUE` on `testo run` and `testo ingest` (merged into `TESTO_ENV` for the process, so the stages and an upload see it too); the `TESTO_ENV` variable; Allure's own `environment.properties` in the run's results. `POST /api/v1/ingest` takes an `environment` field, which `testo ingest --server` fills from the same places. The GitHub Action has an `environment` input that sets `TESTO_ENV`. Nothing is filled in automatically (no OS or Python version), because splitting runs nobody asked to split would only weaken flaky detection.
+- **Flaky detection keeps environments apart.** `flaky_service` lanes were per branch; they are now per branch and environment, a same-commit conflict needs the same environment, and a failing streak counts runs of the latest run's environment. So a test that always fails on firefox and passes on chromium is a failure on firefox, not flaky. Runs without an environment share one lane, as before.
+- **Run failures.** A run's failing streak and "new" baseline use runs of the same environment (or with none recorded); a pull request's target-branch baseline prefers the run on the same environment.
+- **UI and API.** `environment` on `GET /api/v1/runs`, the run detail, and each point of the test history; the test history adds `environments`, pass and fail counts per environment. The run page and the cycle's runs list show it; the test page has a "By environment" card that says "Fails only on browser=firefox" when that's the case.
+
 ## Consequences
 
 - A suite that already uses Allure, Playwright tags or JUnit properties gets the breakdown with no config change. A plain pytest JUnit file has no labels until tests call `record_property("feature", "Checkout")` or use allure-pytest.
 - `test_result` rows are a little larger (two small JSON values per test).
 - N5 builds directly on the `issue` labels and links stored here.
+- Environments split flaky lanes only when runs record one. A team that sets `TESTO_ENV` on some jobs and not others gets an extra "not set" lane until every job sets it.

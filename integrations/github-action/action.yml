@@ -72,6 +72,10 @@ inputs:
     description: "Code coverage report(s) the tests write (Cobertura or JaCoCo XML, LCOV, Go cover profile), space-separated. Stored with the run; the summary and PR comment show line coverage and its change."
     required: false
     default: ""
+  environment:
+    description: "What this job tests on, as KEY=VALUE pairs separated by commas (for a matrix, browser=firefox, os=linux from the matrix values). Flaky detection and the test page keep environments apart. Default: the TESTO_ENV variable."
+    required: false
+    default: ""
   ai-summary:
     description: "Add an AI summary of the failures to the job summary and comment of a failed run. Set the provider in the step's env: TESTO_AI_PROVIDER (openai, anthropic, openai_compatible), TESTO_AI_MODEL, TESTO_AI_BASE_URL and its key from a secret (OPENAI_API_KEY, ANTHROPIC_API_KEY, or TESTO_AI_KEY_ENV naming another variable)."
     required: false
@@ -167,6 +171,7 @@ runs:
         TESTO_INPUT_NOTIFY_WHEN: ${{ inputs.notify-when }}
         TESTO_INPUT_FLAKY_ISSUES: ${{ inputs.flaky-issues }}
         TESTO_INPUT_COVERAGE: ${{ inputs.coverage }}
+        TESTO_ENV: ${{ inputs.environment || env.TESTO_ENV }}
         TESTO_INPUT_AI_SUMMARY: ${{ inputs.ai-summary }}
         TESTO_INPUT_COMMENT_ARTIFACT: ${{ inputs.comment-artifact }}
         TESTO_INPUT_SERVER_URL: ${{ inputs.server-url }}

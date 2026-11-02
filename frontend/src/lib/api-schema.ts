@@ -1238,6 +1238,11 @@ export interface components {
             coverage_total?: string | null;
             /** Cycle */
             cycle: string;
+            /**
+             * Environment
+             * @description What the run tested on: "browser=firefox, os=linux".
+             */
+            environment?: string | null;
             /** Files */
             files: string[];
             /** Repository */
@@ -1738,6 +1743,22 @@ export interface components {
             unchanged: string[];
             /** Unknown */
             unknown: string[];
+        };
+        /**
+         * EnvironmentOutcomeItem
+         * @description The test on one environment across the window.
+         */
+        EnvironmentOutcomeItem: {
+            /** Environment */
+            environment: string;
+            /** Failed */
+            failed: number;
+            /** Last Status */
+            last_status: string;
+            /** Passed */
+            passed: number;
+            /** Runs */
+            runs: number;
         };
         /** FailingTestItem */
         FailingTestItem: {
@@ -2441,6 +2462,8 @@ export interface components {
             created_at: number;
             /** Cycle */
             cycle: string | null;
+            /** Environment */
+            environment: string | null;
             /** Failed */
             failed: number | null;
             /** Finished At */
@@ -2519,6 +2542,8 @@ export interface components {
             created_at: number;
             /** Cycle */
             cycle: string | null;
+            /** Environment */
+            environment: string | null;
             /** Failed */
             failed: number | null;
             /** Health Pct */
@@ -2631,6 +2656,8 @@ export interface components {
         TestHistoryResponse: {
             /** Cycle */
             cycle: string;
+            /** Environments */
+            environments: components["schemas"]["EnvironmentOutcomeItem"][];
             /** Issue Url */
             issue_url: string | null;
             last_failure: components["schemas"]["TestPointItem"] | null;
@@ -2675,6 +2702,8 @@ export interface components {
             created_at: number;
             /** Duration Ms */
             duration_ms: number | null;
+            /** Environment */
+            environment: string | null;
             /** Flip Rate */
             flip_rate: number | null;
             /**

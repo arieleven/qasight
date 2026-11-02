@@ -839,6 +839,19 @@
             "title": "Cycle",
             "type": "string"
           },
+          "environment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the run tested on: \"browser=firefox, os=linux\".",
+            "title": "Environment"
+          },
           "files": {
             "items": {
               "contentMediaType": "application/octet-stream",
@@ -2496,6 +2509,40 @@
           "unknown"
         ],
         "title": "DeltaStatusSummaryResponse",
+        "type": "object"
+      },
+      "EnvironmentOutcomeItem": {
+        "description": "The test on one environment across the window.",
+        "properties": {
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "last_status": {
+            "title": "Last Status",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "environment",
+          "runs",
+          "passed",
+          "failed",
+          "last_status"
+        ],
+        "title": "EnvironmentOutcomeItem",
         "type": "object"
       },
       "FailingTestItem": {
@@ -4316,6 +4363,17 @@
             ],
             "title": "Cycle"
           },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
           "failed": {
             "anyOf": [
               {
@@ -4484,6 +4542,7 @@
           "commit",
           "base_branch",
           "repository",
+          "environment",
           "coverage_pct",
           "coverage_covered",
           "coverage_total"
@@ -4650,6 +4709,17 @@
             ],
             "title": "Cycle"
           },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
           "failed": {
             "anyOf": [
               {
@@ -4746,7 +4816,8 @@
           "broken",
           "links_under_static",
           "branch",
-          "commit"
+          "commit",
+          "environment"
         ],
         "title": "RunListItem",
         "type": "object"
@@ -5091,6 +5162,13 @@
             "title": "Cycle",
             "type": "string"
           },
+          "environments": {
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentOutcomeItem"
+            },
+            "title": "Environments",
+            "type": "array"
+          },
           "issue_url": {
             "anyOf": [
               {
@@ -5143,6 +5221,7 @@
           "points",
           "last_failure",
           "last_failure_attachments",
+          "environments",
           "owners",
           "issue_url"
         ],
@@ -5221,6 +5300,17 @@
             ],
             "title": "Duration Ms"
           },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
           "flip_rate": {
             "anyOf": [
               {
@@ -5253,7 +5343,8 @@
           "duration_ms",
           "message",
           "branch",
-          "flip_rate"
+          "flip_rate",
+          "environment"
         ],
         "title": "TestPointItem",
         "type": "object"

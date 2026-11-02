@@ -93,17 +93,29 @@ def _outcomes(statuses: list[str]) -> list[str]:
 
 
 def observation(run: CompletedRunView, case: dict[str, Any]) -> dict[str, Any]:
-    """``case`` plus the run's branch and commit, which :func:`classify` groups by."""
-    return {**case, "branch": run.branch, "commit": run.commit}
+    """``case`` plus the run's branch, commit and environment, which :func:`classify` groups by."""
+    return {**case, "branch": run.branch, "commit": run.commit, "environment": run.environment}
+
+
+def _lane(o: dict[str, Any]) -> str:
+    """Branch, plus the environment when the run recorded one: "main (browser=firefox)"."""
+    branch = str(o.get("branch") or "")
+    env = str(o.get("environment") or "")
+    return f"{branch} ({env})".strip() if env else branch
 
 
 def _lanes(observations: list[dict[str, Any]]) -> dict[str, list[str]]:
-    """Pass/fail outcomes per branch, oldest first. Runs without a branch share one lane."""
+    """Pass/fail outcomes per branch and environment, oldest first.
+
+    Runs without a branch share one lane, and so do runs without an environment.
+    Keeping environments apart means a test that always fails on one browser and
+    passes on another doesn't read as flipping.
+    """
     lanes: dict[str, list[str]] = {}
     for o in observations:
         outcome = _outcomes([str(o["status"])])
         if outcome:
-            lanes.setdefault(str(o.get("branch") or ""), []).append(outcome[0])
+            lanes.setdefault(_lane(o), []).append(outcome[0])
     return lanes
 
 
@@ -112,13 +124,13 @@ def _flips(outcomes: list[str]) -> int:
 
 
 def failing_streak(observations: list[dict[str, Any]]) -> int:
-    """Runs in a row the test failed, ending at its latest run, on the latest run's branch."""
+    """Runs in a row the test failed, ending at its latest run, on that run's branch and environment."""
     if not observations:
         return 0
-    branch = observations[-1].get("branch") or ""
+    lane = _lane(observations[-1])
     streak = 0
     for o in reversed(observations):
-        if (o.get("branch") or "") != branch:
+        if _lane(o) != lane:
             continue
         status = str(o["status"])
         if status in _FAIL:
@@ -135,7 +147,8 @@ def _same_commit_conflicts(observations: list[dict[str, Any]]) -> int:
         commit = str(o.get("commit") or "")
         outcome = _outcomes([str(o["status"])])
         if commit and outcome:
-            seen.setdefault(commit, set()).add(outcome[0])
+            # Another environment on the same commit is another lane, not a conflict.
+            seen.setdefault(f"{commit} @ {o.get('environment') or ''}", set()).add(outcome[0])
     return sum(1 for outcomes in seen.values() if len(outcomes) == 2)
 
 

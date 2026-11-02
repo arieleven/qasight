@@ -38,6 +38,8 @@ RUN_METADATA_KEYS: tuple[str, ...] = (
     "ci_ref_name",
     "ci_base_ref",
     "repository",
+    # "browser=firefox, os=linux" (services/run_environment.py).
+    "environment",
     # Line coverage the client read from its coverage report (``--coverage``).
     "coverage_pct",
     "coverage_covered",

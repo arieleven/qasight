@@ -48,6 +48,7 @@ def list_runs(limit: int = Query(30, ge=1, le=500), cycle: str | None = None) ->
             links_under_static=s.links_under_static,
             branch=s.branch,
             commit=s.commit,
+            environment=s.environment,
         )
         for s in sessions
     ]
@@ -84,6 +85,7 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
             branch=record.branch,
             commit=record.commit,
             base_branch=record.base_branch,
+            environment=record.environment,
             repository=record.repository,
             coverage_pct=record.coverage_pct,
             coverage_covered=record.coverage_covered,

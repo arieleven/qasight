@@ -43,6 +43,19 @@ class TestPoint:
     # Share of outcome changes (pass <-> fail) over the FLIP_WINDOW runs ending here;
     # None until two of them passed or failed.
     flip_rate: float | None = None
+    # What the run tested on ("browser=firefox"), when it recorded one.
+    environment: str | None = None
+
+
+@dataclass(frozen=True)
+class EnvironmentOutcome:
+    """The test's results on one environment, across the window."""
+
+    environment: str
+    runs: int
+    passed: int
+    failed: int
+    last_status: str
 
 
 @dataclass(frozen=True)
@@ -86,6 +99,8 @@ class TestHistory:
     summary: TestSummary
     # Newest first.
     points: tuple[TestPoint, ...]
+    # One line per environment the runs recorded, most failures first; empty when none did.
+    environments: tuple[EnvironmentOutcome, ...] = ()
 
     @property
     def last_failure(self) -> TestPoint | None:
@@ -247,10 +262,37 @@ def load_test_history(cycle: str, key: str, *, window: int = DEFAULT_WINDOW) -> 
             message=str(case.get("message") or ""),
             branch=run.branch,
             flip_rate=rate,
+            environment=run.environment,
         )
         for (run, case), rate in reversed(list(zip(observed, rates, strict=True)))
     )
-    return TestHistory(cycle=cycle, summary=_summarise(key, observed), points=points)
+    return TestHistory(
+        cycle=cycle,
+        summary=_summarise(key, observed),
+        points=points,
+        environments=_by_environment(points),
+    )
+
+
+def _by_environment(points: tuple[TestPoint, ...]) -> tuple[EnvironmentOutcome, ...]:
+    """Pass and fail counts per environment (``points`` newest first); ``()`` if none recorded one."""
+    if not any(p.environment for p in points):
+        return ()
+    groups: dict[str, list[TestPoint]] = {}
+    for p in points:
+        groups.setdefault(p.environment or "(not set)", []).append(p)
+    out = [
+        EnvironmentOutcome(
+            environment=env,
+            runs=len(members),
+            passed=sum(1 for p in members if p.status == "passed"),
+            failed=sum(1 for p in members if p.status in _FAIL),
+            last_status=members[0].status,
+        )
+        for env, members in groups.items()
+    ]
+    out.sort(key=lambda e: (-e.failed, e.environment))
+    return tuple(out)
 
 
 def cycle_source(cycle: str) -> tuple[Path | None, str | None]:

@@ -47,6 +47,7 @@ export type FlakyTestsResponse = Schemas["FlakyTestsResponse"];
 export type TestSummaryItem = Schemas["TestSummaryItem"];
 export type CycleTestsResponse = Schemas["CycleTestsResponse"];
 export type TestLabelItem = Schemas["TestLabelItem"];
+export type EnvironmentOutcomeItem = Schemas["EnvironmentOutcomeItem"];
 export type TestLinkItem = Schemas["TestLinkItem"];
 export type CycleLabelsResponse = Schemas["CycleLabelsResponse"];
 export type LabelCountItem = Schemas["LabelCountItem"];

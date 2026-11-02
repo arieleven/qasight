@@ -14,11 +14,12 @@ type RunProvenanceFields = {
   commit?: string | null;
   base_branch?: string | null;
   repository?: string | null;
+  environment?: string | null;
 };
 
 /** Branch, PR target and commit the run tested, when it recorded them. */
 function RunProvenance({ run }: { run: RunProvenanceFields }) {
-  if (!run.branch && !run.commit) return null;
+  if (!run.branch && !run.commit && !run.environment) return null;
   const short = run.commit ? run.commit.slice(0, 7) : null;
   const commitUrl =
     run.commit && run.repository && /^[\w.-]+\/[\w.-]+$/.test(run.repository)
@@ -44,6 +45,14 @@ function RunProvenance({ run }: { run: RunProvenanceFields }) {
               {short}
             </span>
           )}
+        </>
+      ) : null}
+      {run.environment ? (
+        <>
+          {run.branch || short ? <span aria-hidden>·</span> : null}
+          <span className="text-ink-200" title="What this run tested on">
+            {run.environment}
+          </span>
         </>
       ) : null}
     </span>

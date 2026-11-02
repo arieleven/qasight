@@ -153,6 +153,8 @@ class RunListItem(ApiModel):
     links_under_static: dict[str, str] = Field(default_factory=dict)
     branch: str | None = None
     commit: str | None = None
+    # "browser=firefox, os=linux" (testo run --env, TESTO_ENV, Allure environment.properties).
+    environment: str | None = None
 
 
 class RunListResponse(ApiModel):
@@ -201,6 +203,8 @@ class RunDetail(ApiModel):
     commit: str | None = None
     base_branch: str | None = None
     repository: str | None = None
+    # "browser=firefox, os=linux" (testo run --env, TESTO_ENV, Allure environment.properties).
+    environment: str | None = None
     # Line coverage stored with ``--coverage``.
     coverage_pct: float | None = None
     coverage_covered: int | None = None
@@ -525,6 +529,18 @@ class TestPointItem(ApiModel):
     branch: str | None = None
     # Rolling flip rate (0-1) over the runs ending here; null until two passed or failed.
     flip_rate: float | None = None
+    # What the run tested on ("browser=firefox, os=linux"), when it recorded one.
+    environment: str | None = None
+
+
+class EnvironmentOutcomeItem(ApiModel):
+    """The test on one environment across the window."""
+
+    environment: str
+    runs: int
+    passed: int
+    failed: int
+    last_status: str
 
 
 class AttachmentItem(ApiModel):
@@ -544,6 +560,8 @@ class TestHistoryResponse(ApiModel):
     last_failure: TestPointItem | None = None
     # Screenshots, videos, traces the last failing run kept for this test.
     last_failure_attachments: list[AttachmentItem] = Field(default_factory=list)
+    # Pass and fail counts per environment, most failures first; empty when no run recorded one.
+    environments: list[EnvironmentOutcomeItem] = Field(default_factory=list)
     owners: list[str] = Field(default_factory=list)
     issue_url: str | None = None
 
