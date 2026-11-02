@@ -15,6 +15,9 @@ compute, so the numbers match ``testo notify --digest`` and the ``/health`` page
   flaky, not marked yet) and what flaky tests cost (``services/failure_signal.py``);
 * each owner's tests, failures, flaky tests and time to fix (``services/team_view.py``)
   and the suite's growth and dead weight (``services/suite_hygiene.py``);
+* failure patterns: concentration, repeated errors, retry rate, unstable timing,
+  when failures happen, tests that catch bugs, coverage by day
+  (``services/failure_patterns.py``);
 * one row per cycle;
 * what needs attention (still failing, turned flaky, got slower) and good news
   (fixed), plus the health score's own findings.
@@ -30,6 +33,7 @@ from typing import Any
 from testo_core.history.read_model import list_recent_runs
 from testo_core.services import run_digest
 from testo_core.services.delivery_metrics import Delivery, build_delivery, span
+from testo_core.services.failure_patterns import Patterns, build_patterns
 from testo_core.services.failure_signal import NOISE, Signal, build_signal
 from testo_core.services.project_health import grade_for, project_health
 from testo_core.services.suite_hygiene import Hygiene, build_hygiene
@@ -125,6 +129,7 @@ class ManagerReport:
     signal: Signal = field(default_factory=Signal)
     teams: Teams = field(default_factory=Teams)
     hygiene: Hygiene = field(default_factory=Hygiene)
+    patterns: Patterns = field(default_factory=Patterns)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -239,8 +244,20 @@ def _signal_lines(s: Signal) -> list[str]:
     return lines
 
 
-def _suite_lines(h: Hygiene, t: Teams) -> list[str]:
+def _suite_lines(h: Hygiene, t: Teams, p: Patterns | None = None) -> list[str]:
     lines = []
+    if p is not None and p.top_tests and p.top_share_pct is not None and p.failures > 2:
+        lines.append(
+            f"{_plural(len(p.top_tests), 'test')} caused {p.top_share_pct:.0f}% of the "
+            f"{p.failures} test failures."
+        )
+    if p is not None and p.retried:
+        lines.append(
+            f"{p.retry_pct or 0:.1f}% of test results passed only on a retry"
+            + (f" (was {p.prev_retry_pct:.1f}%)." if p.prev_retry_pct is not None else ".")
+        )
+    if p is not None:
+        lines += p.when_findings[:1]
     if h.tests:
         change = ""
         if h.prev_tests is not None:
@@ -356,6 +373,14 @@ def build_report(
     )
     teams = build_teams(recent, start=digest.start, end=digest.end, cycles=in_scope)
     hygiene = build_hygiene(recent, start=digest.start, end=digest.end, cycles=in_scope)
+    trend = _trend(digest.start, digest.end, days, in_scope)
+    patterns = build_patterns(
+        recent,
+        start=digest.start,
+        end=digest.end,
+        cycles=in_scope,
+        days=[p.day for p in trend],
+    )
     findings = [
         Finding(cycle=f.cycle, title=f.title, detail=f.detail)
         for f in health.findings
@@ -369,9 +394,9 @@ def build_report(
         end=digest.end,
         generated_at=digest.end if now is not None else datetime.now(tz=UTC).timestamp(),
         scope=wanted,
-        summary=_summary(kpis, period, delivery, signal, _suite_lines(hygiene, teams)),
+        summary=_summary(kpis, period, delivery, signal, _suite_lines(hygiene, teams, patterns)),
         kpis=kpis,
-        trend=_trend(digest.start, digest.end, days, in_scope),
+        trend=trend,
         cycles=[
             CycleRow(
                 cycle=d.cycle,
@@ -404,4 +429,5 @@ def build_report(
         signal=signal,
         teams=teams,
         hygiene=hygiene,
+        patterns=patterns,
     )

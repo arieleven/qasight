@@ -127,6 +127,31 @@ const report: ManagerReport = {
     always_skipped_count: 1,
     slow_never_failed: [{ cycle: "api", name: "test_full_sync", detail: "48.0s, passed all 20 runs" }],
     slow_never_failed_ms: 48_000
+  },
+  patterns: {
+    failures: 20,
+    top_tests: [{ cycle: "web", name: "test_checkout_flow", count: 12, detail: "" }],
+    top_share_pct: 60,
+    repeated_errors: [{ message: "TimeoutError: page.click: Timeout 30000ms exceeded", count: 9, tests: 3 }],
+    retried: 6,
+    executed: 400,
+    retry_pct: 1.5,
+    prev_retry_pct: 0.8,
+    unstable_timing: [{ cycle: "web", name: "test_search", count: 4000, detail: "median 1.0s, slowest runs 5.0s" }],
+    by_hour: [],
+    by_weekday: [{ label: "Mon", runs: 6, red: 4 }],
+    by_environment: [
+      { label: "browser=firefox", runs: 6, red: 5 },
+      { label: "browser=chrome", runs: 6, red: 1 }
+    ],
+    when_findings: ["Runs on browser=firefox failed 5.0x as often as the rest (5 of 6 red)."],
+    caught_bugs: [{ cycle: "api", name: "test_refund_amount", count: 2, detail: "0 false alarms" }],
+    only_noise: [{ cycle: "web", name: "test_banner_shows", count: 4, detail: "" }],
+    days: [
+      { day: "2025-10-26", retried: 2, executed: 150, retry_pct: 1.3, coverage_pct: 81.2 },
+      { day: "2025-10-27", retried: 0, executed: 0, retry_pct: null, coverage_pct: null },
+      { day: "2025-10-28", retried: 4, executed: 250, retry_pct: 1.6, coverage_pct: 82.4 }
+    ]
   }
 };
 
@@ -174,6 +199,14 @@ describe("ReportPage", () => {
     expect(screen.getByText(/\+35 since the period before \(40 added, 5 removed\)/)).toBeInTheDocument();
     expect(screen.getByText("test_legacy_export")).toBeInTheDocument();
     expect(screen.getByText("test_full_sync")).toBeInTheDocument();
+    // Failure patterns
+    expect(screen.getByText("1 test caused 60% of the 20 test failures.")).toBeInTheDocument();
+    expect(screen.getByText("TimeoutError: page.click: Timeout 30000ms exceeded")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Line coverage per day, from 81.2% on 2025-10-26 to 82.4% on 2025-10-28/ })).toBeInTheDocument();
+    expect(screen.getByText("Runs on browser=firefox failed 5.0x as often as the rest (5 of 6 red).")).toBeInTheDocument();
+    expect(screen.getByText("test_refund_amount")).toBeInTheDocument();
+    expect(screen.getByText("test_banner_shows")).toBeInTheDocument();
+    expect(screen.getByText("test_search")).toBeInTheDocument();
     expect(screen.getByText("No test was fixed this period.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy or export Cycles" })).toBeInTheDocument();
 

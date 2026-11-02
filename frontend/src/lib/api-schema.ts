@@ -1452,6 +1452,17 @@ export interface components {
             /** Retries */
             retries: number;
         };
+        /** CountedTest */
+        CountedTest: {
+            /** Count */
+            count: number;
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /** Name */
+            name: string;
+        };
         /** CycleDetailResponse */
         CycleDetailResponse: {
             /** Description */
@@ -2372,6 +2383,7 @@ export interface components {
             kpis: components["schemas"]["ReportKpis"];
             /** Newly Flaky */
             newly_flaky: components["schemas"]["ReportTest"][];
+            patterns: components["schemas"]["PatternsResponse"];
             /**
              * Period
              * @enum {string}
@@ -2423,6 +2435,58 @@ export interface components {
             owner: string;
             /** Tests */
             tests: number;
+        };
+        /** PatternDay */
+        PatternDay: {
+            /** Coverage Pct */
+            coverage_pct: number | null;
+            /** Day */
+            day: string;
+            /** Executed */
+            executed: number;
+            /** Retried */
+            retried: number;
+            /** Retry Pct */
+            retry_pct: number | null;
+        };
+        /**
+         * PatternsResponse
+         * @description Failure concentration, repeated errors, retry rate, unstable timing, when failures
+         *     happen, tests that catch bugs and coverage by day (``services/failure_patterns.py``).
+         */
+        PatternsResponse: {
+            /** By Environment */
+            by_environment: components["schemas"]["RunSlice"][];
+            /** By Hour */
+            by_hour: components["schemas"]["RunSlice"][];
+            /** By Weekday */
+            by_weekday: components["schemas"]["RunSlice"][];
+            /** Caught Bugs */
+            caught_bugs: components["schemas"]["CountedTest"][];
+            /** Days */
+            days: components["schemas"]["PatternDay"][];
+            /** Executed */
+            executed: number;
+            /** Failures */
+            failures: number;
+            /** Only Noise */
+            only_noise: components["schemas"]["CountedTest"][];
+            /** Prev Retry Pct */
+            prev_retry_pct: number | null;
+            /** Repeated Errors */
+            repeated_errors: components["schemas"]["RepeatedError"][];
+            /** Retried */
+            retried: number;
+            /** Retry Pct */
+            retry_pct: number | null;
+            /** Top Share Pct */
+            top_share_pct: number | null;
+            /** Top Tests */
+            top_tests: components["schemas"]["CountedTest"][];
+            /** Unstable Timing */
+            unstable_timing: components["schemas"]["CountedTest"][];
+            /** When Findings */
+            when_findings: string[];
         };
         /**
          * ProjectHealthResponse
@@ -2546,6 +2610,7 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
+<<<<<<< HEAD
         /** ReleaseCycleItem */
         ReleaseCycleItem: {
             /** Created At */
@@ -2630,6 +2695,16 @@ export interface components {
         ReleasesResponse: {
             /** Items */
             items: components["schemas"]["ReleaseSummaryItem"][];
+=======
+        /** RepeatedError */
+        RepeatedError: {
+            /** Count */
+            count: number;
+            /** Message */
+            message: string;
+            /** Tests */
+            tests: number;
+>>>>>>> 0288ebe (feat(report): failure concentration, retry rate, timing and when tests fail)
         };
         /** ReportCycleRow */
         ReportCycleRow: {
@@ -3248,6 +3323,15 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** RunSlice */
+        RunSlice: {
+            /** Label */
+            label: string;
+            /** Red */
+            red: number;
+            /** Runs */
+            runs: number;
+        };
         /** SignalCause */
         SignalCause: {
             /**
@@ -3446,6 +3530,8 @@ export interface components {
             median_duration_ms: number | null;
             /** Name */
             name: string;
+            /** P95 Duration Ms */
+            p95_duration_ms: number | null;
             /** Passed */
             passed: number;
             /** Runs */

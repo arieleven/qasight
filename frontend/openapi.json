@@ -983,6 +983,34 @@
         "title": "CostlyFlakyTest",
         "type": "object"
       },
+      "CountedTest": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "name",
+          "count",
+          "detail"
+        ],
+        "title": "CountedTest",
+        "type": "object"
+      },
       "CycleDetailResponse": {
         "properties": {
           "description": {
@@ -3918,6 +3946,9 @@
             "title": "Newly Flaky",
             "type": "array"
           },
+          "patterns": {
+            "$ref": "#/components/schemas/PatternsResponse"
+          },
           "period": {
             "enum": [
               "day",
@@ -3998,7 +4029,8 @@
           "delivery",
           "signal",
           "teams",
-          "hygiene"
+          "hygiene",
+          "patterns"
         ],
         "title": "ManagerReportResponse",
         "type": "object"
@@ -4091,6 +4123,193 @@
           "oldest_open_s"
         ],
         "title": "OwnerRow",
+        "type": "object"
+      },
+      "PatternDay": {
+        "properties": {
+          "coverage_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Pct"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "executed": {
+            "title": "Executed",
+            "type": "integer"
+          },
+          "retried": {
+            "title": "Retried",
+            "type": "integer"
+          },
+          "retry_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Pct"
+          }
+        },
+        "required": [
+          "day",
+          "retried",
+          "executed",
+          "retry_pct",
+          "coverage_pct"
+        ],
+        "title": "PatternDay",
+        "type": "object"
+      },
+      "PatternsResponse": {
+        "description": "Failure concentration, repeated errors, retry rate, unstable timing, when failures\nhappen, tests that catch bugs and coverage by day (``services/failure_patterns.py``).",
+        "properties": {
+          "by_environment": {
+            "items": {
+              "$ref": "#/components/schemas/RunSlice"
+            },
+            "title": "By Environment",
+            "type": "array"
+          },
+          "by_hour": {
+            "items": {
+              "$ref": "#/components/schemas/RunSlice"
+            },
+            "title": "By Hour",
+            "type": "array"
+          },
+          "by_weekday": {
+            "items": {
+              "$ref": "#/components/schemas/RunSlice"
+            },
+            "title": "By Weekday",
+            "type": "array"
+          },
+          "caught_bugs": {
+            "items": {
+              "$ref": "#/components/schemas/CountedTest"
+            },
+            "title": "Caught Bugs",
+            "type": "array"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "executed": {
+            "title": "Executed",
+            "type": "integer"
+          },
+          "failures": {
+            "title": "Failures",
+            "type": "integer"
+          },
+          "only_noise": {
+            "items": {
+              "$ref": "#/components/schemas/CountedTest"
+            },
+            "title": "Only Noise",
+            "type": "array"
+          },
+          "prev_retry_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Retry Pct"
+          },
+          "repeated_errors": {
+            "items": {
+              "$ref": "#/components/schemas/RepeatedError"
+            },
+            "title": "Repeated Errors",
+            "type": "array"
+          },
+          "retried": {
+            "title": "Retried",
+            "type": "integer"
+          },
+          "retry_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Pct"
+          },
+          "top_share_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Share Pct"
+          },
+          "top_tests": {
+            "items": {
+              "$ref": "#/components/schemas/CountedTest"
+            },
+            "title": "Top Tests",
+            "type": "array"
+          },
+          "unstable_timing": {
+            "items": {
+              "$ref": "#/components/schemas/CountedTest"
+            },
+            "title": "Unstable Timing",
+            "type": "array"
+          },
+          "when_findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "When Findings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "failures",
+          "top_tests",
+          "top_share_pct",
+          "repeated_errors",
+          "retried",
+          "executed",
+          "retry_pct",
+          "prev_retry_pct",
+          "unstable_timing",
+          "by_hour",
+          "by_weekday",
+          "by_environment",
+          "when_findings",
+          "caught_bugs",
+          "only_noise",
+          "days"
+        ],
+        "title": "PatternsResponse",
         "type": "object"
       },
       "ProjectHealthResponse": {
@@ -4499,6 +4718,7 @@
         "title": "ReadinessCheck",
         "type": "object"
       },
+<<<<<<< HEAD
       "ReleaseCycleItem": {
         "properties": {
           "created_at": {
@@ -4678,10 +4898,19 @@
             "title": "Key",
             "type": "string"
           },
+=======
+      "RepeatedError": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+>>>>>>> 0288ebe (feat(report): failure concentration, retry rate, timing and when tests fail)
           "message": {
             "title": "Message",
             "type": "string"
           },
+<<<<<<< HEAD
           "name": {
             "title": "Name",
             "type": "string"
@@ -4725,6 +4954,19 @@
           "items"
         ],
         "title": "ReleasesResponse",
+=======
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "count",
+          "tests"
+        ],
+        "title": "RepeatedError",
+>>>>>>> 0288ebe (feat(report): failure concentration, retry rate, timing and when tests fail)
         "type": "object"
       },
       "ReportCycleRow": {
@@ -6461,6 +6703,29 @@
         "title": "RunReportsResponse",
         "type": "object"
       },
+      "RunSlice": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "red": {
+            "title": "Red",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "label",
+          "runs",
+          "red"
+        ],
+        "title": "RunSlice",
+        "type": "object"
+      },
       "SignalCause": {
         "properties": {
           "cause": {
@@ -7109,6 +7374,17 @@
             "title": "Name",
             "type": "string"
           },
+          "p95_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Duration Ms"
+          },
           "passed": {
             "title": "Passed",
             "type": "integer"
@@ -7159,6 +7435,7 @@
           "median_duration_ms",
           "slowdown_ms",
           "slowdown_pct",
+          "p95_duration_ms",
           "labels",
           "links"
         ],

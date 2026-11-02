@@ -298,6 +298,11 @@ export function TestPage() {
         <DurationBars points={points} />
         <p className="mt-2 text-xs text-ink-400">
           Median {formatDuration(test.median_duration_ms)}
+          {test.p95_duration_ms != null && test.median_duration_ms != null && test.p95_duration_ms >= 3 * Math.max(1, test.median_duration_ms) && test.p95_duration_ms - test.median_duration_ms >= 1000
+            ? `, but its slowest runs take ${formatDuration(test.p95_duration_ms)}: unstable timing, a likely timeout or flake`
+            : test.p95_duration_ms != null
+              ? `, slowest runs ${formatDuration(test.p95_duration_ms)}`
+              : ""}
           {test.slowdown_ms != null
             ? `, and ${formatDuration(test.slowdown_ms)} slower over the last runs${test.slowdown_pct != null ? ` (+${test.slowdown_pct}%)` : ""}`
             : ""}

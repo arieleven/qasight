@@ -49,6 +49,19 @@ Where it shows: the `/report` page's **Why runs were red** (a bar by cause and t
 
 Both are in `GET /api/v1/report` (`teams`, `hygiene`), on the `/report` page (**By team**, **Suite size**, **Skipped in every run**, **Slow and never failed**) and in the summary sentences.
 
+### Wave 4: the smaller follow-ups
+
+`services/failure_patterns.py`, the `patterns` object of `GET /api/v1/report`:
+
+- **Where failures concentrate**: the fewest tests that cause 60% of the period's test failures, and the error messages repeated most across tests (by message signature, the one triage memory uses).
+- **Retry rate by day**: the share of executed tests that passed only on a retry, against the period before.
+- **Line coverage by day**: the last coverage recorded each day (from `--coverage`), as a line.
+- **Unstable timing**: tests whose 95th-percentile time is at least three times their median and a second slower. The test page also gives each test's slowest-runs time (`p95_duration_ms` on the test summary) and flags unstable timing.
+- **When failures happen**: red runs by hour (UTC), weekday and environment, with a sentence when one slice (five runs or more) fails at least twice as often as the rest.
+- **Tests that caught real bugs, and tests that only raised false alarms**: failures per test marked as a product bug against those marked test bug, environment or flaky.
+
+A true escape rate (bugs found in production that no test caught) needs bug data from an issue tracker, so it is left out.
+
 ## Consequences
 
 - No new tables or settings: the metrics are read-side only and recomputed on each request from up to 5000 recent runs (the manager report's existing scan limit) and at most 400 runs of test results per cycle.

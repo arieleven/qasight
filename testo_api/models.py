@@ -509,6 +509,7 @@ class TestSummaryItem(ApiModel):
     # Recent median minus the earlier one, only when that is more than timing noise.
     slowdown_ms: int | None = None
     slowdown_pct: float | None = None
+    p95_duration_ms: int | None = None
     # From the test's latest run.
     labels: list[TestLabelItem] = Field(default_factory=list)
     links: list[TestLinkItem] = Field(default_factory=list)
@@ -1216,6 +1217,55 @@ class HygieneResponse(ApiModel):
     slow_never_failed_ms: int
 
 
+class CountedTest(ApiModel):
+    cycle: str
+    name: str
+    count: int
+    detail: str
+
+
+class RepeatedError(ApiModel):
+    message: str
+    count: int
+    tests: int
+
+
+class RunSlice(ApiModel):
+    label: str
+    runs: int
+    red: int
+
+
+class PatternDay(ApiModel):
+    day: str
+    retried: int
+    executed: int
+    retry_pct: float | None
+    coverage_pct: float | None
+
+
+class PatternsResponse(ApiModel):
+    """Failure concentration, repeated errors, retry rate, unstable timing, when failures
+    happen, tests that catch bugs and coverage by day (``services/failure_patterns.py``)."""
+
+    failures: int
+    top_tests: list[CountedTest]
+    top_share_pct: float | None
+    repeated_errors: list[RepeatedError]
+    retried: int
+    executed: int
+    retry_pct: float | None
+    prev_retry_pct: float | None
+    unstable_timing: list[CountedTest]
+    by_hour: list[RunSlice]
+    by_weekday: list[RunSlice]
+    by_environment: list[RunSlice]
+    when_findings: list[str]
+    caught_bugs: list[CountedTest]
+    only_noise: list[CountedTest]
+    days: list[PatternDay]
+
+
 class ManagerReportResponse(ApiModel):
     """How testing went over a period: the ``/report`` page and every ``testo export`` format."""
 
@@ -1239,6 +1289,7 @@ class ManagerReportResponse(ApiModel):
     signal: SignalResponse
     teams: TeamsResponse
     hygiene: HygieneResponse
+    patterns: PatternsResponse
 
 
 class ReleaseSummaryItem(BaseModel):

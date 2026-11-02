@@ -203,3 +203,61 @@ export function SuiteTimeChart({ points }: { points: Point[] }) {
     </svg>
   );
 }
+
+type Day = ManagerReport["patterns"]["days"][number];
+
+/** A percentage per day as a line (coverage, retry rate), on an axis fitted to the values. */
+export function DailyPercentChart({ points, field, label }: { points: Day[]; field: "coverage_pct" | "retry_pct"; label: string }) {
+  const known = points.filter((p) => p[field] != null);
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const values = known.map((p) => p[field] as number);
+  const lo = values.length ? Math.max(0, Math.floor(Math.min(...values) - 2)) : 0;
+  const hi = values.length ? Math.min(100, Math.ceil(Math.max(...values) + 2)) : 100;
+  const x = (i: number) => PAD.left + (points.length <= 1 ? innerW / 2 : (i * innerW) / (points.length - 1));
+  const y = (v: number) => PAD.top + innerH - ((v - lo) / (hi - lo || 1)) * innerH;
+  const line = points
+    .map((p, i) => (p[field] == null ? null : `${x(i).toFixed(1)},${y(p[field] as number).toFixed(1)}`))
+    .filter(Boolean)
+    .join(" ");
+  const step = labelStep(points.length);
+  const first = known[0];
+  const last = known[known.length - 1];
+  return (
+    <svg
+      data-chart
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label={
+        known.length
+          ? `${label} per day, from ${first[field]}% on ${first.day} to ${last[field]}% on ${last.day}`
+          : `${label} per day: nothing recorded in this period`
+      }
+      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+    >
+      {[lo, hi].map((t) => (
+        <g key={t}>
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke={PAPER.rule} strokeWidth={1} />
+          <text x={PAD.left - 6} y={y(t)} fill={PAPER.muted} fontSize={12} textAnchor="end" dominantBaseline="middle">
+            {t}%
+          </text>
+        </g>
+      ))}
+      {line ? <polyline points={line} fill="none" stroke={PAPER.brand} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" /> : null}
+      {points.map((p, i) => (p[field] == null ? null : <circle key={p.day} cx={x(i)} cy={y(p[field] as number)} r={points.length > 31 ? 2 : 3.5} fill={PAPER.brand} />))}
+      {points.map((p, i) =>
+        i % step === 0 || i === points.length - 1 ? (
+          <text key={`l-${p.day}`} x={x(i)} y={H - 8} fill={PAPER.muted} fontSize={12} textAnchor={points.length > 1 && i === points.length - 1 ? "end" : i === 0 && points.length > 1 ? "start" : "middle"}>
+            {dayLabel(p.day, points.length > 14)}
+          </text>
+        ) : null
+      )}
+      {!known.length ? (
+        <text x={W / 2} y={H / 2} fill={PAPER.faint} fontSize={13} textAnchor="middle">
+          Nothing recorded in this period
+        </text>
+      ) : null}
+    </svg>
+  );
+}

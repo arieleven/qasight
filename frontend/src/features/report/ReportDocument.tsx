@@ -3,7 +3,7 @@ import { useRef, type ReactNode } from "react";
 import { CopyMenu, cardAnchor } from "../../components/ui";
 import type { ManagerReport } from "../../lib/api-client";
 import { formatSpan } from "../../lib/format";
-import { PassRateChart, RunsChart, SuiteTimeChart } from "./charts";
+import { DailyPercentChart, PassRateChart, RunsChart, SuiteTimeChart } from "./charts";
 import { PAPER } from "./palette";
 
 function fmtDate(ts: number): string {
@@ -265,6 +265,7 @@ export function ReportDocument({ report, brand = "Testosterone", copy = true }: 
       <DeliveryByCycle report={report} copy={copy} />
       <TeamsSection report={report} copy={copy} />
       <HygieneSection report={report} copy={copy} />
+      <PatternsSection report={report} copy={copy} />
 
       <Section copy={copy} title="Still failing" note={report.still_failing.length ? `${report.still_failing.length} shown` : undefined}>
         <TestList items={report.still_failing} empty="Nothing is failing in the latest runs." />
@@ -691,6 +692,150 @@ function HygieneSection({ report, copy }: { report: ManagerReport; copy: boolean
           ) : null}
         </Section>
       </div>
+    </>
+  );
+}
+
+function CountedList({ items, empty, unit }: { items: ManagerReport["patterns"]["top_tests"]; empty: string; unit?: string }) {
+  if (!items.length)
+    return (
+      <p className="text-sm" style={{ color: PAPER.muted }}>
+        {empty}
+      </p>
+    );
+  return (
+    <ul className="space-y-1 text-sm">
+      {items.map((t) => (
+        <li key={`${t.cycle}:${t.name}`} className="flex items-baseline justify-between gap-3">
+          <span className="min-w-0">
+            <span className="font-mono text-[12px] break-all">{t.name}</span>
+            <span style={{ color: PAPER.muted }}>
+              {" "}
+              · {t.cycle}
+              {t.detail ? ` · ${t.detail}` : ""}
+            </span>
+          </span>
+          {unit ? (
+            <span className="shrink-0 tabular-nums">
+              {t.count} {unit}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Where failures concentrate, when they happen, which tests catch bugs, retries and coverage over time. */
+function PatternsSection({ report, copy }: { report: ManagerReport; copy: boolean }) {
+  const p = report.patterns;
+  const hasCoverage = p.days.some((d) => d.coverage_pct != null);
+  const worstDay = [...p.by_weekday].sort((a, b) => b.red / Math.max(1, b.runs) - a.red / Math.max(1, a.runs))[0];
+  return (
+    <>
+      {p.failures ? (
+        <div className="grid gap-x-8 md:grid-cols-2">
+          <Section copy={copy} title="Where failures concentrate">
+            {p.top_share_pct !== null && p.top_tests.length ? (
+              <p className="mb-2 text-sm" style={{ color: PAPER.ink }}>
+                {p.top_tests.length} {p.top_tests.length === 1 ? "test" : "tests"} caused {Math.round(p.top_share_pct)}% of the {p.failures} test failures.
+              </p>
+            ) : null}
+            <CountedList items={p.top_tests} empty="" unit="failures" />
+          </Section>
+          <Section copy={copy} title="Most repeated errors">
+            {p.repeated_errors.length ? (
+              <ul className="space-y-2 text-sm">
+                {p.repeated_errors.slice(0, 5).map((e) => (
+                  <li key={e.message}>
+                    <span className="block font-mono text-[12px] break-all">{e.message}</span>
+                    <span className="text-xs" style={{ color: PAPER.muted }}>
+                      {e.count} failures in {e.tests} {e.tests === 1 ? "test" : "tests"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm" style={{ color: PAPER.muted }}>
+                No error message repeated.
+              </p>
+            )}
+          </Section>
+        </div>
+      ) : null}
+
+      <div className="grid gap-x-8 md:grid-cols-2">
+        <Section copy={copy} title="Retry rate by day" note={p.retry_pct !== null ? `${p.retry_pct.toFixed(1)}% this period` : undefined}>
+          <DailyPercentChart points={p.days} field="retry_pct" label="Share of tests that passed only on a retry" />
+          <p className="mt-1 text-xs" style={{ color: PAPER.muted }}>
+            Tests that passed only after a retry
+            {p.prev_retry_pct !== null ? `; ${p.prev_retry_pct.toFixed(1)}% the period before` : ""}. It climbs before tests count as flaky.
+          </p>
+        </Section>
+        {hasCoverage ? (
+          <Section copy={copy} title="Line coverage by day">
+            <DailyPercentChart points={p.days} field="coverage_pct" label="Line coverage" />
+          </Section>
+        ) : (
+          <Section copy={copy} title="Unstable timing">
+            <CountedList items={p.unstable_timing} empty="No test's timing jumps around." />
+          </Section>
+        )}
+      </div>
+
+      {hasCoverage && p.unstable_timing.length ? (
+        <Section copy={copy} title="Unstable timing">
+          <CountedList items={p.unstable_timing} empty="" />
+        </Section>
+      ) : null}
+
+      {p.when_findings.length || p.by_environment.length > 1 ? (
+        <Section copy={copy} title="When failures happen">
+          {p.when_findings.length ? (
+            <ul className="mb-3 list-disc space-y-1 pl-5 text-sm">
+              {p.when_findings.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mb-3 text-sm" style={{ color: PAPER.muted }}>
+              No day, hour or environment fails much more often than the rest
+              {worstDay ? ` (the worst day is ${worstDay.label}, ${worstDay.red} of ${worstDay.runs} red)` : ""}.
+            </p>
+          )}
+          {p.by_environment.length > 1 ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs" style={{ color: PAPER.muted }}>
+                  <th className="py-1 pr-3 font-semibold">Environment</th>
+                  <th className="py-1 pr-3 text-right font-semibold">Runs</th>
+                  <th className="py-1 text-right font-semibold">Red</th>
+                </tr>
+              </thead>
+              <tbody>
+                {p.by_environment.map((s) => (
+                  <tr key={s.label} className="border-t tabular-nums" style={{ borderColor: PAPER.rule }}>
+                    <td className="py-1.5 pr-3 break-all">{s.label}</td>
+                    <td className="py-1.5 pr-3 text-right">{s.runs}</td>
+                    <td className="py-1.5 text-right">{Math.round((100 * s.red) / Math.max(1, s.runs))}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+        </Section>
+      ) : null}
+
+      {p.caught_bugs.length || p.only_noise.length ? (
+        <div className="grid gap-x-8 md:grid-cols-2">
+          <Section copy={copy} title="Tests that caught real bugs">
+            <CountedList items={p.caught_bugs} empty="No failure was marked as a product bug." unit="bugs" />
+          </Section>
+          <Section copy={copy} title="Tests that only raised false alarms">
+            <CountedList items={p.only_noise} empty="None." unit="alarms" />
+          </Section>
+        </div>
+      ) : null}
     </>
   );
 }
