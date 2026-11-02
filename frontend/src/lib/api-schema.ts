@@ -2610,7 +2610,6 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
-<<<<<<< HEAD
         /** ReleaseCycleItem */
         ReleaseCycleItem: {
             /** Created At */
@@ -2695,7 +2694,7 @@ export interface components {
         ReleasesResponse: {
             /** Items */
             items: components["schemas"]["ReleaseSummaryItem"][];
-=======
+        };
         /** RepeatedError */
         RepeatedError: {
             /** Count */
@@ -2704,7 +2703,6 @@ export interface components {
             message: string;
             /** Tests */
             tests: number;
->>>>>>> 0288ebe (feat(report): failure concentration, retry rate, timing and when tests fail)
         };
         /** ReportCycleRow */
         ReportCycleRow: {

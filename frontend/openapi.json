@@ -4718,7 +4718,6 @@
         "title": "ReadinessCheck",
         "type": "object"
       },
-<<<<<<< HEAD
       "ReleaseCycleItem": {
         "properties": {
           "created_at": {
@@ -4898,19 +4897,10 @@
             "title": "Key",
             "type": "string"
           },
-=======
-      "RepeatedError": {
-        "properties": {
-          "count": {
-            "title": "Count",
-            "type": "integer"
-          },
->>>>>>> 0288ebe (feat(report): failure concentration, retry rate, timing and when tests fail)
           "message": {
             "title": "Message",
             "type": "string"
           },
-<<<<<<< HEAD
           "name": {
             "title": "Name",
             "type": "string"
@@ -4954,7 +4944,18 @@
           "items"
         ],
         "title": "ReleasesResponse",
-=======
+        "type": "object"
+      },
+      "RepeatedError": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
           "tests": {
             "title": "Tests",
             "type": "integer"
@@ -4966,7 +4967,6 @@
           "tests"
         ],
         "title": "RepeatedError",
->>>>>>> 0288ebe (feat(report): failure concentration, retry rate, timing and when tests fail)
         "type": "object"
       },
       "ReportCycleRow": {
