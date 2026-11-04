@@ -8,13 +8,13 @@ build-backend = "hatchling.build"
 # tests/contract/ci/test_testo_core_compat.py keeps its version and extras in step.
 [project]
 name = "testo-core"
-version = "1.5.0"
+version = "1.6.0"
 description = "testo-core is now qasight: this package installs qasight and keeps the old testo_core imports working."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Taltal" }]
-dependencies = ["qasight==1.5.0"]
+dependencies = ["qasight==1.6.0"]
 classifiers = [
     "Development Status :: 7 - Inactive",
     "Programming Language :: Python :: 3",
@@ -30,16 +30,16 @@ testo-api = "qasight_api.main:run"
 testo-runner-service = "qasight.engine.backends.runner_service:main"
 
 [project.optional-dependencies]
-bdd = ["qasight[bdd]==1.5.0"]
-api = ["qasight[api]==1.5.0"]
-db = ["qasight[db]==1.5.0"]
-db_mysql = ["qasight[db_mysql]==1.5.0"]
-metrics = ["qasight[metrics]==1.5.0"]
-otel = ["qasight[otel]==1.5.0"]
-export = ["qasight[export]==1.5.0"]
-mcp = ["qasight[mcp]==1.5.0"]
-docs = ["qasight[docs]==1.5.0"]
-dev = ["qasight[dev]==1.5.0"]
+bdd = ["qasight[bdd]==1.6.0"]
+api = ["qasight[api]==1.6.0"]
+db = ["qasight[db]==1.6.0"]
+db_mysql = ["qasight[db_mysql]==1.6.0"]
+metrics = ["qasight[metrics]==1.6.0"]
+otel = ["qasight[otel]==1.6.0"]
+export = ["qasight[export]==1.6.0"]
+mcp = ["qasight[mcp]==1.6.0"]
+docs = ["qasight[docs]==1.6.0"]
+dev = ["qasight[dev]==1.6.0"]
 
 [project.urls]
 Homepage = "https://pypi.org/project/qasight/"

@@ -49,8 +49,11 @@ test) and opens the UI on them. More ways in, from Jest to `go test`, are in the
 
 ## What's new
 
-1.5.0 adds `qasight affected` (run only the tests a change can affect), OpenTelemetry export and
-`qasight pool` for VM pools. 1.4.0 brought `qasight ingest` for Jest, Vitest, .NET, Go, Robot,
+1.6.0 renames Testosterone to QASight (`pip install qasight`; the old `testo` command, config
+file and `testo-core` package keep working) and adds `qasight init` to set a project up in one
+command, a Report page and `qasight export` for managers, `qasight demo`, `qasight try`,
+`qasight mcp`, `qasight export-site` for a read-only history site on GitHub Pages, quarantine from the UI, releases and environments on runs, and storage limits for
+the team server. 1.5.0 added `qasight affected`, OpenTelemetry export and `qasight pool`. 1.4.0 brought `qasight ingest` for Jest, Vitest, .NET, Go, Robot,
 Allure, RSpec, k6 and Xcode results, `pytest --qasight` and the GitHub Action at
 `uses: arieleven/qasight@v1`. Every change is in [CHANGELOG.md](CHANGELOG.md).
 

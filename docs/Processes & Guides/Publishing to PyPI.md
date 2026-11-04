@@ -38,7 +38,7 @@ The `package` job in `ci.yml` runs the UI bundle, the build and the clean-instal
 
 ## Current state
 
-Version 1.1.1 is the first release meant for PyPI; 1.1.0 was never published and its wheel crashed on `qasight run` without the `[db]` extra (see `CHANGELOG.md`). It is on PyPI since 2026-10-19, as `testo-core` until 1.5.0 (https://pypi.org/project/testo-core/) and as `qasight` from 1.6.0 (https://pypi.org/project/qasight/). 1.2.0 was released on 2026-10-24, 1.3.0 on 2026-10-25, and 1.4.0 on 2026-10-31. 1.5.0 is the version on `main` and waits for its Release (checked 2026-11-01: PyPI shows 1.4.0). The `v1.1.1` Release's automatic run stopped at the old Test PyPI step, so 1.1.1 was uploaded with a manual run of the workflow. The moving `v1` tag the GitHub Action docs refer to ([CI-CD Pipeline Setup § Versioning policy](CI-CD%20Pipeline%20Setup.md#versioning-policy)) is moved by `move-major-tag.yml` on each stable release.
+Version 1.1.1 is the first release meant for PyPI; 1.1.0 was never published and its wheel crashed on `qasight run` without the `[db]` extra (see `CHANGELOG.md`). It is on PyPI since 2026-10-19, as `testo-core` until 1.5.0 (https://pypi.org/project/testo-core/) and as `qasight` from 1.6.0 (https://pypi.org/project/qasight/). 1.2.0 was released on 2026-10-24, 1.3.0 on 2026-10-25, 1.4.0 on 2026-10-31 and 1.5.0 on 2026-11-01. 1.6.0, the first release named `qasight`, is the version on `main` and waits for its Release. The `v1.1.1` Release's automatic run stopped at the old Test PyPI step, so 1.1.1 was uploaded with a manual run of the workflow. The moving `v1` tag the GitHub Action docs refer to ([CI-CD Pipeline Setup § Versioning policy](CI-CD%20Pipeline%20Setup.md#versioning-policy)) is moved by `move-major-tag.yml` on each stable release.
 
 ## pytest-qasight
 
@@ -55,7 +55,7 @@ It is released by hand, only when its own version changes (`version` in its `pyp
 ## Verifying a release
 
 ```bash
-pip install qasight==1.5.0
+pip install qasight==1.6.0
 qasight --version
 qasight run --help
 ```

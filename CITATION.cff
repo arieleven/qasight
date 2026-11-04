@@ -6,8 +6,8 @@ type: software
 authors:
   - alias: arieleven
 license: MIT
-version: 1.5.0
-date-released: "2026-10-31"
+version: 1.6.0
+date-released: "2026-11-04"
 repository-code: "https://github.com/arieleven/qasight"
 url: "https://arieleven.github.io/qasight/"
 keywords:

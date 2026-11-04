@@ -160,7 +160,7 @@ Every run is recorded like `qasight ingest` would record it (the cycle defaults 
 pip install -U qasight          # or 'qasight[api]' with the extras you use
 ```
 
-The run history upgrades itself the first time a newer `qasight` opens it, and keeps every run. `uses: arieleven/qasight@v1` moves to each new 1.x release on its own; pin `@v1.5.0` (any release tag) to hold one. Team server images follow the `1` tag; pull and restart (see [Team Server](Processes%20&%20Guides/Team%20Server.md#how-it-works)). What changed, and anything you need to do, is in the [changelog](https://github.com/arieleven/qasight/blob/main/CHANGELOG.md).
+The run history upgrades itself the first time a newer `qasight` opens it, and keeps every run. `uses: arieleven/qasight@v1` moves to each new 1.x release on its own; pin `@v1.6.0` (any release tag) to hold one. Team server images follow the `1` tag; pull and restart (see [Team Server](Processes%20&%20Guides/Team%20Server.md#how-it-works)). What changed, and anything you need to do, is in the [changelog](https://github.com/arieleven/qasight/blob/main/CHANGELOG.md).
 
 ## Next
 
