@@ -29,8 +29,8 @@ def test_pipeline_runs_cycles_then_publishes_pages() -> None:
     demo = payload["run_demo_cycles"]
     script = "\n".join(demo["script"])
     assert 'git clone --depth 1 --branch "$FAKE_API_REF" "$FAKE_API_REPO" .demo/fake-api' in script
-    assert "testo run --cycle self-test --ci" in script
-    assert "testo run --cycle fake-api --ci" in script
+    assert "qasight run --cycle self-test --ci" in script
+    assert "qasight run --cycle fake-api --ci" in script
     assert "scripts/export_static_site.py" in script
     assert "public" in demo["artifacts"]["paths"]
 
@@ -49,7 +49,7 @@ def test_only_the_fake_app_is_allowed_to_fail() -> None:
 
 
 def test_demo_cycles_exist_in_the_config() -> None:
-    config = yaml.safe_load((REPO_ROOT / "testosterone.yaml").read_text(encoding="utf-8"))
+    config = yaml.safe_load((REPO_ROOT / "qasight.yaml").read_text(encoding="utf-8"))
     assert "self-test" in config["cycles"]
     fake = config["cycles"]["fake-api"]
     # The pipeline clones the target here; the cycle has to look in the same place.
@@ -104,9 +104,9 @@ def test_github_pages_workflow_runs_the_same_cycles_and_build() -> None:
     script = "\n".join(str(step.get("run", "")) for step in build["steps"])
 
     assert 'git clone --depth 1 --branch "$FAKE_API_REF" "$FAKE_API_REPO" .demo/fake-api' in script
-    self_test = steps["Testosterone tests itself"]["run"]
+    self_test = steps["QASight tests itself"]["run"]
     assert "pipefail" in self_test and "|| true" not in self_test
-    assert steps["Testosterone tests fake-api (fails on purpose)"]["run"].endswith("|| true")
+    assert steps["QASight tests fake-api (fails on purpose)"]["run"].endswith("|| true")
     assert "scripts/export_static_site.py" in script
 
     ui_env = steps["Build the UI in static mode"]["env"]

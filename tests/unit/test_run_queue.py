@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 from sqlmodel import create_engine
 
-from testo_api.cycle_execution_manager import CycleExecutionManager, CycleExecutionState
-from testo_api.run_queue import (
+from qasight_api.cycle_execution_manager import CycleExecutionManager, CycleExecutionState
+from qasight_api.run_queue import (
     DbRunStore,
     MemoryRunStore,
     RunRequest,
@@ -39,7 +39,7 @@ def test_request_round_trips_through_json() -> None:
     request = RunRequest(
         kind="adhoc",
         cycle="adhoc",
-        config_path="/cfg/testosterone.yaml",
+        config_path="/cfg/qasight.yaml",
         reporter_override=("slack",),
         framework="pytest",
         target_repo="/repo",

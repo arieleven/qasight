@@ -1,0 +1,51 @@
+name: Publish pytest-qasight to PyPI
+
+# pytest-qasight (integrations/pytest-qasight/) only depends on qasight, so it is
+# released by hand when its own version changes, not on every qasight release.
+# Trusted publishing: PyPI needs a (pending) publisher for project pytest-qasight,
+# repository arieleven/qasight, workflow publish-pytest-qasight.yml,
+# environment pypi.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    name: Publish pytest-qasight
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    defaults:
+      run:
+        working-directory: integrations/pytest-qasight
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check --strict dist/*
+
+      - name: Install it with qasight from PyPI and run pytest --qasight
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install dist/*.whl
+          mkdir -p /tmp/smoke-project
+          printf 'def test_ok():\n    assert True\n' > /tmp/smoke-project/test_ok.py
+          cd /tmp/smoke-project
+          /tmp/smoke/bin/pytest -q --qasight | tee out.txt
+          grep -q "qasight: recorded" out.txt
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: integrations/pytest-qasight/dist

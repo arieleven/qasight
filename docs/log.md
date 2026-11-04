@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # Vault log
@@ -220,3 +220,7 @@ New ADR [Run Deletion and Stop - 2026-11-02](Specs%20&%20ADRs/Run%20Deletion%20a
 ## 2026-11-02: lifecycle fixes
 
 New ADR [Lifecycle Fixes - 2026-11-02](Specs%20&%20ADRs/Lifecycle%20Fixes%20-%202026-11-02.md) (storage limits and visibility, unfinished runs, token rotation), linked from the Specs README, Team Server and the docs site menu. Team Server gains Storage and Rotating the token sections.
+
+## 2026-11-04: rename to QASight
+
+New ADR [Rename to QASight - 2026-11-04](Specs%20&%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md), linked from the Specs README, Publishing to PyPI and the docs site menu. Every current note now says QASight, `qasight` and `qasight.yaml`, with links to `github.com/arieleven/qasight` and `arieleven.github.io/qasight`; archived notes keep the old names.

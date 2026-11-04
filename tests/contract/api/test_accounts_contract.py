@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.login_throttle import LoginThrottle, login_throttle
-from testo_api.main import create_app, run
-from testo_api.security import account_store
-from testo_core.accounts import AccountError, AccountStore, hash_password, verify_password
-from testo_core.repository.db_config import reset_engine_cache
+from qasight.accounts import AccountError, AccountStore, hash_password, verify_password
+from qasight.repository.db_config import reset_engine_cache
+from qasight_api.login_throttle import LoginThrottle, login_throttle
+from qasight_api.main import create_app, run
+from qasight_api.security import account_store
 
 _ADHOC = "/api/v1/adhoc-executions"
 _READ = "/api/v1/runs"

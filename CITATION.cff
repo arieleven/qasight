@@ -1,15 +1,15 @@
 cff-version: 1.2.0
-message: "If you use Testosterone in your work, please cite it as below."
-title: "Testosterone (testo-core)"
+message: "If you use QASight in your work, please cite it as below."
+title: "QASight (qasight)"
 abstract: "See what broke, what's flaky and what got slower on every run: test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest or any JUnit-writing runner."
 type: software
 authors:
-  - alias: taltal-beep
+  - alias: arieleven
 license: MIT
 version: 1.5.0
 date-released: "2026-10-31"
-repository-code: "https://github.com/taltal-beep/testosterone"
-url: "https://taltal-beep.github.io/testosterone/"
+repository-code: "https://github.com/arieleven/qasight"
+url: "https://arieleven.github.io/qasight/"
 keywords:
   - testing
   - flaky-tests

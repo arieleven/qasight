@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.services.project_health import HealthFinding, HealthSignal, ProjectHealth
-from testo_core.services.project_review import ProjectReview, SkillResult
+from qasight.services.project_health import HealthFinding, HealthSignal, ProjectHealth
+from qasight.services.project_review import ProjectReview, SkillResult
+from qasight_api.main import create_app
 
 
 def test_project_health_contract(monkeypatch) -> None:  # noqa: ANN001
@@ -25,7 +25,7 @@ def test_project_health_contract(monkeypatch) -> None:  # noqa: ANN001
             findings=(HealthFinding("flaky", "web", "test_x", "Flaky", test_key="k"),),
         )
 
-    monkeypatch.setattr("testo_api.routes.project_health.project_health", fake)
+    monkeypatch.setattr("qasight_api.routes.project_health.project_health", fake)
     payload = TestClient(create_app()).get("/api/v1/project-health?cycle=web").json()
     assert seen["cycle"] == "web"
     assert (payload["score"], payload["grade"]) == (88, "B")
@@ -49,7 +49,7 @@ def test_review_skills_contract() -> None:
 
 
 def test_ai_review_contract(monkeypatch) -> None:  # noqa: ANN001
-    from testo_api.dependencies import get_project_review_service
+    from qasight_api.dependencies import get_project_review_service
 
     calls: list[tuple[object, list[str]]] = []
 

@@ -9,21 +9,21 @@ tags: [ci, gitlab, pages, frontend, demo]
 
 # GitLab Pages Demo
 
-A public, link-shareable demo of Testo: a CI pipeline runs **real** `testo run`
+A public, link-shareable demo of Testo: a CI pipeline runs **real** `qasight run`
 cycles, then publishes the React UI to a static Pages site showing the results of
 those runs. The same pipeline exists twice:
 
 - **GitHub Pages** (`.github/workflows/pages-demo.yml`) at
-  `https://taltal-beep.github.io/testosterone/`. This is the main demo link; see
+  `https://arieleven.github.io/qasight/`. This is the main demo link; see
   [GitHub Pages](#github-pages).
 - **GitLab Pages** (`.gitlab-ci.yml`), for showing the same thing on GitLab; see
   [What you have to do on GitLab](#what-you-have-to-do-on-gitlab).
 
 It runs two things:
 
-- **Testosterone testing itself**: its own fast Python suite, split into a unit
+- **QASight testing itself**: its own fast Python suite, split into a unit
   and an integration/contract stage so the dashboard's pyramid is real.
-- **[fake-api](https://github.com/taltal-beep/fake-api)**, a deliberately silly
+- **[fake-api](https://github.com/arieleven/fake-api)**, a deliberately silly
   app ("Fake Doing Bullshit") with a flaky route, a broken route and a slow route.
   Its tests describe how the app *should* behave, so the broken parts fail them
   honestly. Nothing in the tests is rigged.
@@ -39,7 +39,7 @@ Related: [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md) (the reusable templ
 
 ## Why it is built this way
 
-GitLab Pages serves static files only, so it cannot host `testo_api` (FastAPI).
+GitLab Pages serves static files only, so it cannot host `qasight_api` (FastAPI).
 Publishing the UI therefore needs run data frozen into files.
 
 What it does *not* do is reimplement the UI against fixtures. Instead:
@@ -57,7 +57,7 @@ is a layout contract between those two files, pinned by
 `tests/unit/ci/test_gitlab_pages_demo_contract.py`.
 
 ```
-testo run (self-test, fake-api)
+qasight run (self-test, fake-api)
   └─ history DB + static/history/<run_id>/ (Allure HTML)
        └─ export_static_site.py ──► public/data/**.json  +  public/history/**
                                         └─ vite build ──► public/  ──► GitLab Pages
@@ -74,7 +74,7 @@ testo run (self-test, fake-api)
 | `run_demo_cycles` | `demo` | Installs the package and Playwright's Chromium, clones fake-api into `.demo/fake-api`, runs `self-test` and `fake-api` once each, exports the site into `public/`. |
 | `pages` | `deploy` | Builds the frontend in static mode and copies it over `public/`, then copies `index.html` to `404.html` so deep links survive a refresh. |
 
-Both cycles live in the root `testosterone.yaml`:
+Both cycles live in the root `qasight.yaml`:
 
 | Cycle | Stages (tier) | Expected result |
 |-------|---------------|-----------------|
@@ -96,14 +96,14 @@ cache is best-effort: if GitLab drops it, the next pipeline starts a fresh
 history.
 
 The self-test's nested pytest gets `DATABASE_URL=sqlite:////tmp/testo-self-test.db`
-through `extra_env`, so testosterone's own tests never write into the history of
+through `extra_env`, so qasight's own tests never write into the history of
 the run that is executing them.
 
 ### Build-time variables the `pages` job sets
 
 | Variable | Value | Why |
 |----------|-------|-----|
-| `VITE_BASE` | Pages subpath, e.g. `/testosterone/` | Vite asset URLs and the router `basename`. |
+| `VITE_BASE` | Pages subpath, e.g. `/qasight/` | Vite asset URLs and the router `basename`. |
 | `VITE_STATIC_DATA_BASE` | `<subpath>/data` | Where the shim reads the exported JSON. |
 | `VITE_API_BASE_URL` | `$CI_PAGES_URL` | Report links render as `<API base>/history/…`, which on Pages is the published copy of `static/history/`. |
 
@@ -115,13 +115,13 @@ pipeline works for project, user and group Pages.
 ```bash
 pip install -e ".[dev]"
 npm install                       # Allure 3 CLI, for the HTML reports
-git clone https://github.com/taltal-beep/fake-api.git .demo/fake-api
+git clone https://github.com/arieleven/fake-api.git .demo/fake-api
 pip install -r .demo/fake-api/requirements.txt
 python -m playwright install chromium
 
-testo run --cycle self-test --ci
-testo run --cycle fake-api --ci || true
-testo run --cycle fake-api --ci || true   # a second run gives Compare a pair locally
+qasight run --cycle self-test --ci
+qasight run --cycle fake-api --ci || true
+qasight run --cycle fake-api --ci || true   # a second run gives Compare a pair locally
 python scripts/export_static_site.py --out public --site-url http://localhost:8090/testo --demo-resources
 
 cd frontend
@@ -130,7 +130,7 @@ VITE_BASE=/testo/ VITE_STATIC_DATA_BASE=/testo/data \
 cd .. && cp -r frontend/dist/. public/ && cp public/index.html public/404.html
 ```
 
-`--demo-resources` fills the throwaway history database with the made-up pools from `testo lease demo` first, so the Resources page has something to show. Leave it off when exporting a real database.
+`--demo-resources` fills the throwaway history database with the made-up pools from `qasight lease demo` first, so the Resources page has something to show. Leave it off when exporting a real database.
 
 Serve `public/` under a `/testo/` path (any static server) and the demo behaves
 as it does on Pages, except for the 404 fallback, which is Pages-specific.
@@ -138,7 +138,7 @@ as it does on Pages, except for the 404 fallback, which is Pages-specific.
 ## What visitors see
 
 A dismissible notice above the header marks the build read-only, says what the
-two cycles are (testosterone testing itself, and fake-api, whose red is
+two cycles are (qasight testing itself, and fake-api, whose red is
 deliberate) and links to the pipeline that produced it. Its × button closes it
 and the choice is remembered in `localStorage` (`testo.demoNotice.dismissed`);
 a "Read-only demo" badge in the header stays visible and toggles the notice
@@ -148,13 +148,13 @@ stream is likewise absent: a static host cannot stream a run that is not running
 
 - **Cycles page**: only cycles with a run in the snapshot are exported, so every
   card leads to real history. Run buttons (on the cards and the cycle page) are
-  disabled and show the local command instead (`testo run --cycle <name>`).
+  disabled and show the local command instead (`qasight run --cycle <name>`).
 - **AI Failure Summary**: a visitor's click cannot reach an AI provider, so the
   export generates the summary for each failed run beforehand, through the same
   `POST /runs/{id}/ai-summary:generate` the button calls, and the Run detail page
   shows that frozen summary (the button itself is disabled). This needs `ANTHROPIC_API_KEY` in the export
   step's environment (see [Optional: AI summaries](#optional-ai-summaries)); without it the card says
-  summaries are generated live when you run Testosterone locally.
+  summaries are generated live when you run QASight locally.
 
 Report links work: `static/history/<run_id>/` is copied into the published site,
 so the Allure reports for each framework open from the Run detail page.
@@ -184,7 +184,7 @@ environment; it is never written to the site.
 | Push to `main`, nightly schedule, manual run | Build, then deploy to Pages. |
 | Pull request touching the demo files | Build only, so a broken demo fails the PR instead of the site. |
 
-The same site also carries the docs: the `build` job runs `mkdocs build --strict --site-dir public/docs`, so the vault is at `https://taltal-beep.github.io/testosterone/docs/` ([Docs Site](../Specs%20&%20ADRs/Docs%20Site%20-%202026-10-19.md)). Pull requests that touch `mkdocs.yml` or `scripts/mkdocs_hooks.py` build it too.
+The same site also carries the docs: the `build` job runs `mkdocs build --strict --site-dir public/docs`, so the vault is at `https://arieleven.github.io/qasight/docs/` ([Docs Site](../Specs%20&%20ADRs/Docs%20Site%20-%202026-10-19.md)). Pull requests that touch `mkdocs.yml` or `scripts/mkdocs_hooks.py` build it too.
 
 Run history is restored from and saved to the Actions cache under a fresh key
 per run (`testo-demo-history-<run_id>`, restored by prefix), because Actions
@@ -200,7 +200,7 @@ Settings → Pages.
 Everything above is in the repository; these steps need a human and a GitLab
 account.
 
-1. **Create the GitLab project**, e.g. `gitlab.com/<user>/testosterone`, public
+1. **Create the GitLab project**, e.g. `gitlab.com/<user>/qasight`, public
    (Pages sites on GitLab.com are public unless Pages Access Control is enabled;
    a private project's site is visible only to members).
 2. **Get the code there.** GitLab's *pull* mirroring (GitLab fetches from GitHub)

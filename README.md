@@ -1,18 +1,20 @@
-# Testosterone
+# QASight
+
+_Formerly Testosterone (`testo-core`). Old commands, imports and config files keep working; see [the rename notes](docs/Specs%20%26%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md)._
 
 **See what broke, what's flaky and what got slower on every run.** Test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest, `go test` or any runner that writes JUnit XML: on your laptop, in CI, or on one shared server for the whole team.
 
-[![CI](https://github.com/taltal-beep/testosterone/actions/workflows/ci.yml/badge.svg)](https://github.com/taltal-beep/testosterone/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/testo-core)](https://pypi.org/project/testo-core/)
-[![Python versions](https://img.shields.io/pypi/pyversions/testo-core)](https://pypi.org/project/testo-core/)
-[![Docs](https://img.shields.io/badge/docs-site-blue)](https://taltal-beep.github.io/testosterone/docs/)
+[![CI](https://github.com/arieleven/qasight/actions/workflows/ci.yml/badge.svg)](https://github.com/arieleven/qasight/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/qasight)](https://pypi.org/project/qasight/)
+[![Python versions](https://img.shields.io/pypi/pyversions/qasight)](https://pypi.org/project/qasight/)
+[![Docs](https://img.shields.io/badge/docs-site-blue)](https://arieleven.github.io/qasight/docs/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**▶ Try it now, no install: drop a JUnit XML file on <https://taltal-beep.github.io/testosterone/try>** and see what failed, what's flaky and what's slow. It's read in your browser; nothing is uploaded.
+**▶ Try it now, no install: drop a JUnit XML file on <https://arieleven.github.io/qasight/try>** and see what failed, what's flaky and what's slow. It's read in your browser; nothing is uploaded.
 
-**Live demo: <https://taltal-beep.github.io/testosterone/>** · **Docs: <https://taltal-beep.github.io/testosterone/docs/>**
+**Live demo: <https://arieleven.github.io/qasight/>** · **Docs: <https://arieleven.github.io/qasight/docs/>**
 
-[![Dashboard: health, failed, pass count and duration cards with trends for the latest run, rollups, quick links and the recent self-test and fake-api runs](docs/assets/screenshots/dashboard.png)](https://taltal-beep.github.io/testosterone/)
+[![Dashboard: health, failed, pass count and duration cards with trends for the latest run, rollups, quick links and the recent self-test and fake-api runs](docs/assets/screenshots/dashboard.png)](https://arieleven.github.io/qasight/)
 
 | Run detail (failed fake-api run) | Compare (two fake-api runs) |
 |---|---|
@@ -20,7 +22,7 @@
 | **Cycle page with its flaky tests** | **Dashboard on a phone** |
 | [![fake-api cycle page: run the cycle from the browser, the flaky test it found with its pass and fail history, and the cycle's stages](docs/assets/screenshots/cycle-detail-fake-api.png)](docs/assets/screenshots/cycle-detail-fake-api.png) | <a href="docs/assets/screenshots/dashboard-phone.png"><img src="docs/assets/screenshots/dashboard-phone.png" width="200" alt="Dashboard at phone width: top bar with menu and stacked health, failed, pass count and duration cards"></a> |
 
-What you're looking at: Testosterone testing itself (its own test suite) and `fake-api`, a
+What you're looking at: QASight testing itself (its own test suite) and `fake-api`, a
 small app whose routes fail on purpose. CI runs both cycles and publishes the real results as a
 read-only static site.
 
@@ -34,62 +36,62 @@ read-only static site.
 **Set it up in a minute** on a project you already have:
 
 ```bash
-pip install 'testo-core[api]'
-testo init        # finds your test runners, writes testosterone.yaml and a GitHub Actions workflow, records a first run
-testo ui          # what broke, what's flaky, what got slower
+pip install 'qasight[api]'
+qasight init        # finds your test runners, writes qasight.yaml and a GitHub Actions workflow, records a first run
+qasight ui          # what broke, what's flaky, what got slower
 ```
 
-`testo init --dry-run` shows the files first; `testo init --pr` also opens the pull request that
-adds them. Only want to record? `pytest --testo`, or `testo ingest` after any runner.
+`qasight init --dry-run` shows the files first; `qasight init --pr` also opens the pull request that
+adds them. Only want to record? `pytest --qasight`, or `qasight ingest` after any runner.
 
-No tests at hand? `testo demo` records eight sample runs (a flaky test, a new failure, a slower
+No tests at hand? `qasight demo` records eight sample runs (a flaky test, a new failure, a slower
 test) and opens the UI on them. More ways in, from Jest to `go test`, are in the [Quickstart](#quickstart).
 
 ## What's new
 
-1.5.0 adds `testo affected` (run only the tests a change can affect), OpenTelemetry export and
-`testo pool` for VM pools. 1.4.0 brought `testo ingest` for Jest, Vitest, .NET, Go, Robot,
-Allure, RSpec, k6 and Xcode results, `pytest --testo` and the GitHub Action at
-`uses: taltal-beep/testosterone@v1`. Every change is in [CHANGELOG.md](CHANGELOG.md).
+1.5.0 adds `qasight affected` (run only the tests a change can affect), OpenTelemetry export and
+`qasight pool` for VM pools. 1.4.0 brought `qasight ingest` for Jest, Vitest, .NET, Go, Robot,
+Allure, RSpec, k6 and Xcode results, `pytest --qasight` and the GitHub Action at
+`uses: arieleven/qasight@v1`. Every change is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Who it's for
 
-- **Teams whose CI goes red and someone has to ask "is this new, flaky or just slow?"** Testosterone
+- **Teams whose CI goes red and someone has to ask "is this new, flaky or just slow?"** QASight
   answers that from the JUnit XML (or Jest, Playwright, `go test`, .NET...) results you already have.
 - **People who want it self-hosted and free**: a `pip install` on a laptop, or one
   `docker compose up` for a shared team server. No account, no cloud, MIT licensed.
 
 Not the right pick if you want a hosted SaaS with nothing to run, or full manual test case
-management. The [comparison page](https://taltal-beep.github.io/testosterone/docs/compared-with-other-tools/)
+management. The [comparison page](https://arieleven.github.io/qasight/docs/compared-with-other-tools/)
 says which tool fits better then.
 
 ## Why
 
 After a red build the question is never just "what failed?". It's *what changed since the last
 green run, is this test flaky, and did anything get slower?* CI logs and one-off HTML reports
-can't answer that, because they forget every run as soon as it ends. Testosterone records every
+can't answer that, because they forget every run as soon as it ends. QASight records every
 run and answers it: per-test regressions and fixes between runs, flaky tests, durations over
 time, a test pyramid and an optional AI summary of the failures.
 
-There are two ways in. **`testo ingest`** records JUnit XML that your existing CI already writes,
-so adoption is one extra step. **`testo run`** goes further: it runs several frameworks as one
-**cycle** of stages from a `testosterone.yaml` (pytest, Playwright, Behave, any command), the
+There are two ways in. **`qasight ingest`** records JUnit XML that your existing CI already writes,
+so adoption is one extra step. **`qasight run`** goes further: it runs several frameworks as one
+**cycle** of stages from a `qasight.yaml` (pytest, Playwright, Behave, any command), the
 same way from the CLI, CI or the web UI. Point either at a shared
-[team server](https://taltal-beep.github.io/testosterone/docs/processes-and-guides/team-server/) and every CI job lands in one history.
+[team server](https://arieleven.github.io/qasight/docs/processes-and-guides/team-server/) and every CI job lands in one history.
 
 **How it compares.** Allure renders one run; ReportPortal is a large server to operate.
-Testosterone is a `pip install` that keeps the history and diffs runs against each other, works
+QASight is a `pip install` that keeps the history and diffs runs against each other, works
 with whatever runner you have, and can still hand results to Allure, ReportPortal, Extent or
-TestBeats as reporters. The [comparison page](https://taltal-beep.github.io/testosterone/docs/compared-with-other-tools/) has the details, including when another tool is the better pick.
+TestBeats as reporters. The [comparison page](https://arieleven.github.io/qasight/docs/compared-with-other-tools/) has the details, including when another tool is the better pick.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/testosterone-architecture-detailed-dark.png">
-  <img alt="Architecture: the REST API and testo CLI both call CycleRunService, which runs config, the engine and reporting; the engine drives framework adapters and saves results through persistence and the repository; insight services read run history through the same repository" src="docs/assets/testosterone-architecture-detailed-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/qasight-architecture-detailed-dark.png">
+  <img alt="Architecture: the REST API and qasight CLI both call CycleRunService, which runs config, the engine and reporting; the engine drives framework adapters and saves results through persistence and the repository; insight services read run history through the same repository" src="docs/assets/qasight-architecture-detailed-light.png">
 </picture>
 
-What ships: the `testo` CLI (`--ci` streams NDJSON events, exit codes `0`–`4`), a FastAPI
-backend (`testo_api`, `/api/v1`, live runs over server-sent events), a React frontend
-(`frontend/`), and GitHub Action / GitLab CI wrappers around `testo run --ci`. See
+What ships: the `qasight` CLI (`--ci` streams NDJSON events, exit codes `0`–`4`), a FastAPI
+backend (`qasight_api`, `/api/v1`, live runs over server-sent events), a React frontend
+(`frontend/`), and GitHub Action / GitLab CI wrappers around `qasight run --ci`. See
 [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit.
 
 ## Quickstart
@@ -97,76 +99,76 @@ backend (`testo_api`, `/api/v1`, live runs over server-sent events), a React fro
 The shortest path, for pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec and PHPUnit:
 
 ```bash
-pip install testo-core
-testo init --dry-run   # what it would write: testosterone.yaml, .github/workflows/testosterone.yml, .gitignore lines
-testo init --pr        # writes them, records a first run and opens a pull request (needs gh; without it, prints the git commands)
+pip install qasight
+qasight init --dry-run   # what it would write: qasight.yaml, .github/workflows/qasight.yml, .gitignore lines
+qasight init --pr        # writes them, records a first run and opens a pull request (needs gh; without it, prints the git commands)
 ```
 
-No Python project? `uvx --from testo-core testo init` or `pipx run --spec testo-core testo init` runs it without
-a virtualenv. Other CI systems: `testo init --ci gitlab|jenkins|circleci`.
+No Python project? `uvx --from qasight qasight init` or `pipx run --spec qasight qasight init` runs it without
+a virtualenv. Other CI systems: `qasight init --ci gitlab|jenkins|circleci`.
 
 Already have tests that write JUnit XML, or a runner's own report? Record them, no config needed:
 
 ```bash
-pip install testo-core
+pip install qasight
 npx jest --ci --json --outputFile=jest.json   # or pytest --junitxml, go test -json, ...
-testo ingest jest.json --cycle web            # recorded; run again to see the diff
-testo summary --cycle web
+qasight ingest jest.json --cycle web            # recorded; run again to see the diff
+qasight summary --cycle web
 ```
 
-Using pytest? `pytest --testo` records every run the same way, with no extra step.
+Using pytest? `pytest --qasight` records every run the same way, with no extra step.
 
-Or let Testosterone run the tests as a cycle:
+Or let QASight run the tests as a cycle:
 
 ```bash
-pip install testo-core            # the `testo` CLI; add [api] for the REST API, [db] for Postgres,
+pip install qasight            # the `qasight` CLI; add [api] for the REST API, [db] for Postgres,
                                   # [bdd] for Behave and BehaveX
-testo config init                 # writes a starter testosterone.yaml for pytest
-testo run --cycle smoke-test      # runs pytest -q tests; edit args for a different test directory
+qasight config init                 # writes a starter qasight.yaml for pytest
+qasight run --cycle smoke-test      # runs pytest -q tests; edit args for a different test directory
 ```
 
-An installed `testo` keeps per-run report copies in `./.testo/` (set `TESTO_HOME` to move them).
+An installed `qasight` keeps per-run report copies in `./.testo/` (set `TESTO_HOME` to move them).
 
-[Getting Started](https://taltal-beep.github.io/testosterone/docs/getting-started/) goes further in about five minutes: a regression
+[Getting Started](https://arieleven.github.io/qasight/docs/getting-started/) goes further in about five minutes: a regression
 between two runs, then the same cycle in GitHub Actions.
 
 Or work from a checkout of this repository, which ships sample cycles:
 
 ```bash
-git clone https://github.com/taltal-beep/testosterone.git
-cd testosterone
+git clone https://github.com/arieleven/qasight.git
+cd qasight
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-testo run --cycle sample-pytests      # run a cycle from testosterone.yaml
-testo report --cycle sample-pytests   # build the Allure report for it
+qasight run --cycle sample-pytests      # run a cycle from qasight.yaml
+qasight report --cycle sample-pytests   # build the Allure report for it
 ```
 
 <details>
-<summary><strong>Watch it run</strong>: install, <code>testo doctor</code>, then a cycle against the deliberately broken fake-api app</summary>
+<summary><strong>Watch it run</strong>: install, <code>qasight doctor</code>, then a cycle against the deliberately broken fake-api app</summary>
 
-![Terminal recording: installing from a checkout, testo doctor passing, then showing and running the fake-api cycle](docs/assets/demo/cli-install-and-run.gif)
+![Terminal recording: installing from a checkout, qasight doctor passing, then showing and running the fake-api cycle](docs/assets/demo/cli-install-and-run.gif)
 
 </details>
 
-Adding Testosterone to your own project with an AI coding assistant? Paste one of the
-[Setup Prompts](https://taltal-beep.github.io/testosterone/docs/prompts-and-snippets/setup-prompts/).
+Adding QASight to your own project with an AI coding assistant? Paste one of the
+[Setup Prompts](https://arieleven.github.io/qasight/docs/prompts-and-snippets/setup-prompts/).
 
-Runs are stored in SQLite by default (`database.url` in `testosterone.yaml`, or
+Runs are stored in SQLite by default (`database.url` in `qasight.yaml`, or
 `DATABASE_URL`). Postgres and MySQL work too; `docker compose up -d postgres` starts one.
 
 ### UI
 
 ```bash
-pip install 'testo-core[api]'
-testo ui                               # API + web UI on http://127.0.0.1:8000, opens the browser
+pip install 'qasight[api]'
+qasight ui                               # API + web UI on http://127.0.0.1:8000, opens the browser
 ```
 
 The wheel carries a built UI (1.3.0 and later), so this needs no checkout and no Node.
 Working on the frontend itself:
 
 ```bash
-testo-api                              # FastAPI on http://127.0.0.1:8000
+qasight-api                              # FastAPI on http://127.0.0.1:8000
 npm --prefix frontend install
 npm --prefix frontend run dev          # React on http://localhost:5173
 ```
@@ -209,42 +211,42 @@ cycles:
 ```
 
 Built-in `equipment`: `pytest`, `behave`, `behavex`, `playwright`, `command` and `junit` (records
-JUnit XML another step wrote; what `testo ingest` uses). `behave` and `behavex` need
-`pip install 'testo-core[bdd]'`. A package can add more (see [Plugins](#optional-integrations)).
+JUnit XML another step wrote; what `qasight ingest` uses). `behave` and `behavex` need
+`pip install 'qasight[bdd]'`. A package can add more (see [Plugins](#optional-integrations)).
 
-`testo init` writes one for you (it detects pytest, Jest, Vitest, Go, .NET, Maven, Gradle, RSpec
-and PHPUnit, and also writes the GitHub Actions workflow); `testo config validate` checks it. The full
-schema and every flag are in [Command Reference](https://taltal-beep.github.io/testosterone/docs/cli-commands/command-reference/).
+`qasight init` writes one for you (it detects pytest, Jest, Vitest, Go, .NET, Maven, Gradle, RSpec
+and PHPUnit, and also writes the GitHub Actions workflow); `qasight config validate` checks it. The full
+schema and every flag are in [Command Reference](https://arieleven.github.io/qasight/docs/cli-commands/command-reference/).
 
 ## CLI
 
 | Command | What it does |
 |---------|--------------|
-| `testo run --cycle <name>` | Run a cycle (`--ci` NDJSON, `--stream` live output, `--force` ignore triggers, `--no-persist`) |
-| `testo ingest <files> --cycle <name>` | Record JUnit XML from any runner as a run (`--server`/`--token` upload to a team server) |
-| `testo report …` | Generate, list, open and export reports (`testo diff` compares two archived runs) |
-| `testo report markdown --cycle <name>` | The latest run as Markdown: results, failing tests, changes since the previous run (job summary or PR comment) |
-| `testo summary` | Rich diff of the two most recent runs (`--cycle` to pick one) |
-| `testo cycles list/show` | Inspect configured cycles |
-| `testo watch --cycle <name>` | Re-run a cycle when files change |
-| `testo flaky --cycle <name>` | Tests that keep flipping between pass and fail across recent runs (`--fail-on-flaky` for CI) |
-| `testo plugins` | Built-in and installed frameworks and reporters (`--check` imports them, `--json`) |
-| `testo ui` | API and web UI on `http://127.0.0.1:8000` (needs the `api` extra) |
-| `testo mcp` | The run history as an MCP server for coding agents over stdio (needs the `mcp` extra; `--allow-writes` for triage) |
-| `testo demo` | Record eight sample runs with a flaky test, a new failure and a slower test, then open the UI on them |
-| `testo badge --cycle <name>` | A README badge for a cycle's latest run (SVG or shields.io endpoint JSON) |
-| `testo export pdf\|pptx\|xlsx\|png\|html\|csv\|json` | The manager report (the UI's Report page) as a file; `--period day\|week\|month\|quarter` (PDF, PNG, slides and Excel need the `export` extra) |
-| `testo lease …` | Resource pools: give each parallel worker its own VM, device or test account |
-| `testo doctor` | Check config, database and tools on PATH |
+| `qasight run --cycle <name>` | Run a cycle (`--ci` NDJSON, `--stream` live output, `--force` ignore triggers, `--no-persist`) |
+| `qasight ingest <files> --cycle <name>` | Record JUnit XML from any runner as a run (`--server`/`--token` upload to a team server) |
+| `qasight report …` | Generate, list, open and export reports (`qasight diff` compares two archived runs) |
+| `qasight report markdown --cycle <name>` | The latest run as Markdown: results, failing tests, changes since the previous run (job summary or PR comment) |
+| `qasight summary` | Rich diff of the two most recent runs (`--cycle` to pick one) |
+| `qasight cycles list/show` | Inspect configured cycles |
+| `qasight watch --cycle <name>` | Re-run a cycle when files change |
+| `qasight flaky --cycle <name>` | Tests that keep flipping between pass and fail across recent runs (`--fail-on-flaky` for CI) |
+| `qasight plugins` | Built-in and installed frameworks and reporters (`--check` imports them, `--json`) |
+| `qasight ui` | API and web UI on `http://127.0.0.1:8000` (needs the `api` extra) |
+| `qasight mcp` | The run history as an MCP server for coding agents over stdio (needs the `mcp` extra; `--allow-writes` for triage) |
+| `qasight demo` | Record eight sample runs with a flaky test, a new failure and a slower test, then open the UI on them |
+| `qasight badge --cycle <name>` | A README badge for a cycle's latest run (SVG or shields.io endpoint JSON) |
+| `qasight export pdf\|pptx\|xlsx\|png\|html\|csv\|json` | The manager report (the UI's Report page) as a file; `--period day\|week\|month\|quarter` (PDF, PNG, slides and Excel need the `export` extra) |
+| `qasight lease …` | Resource pools: give each parallel worker its own VM, device or test account |
+| `qasight doctor` | Check config, database and tools on PATH |
 
 Exit codes: `0` success (or trigger-skipped), `1` tests failed, `2` invalid input,
 `3` infrastructure failure, `4` internal error.
-Details: [Troubleshooting and Error Codes](https://taltal-beep.github.io/testosterone/docs/cli-commands/troubleshooting-and-error-codes/).
+Details: [Troubleshooting and Error Codes](https://arieleven.github.io/qasight/docs/cli-commands/troubleshooting-and-error-codes/).
 
 <details>
-<summary><strong>See it in a terminal</strong>: <code>testo flaky</code>, <code>testo report markdown</code> and <code>testo plugins</code> on the fake-api cycle</summary>
+<summary><strong>See it in a terminal</strong>: <code>qasight flaky</code>, <code>qasight report markdown</code> and <code>qasight plugins</code> on the fake-api cycle</summary>
 
-![Terminal recording: testo flaky finds the flaky fake-api test with its pass and fail history, testo report markdown prints the run as a pull request comment, and testo plugins lists the built-in frameworks and reporters](docs/assets/demo/cli-whats-new.gif)
+![Terminal recording: qasight flaky finds the flaky fake-api test with its pass and fail history, qasight report markdown prints the run as a pull request comment, and qasight plugins lists the built-in frameworks and reporters](docs/assets/demo/cli-whats-new.gif)
 
 </details>
 
@@ -254,7 +256,7 @@ Details: [Troubleshooting and Error Codes](https://taltal-beep.github.io/testost
 |------|-----------------------|
 | Cycles | `GET /cycles`, `GET /cycles/{cycle}` |
 | Executions | `POST /cycles/{cycle}/executions`, `POST /adhoc-executions`, `GET /cycle-executions/{id}`, `GET /cycle-executions/{id}/events` (SSE) |
-| Ingest | `POST /ingest` (JUnit XML upload from `testo ingest --server`) |
+| Ingest | `POST /ingest` (JUnit XML upload from `qasight ingest --server`) |
 | Runs | `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/reports`, `GET /runs/{id}/pyramid`, `GET /runs/{id}/markdown` |
 | Report | `GET /report` (`?period=&cycle=`), `GET /report/export?format=pdf\|pptx\|xlsx\|png\|html\|csv\|json` |
 | Analytics | `GET /analytics/delta`, `GET /analytics/delta/cases`, `GET /analytics/flaky`, `GET /dashboard/overview`, `GET /dashboard/runs/recent` |
@@ -262,14 +264,14 @@ Details: [Troubleshooting and Error Codes](https://taltal-beep.github.io/testost
 | Badge | `GET /badge.svg`, `GET /badge.json` (`?cycle=`) |
 | Health | `GET /health/live`, `GET /health/ready` |
 
-Interactive docs at `http://127.0.0.1:8000/docs` while `testo-api` runs.
+Interactive docs at `http://127.0.0.1:8000/docs` while `qasight-api` runs.
 
 ## CI
 
 GitHub Actions:
 
 ```yaml
-- uses: taltal-beep/testosterone@v1
+- uses: arieleven/qasight@v1
   with:
     cycle: smoke          # optional: config-path, ci-mode, persist, python-version
     comment-on-pr: "true" # results as a pull request comment (needs pull-requests: write)
@@ -280,12 +282,12 @@ GitLab CI (include the template straight from GitHub, or copy
 
 ```yaml
 include:
-  - remote: "https://raw.githubusercontent.com/taltal-beep/testosterone/v1/ci/gitlab/testo.gitlab-ci.yml"
+  - remote: "https://raw.githubusercontent.com/arieleven/qasight/v1/ci/gitlab/testo.gitlab-ci.yml"
 variables:
   TESTO_CYCLE: "smoke"
 ```
 
-Both run `testo run --ci`, keep the NDJSON event stream, and expose the final `plan_finished`
+Both run `qasight run --ci`, keep the NDJSON event stream, and expose the final `plan_finished`
 event (exit code, per-stage results). The GitHub Action also writes the run to the job summary
 (`job-summary`, on by default) and, with `comment-on-pr`, keeps one up-to-date comment per cycle
 on the pull request: results per stage, failing tests and per-test changes since the last run. Run records written in CI carry the provider, pipeline,
@@ -295,11 +297,11 @@ job, commit and branch. Inputs and outputs: [integrations/github-action/README.m
 
 - **Metrics push:** after each run, test KPIs go to InfluxDB when `INFLUXDB_URL`,
   `INFLUXDB_TOKEN`, `INFLUXDB_ORG` and `INFLUXDB_BUCKET` are set, and to a Prometheus
-  Pushgateway when `PROMETHEUS_PUSHGATEWAY_URL` is set (`PROMETHEUS_JOB_NAME` defaults to `testo`).
+  Pushgateway when `PROMETHEUS_PUSHGATEWAY_URL` is set (`PROMETHEUS_JOB_NAME` defaults to `qasight`).
   Pushes are best-effort and never change the run result.
 - **Reporters:** `allure`, `extent`, `reportportal`, `testbeats` under `reporters:`.
-- **Plugins:** a package adds a test runner or a reporter through the `testo.frameworks` /
-  `testo.reporters` entry point groups, with no change to Testosterone; `testo plugins` lists and
+- **Plugins:** a package adds a test runner or a reporter through the `qasight.frameworks` /
+  `qasight.reporters` entry point groups, with no change to QASight; `qasight plugins` lists and
   checks them. [examples/plugin/](examples/plugin/) adds a `unittest` runner and a
   `json-summary` reporter.
 - **AI failure summaries:** opt in on the AI settings page with an OpenAI or Anthropic key, or point it at any OpenAI-compatible endpoint (a free tier such as Groq or Gemini, or a local Ollama). Running locally with Claude Code installed? Pick "Claude Code on this machine" and it uses your existing `claude` login, no key.
@@ -313,37 +315,37 @@ pip install -e ".[dev]"
 pre-commit install
 ruff check .
 ruff format --check .
-mypy testo_core testo_api
+mypy qasight qasight_api
 pytest -q -m "tier_fast and not quarantined" --no-cov
 npm --prefix frontend run typecheck
 npm --prefix frontend run lint
 npm --prefix frontend test
 ```
 
-`ruff check`, `ruff format --check` and `mypy testo_core testo_api` are all blocking in CI
+`ruff check`, `ruff format --check` and `mypy qasight qasight_api` are all blocking in CI
 (`.github/workflows/ci.yml`'s `format` job), as are the frontend typecheck and tests.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full checklist. Start with
 [ARCHITECTURE.md](ARCHITECTURE.md) for the design; [docs/](docs/Index.md) holds the design
-notes and ADRs, also published as the [docs site](https://taltal-beep.github.io/testosterone/docs/)
+notes and ADRs, also published as the [docs site](https://arieleven.github.io/qasight/docs/)
 (`pip install -e ".[docs]"` and `mkdocs serve` to preview it).
 
 ## Contributors
 
-Thank you to everyone who has helped make Testosterone better:
+Thank you to everyone who has helped make QASight better:
 
 | Contributor | Contributions |
 |-------------|---------------|
-| [@taltal-beep](https://github.com/taltal-beep) | Creator and maintainer |
-| [@evidentart](https://github.com/evidentart) | Run history records the repository each run tested ([#115](https://github.com/taltal-beep/testosterone/pull/115), fixes [#102](https://github.com/taltal-beep/testosterone/issues/102)) |
+| [@arieleven](https://github.com/arieleven) | Creator and maintainer |
+| [@evidentart](https://github.com/evidentart) | Run history records the repository each run tested ([#115](https://github.com/arieleven/qasight/pull/115), fixes [#102](https://github.com/arieleven/qasight/issues/102)) |
 
-Want to join them? The [good first issues](https://github.com/taltal-beep/testosterone/labels/good%20first%20issue)
+Want to join them? The [good first issues](https://github.com/arieleven/qasight/labels/good%20first%20issue)
 are a friendly place to start, and [CONTRIBUTING.md](CONTRIBUTING.md) walks you through the setup.
 
 ## History
 
-The project started as UQO ("Unified Quality Orchestrator") and was renamed to Testosterone
-(the `uqo` command and `UQO_*` variables became `testo` and `TESTO_*`). v1.1 replaced the Streamlit UI
+The project started as UQO ("Unified Quality Orchestrator") and was renamed to QASight
+(the `uqo` command and `UQO_*` variables became `qasight` and `TESTO_*`). v1.1 replaced the Streamlit UI
 with the React frontend and dropped the Docker-based headless runner (stages now run as host
 subprocesses). Full details in [CHANGELOG.md](CHANGELOG.md).
 
@@ -353,14 +355,14 @@ subprocesses). Full details in [CHANGELOG.md](CHANGELOG.md).
 | v1.0 | v1.1 |
 |------|------|
 | Streamlit UI (`testo-ui`, `streamlit run app.py`) | React frontend (`frontend/`) |
-| `uqo` command, `UQO_*` env vars | `testo`, `TESTO_*` |
-| `uqo run --config runs.yaml` (`runs:` list of `test_type`/`cli_args`) | a cycle in `testosterone.yaml`, run with `testo run --cycle <name>` |
+| `uqo` command, `UQO_*` env vars | `qasight`, `TESTO_*` |
+| `uqo run --config runs.yaml` (`runs:` list of `test_type`/`cli_args`) | a cycle in `qasight.yaml`, run with `qasight run --cycle <name>` |
 | `--ghost`, `--json`, `--stream-json` | `--ci` (NDJSON events, `plan_finished` last) |
 | `POST /api/v1/executions` + `/executions/{id}/events` | `POST /api/v1/adhoc-executions` (one framework) or `POST /api/v1/cycles/{cycle}/executions`; status and SSE under `/cycle-executions/{id}` |
 | "Legacy Execution" page | Quick Run (`/quick-run`) |
-| Tests run in one-off Docker containers (`UQO_RUNNER_IMAGE`, `UQO_RUNNER_PREBUILT`) | stages run as host subprocesses; use `Dockerfile.testo-runner` as the CI job image if you want isolation |
+| Tests run in one-off Docker containers (`UQO_RUNNER_IMAGE`, `UQO_RUNNER_PREBUILT`) | stages run as host subprocesses; use `Dockerfile.qasight-runner` as the CI job image if you want isolation |
 | Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB |
 | `locust` test type | `equipment: command` with `args: [locust, --headless, …]` |
-| Pluggy `plugins/*.py` runner hooks | a framework adapter or reporter in your own package, registered as a `testo.frameworks` / `testo.reporters` entry point (see `examples/plugin/`) |
+| Pluggy `plugins/*.py` runner hooks | a framework adapter or reporter in your own package, registered as a `qasight.frameworks` / `qasight.reporters` entry point (see `examples/plugin/`) |
 
 </details>

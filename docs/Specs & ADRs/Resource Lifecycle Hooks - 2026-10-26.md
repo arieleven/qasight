@@ -25,18 +25,18 @@ The owner's earlier design for the same problem was one class per resource: an i
 
 Three small additions, all optional and all on the client (the team server never runs hooks):
 
-1. **`on_check`**: a pool hook run after `on_take`. Exit `0` means the key is usable; anything else disables the key with the reason and tries another, as a failing `on_take` already did (`_prepare` in `testo_core/resources/client.py`).
-2. **Clean release**: `resource_item.clean` is set when a lease is given back with `clean=True` (a successful `on_release`, or `testo lease release --clean`; `DELETE /api/v1/resources/leases/{id}?clean=true`) and cleared when the key is taken, in the same transactions as the release and the take. The taker sees it as `Lease.clean` and `TESTO_RESOURCE_CLEAN=1|0`, so `on_take` can skip a slow reset when the last holder already did one, and still resets after a crash.
-3. **`reuse_delay`**: an expired lease keeps its key out of the pool for `reuse_delay` seconds more (default `lease_ttl / 3`, one heartbeat interval; stored per lease as `resource_lease.reuse_delay_s`). Heartbeats after the expiry are still refused, so a holder that wakes up finds out it lost the key before anyone else has it. `testo lease list` and the Resources page show such a key as expired, with when it is free again.
+1. **`on_check`**: a pool hook run after `on_take`. Exit `0` means the key is usable; anything else disables the key with the reason and tries another, as a failing `on_take` already did (`_prepare` in `qasight/resources/client.py`).
+2. **Clean release**: `resource_item.clean` is set when a lease is given back with `clean=True` (a successful `on_release`, or `qasight lease release --clean`; `DELETE /api/v1/resources/leases/{id}?clean=true`) and cleared when the key is taken, in the same transactions as the release and the take. The taker sees it as `Lease.clean` and `TESTO_RESOURCE_CLEAN=1|0`, so `on_take` can skip a slow reset when the last holder already did one, and still resets after a crash.
+3. **`reuse_delay`**: an expired lease keeps its key out of the pool for `reuse_delay` seconds more (default `lease_ttl / 3`, one heartbeat interval; stored per lease as `resource_lease.reuse_delay_s`). Heartbeats after the expiry are still refused, so a holder that wakes up finds out it lost the key before anyone else has it. `qasight lease list` and the Resources page show such a key as expired, with when it is free again.
 
 `LeaseStore` adds the two new columns to a database that has the tables without them (`_add_missing_columns`), since these tables have no migrations.
 
 ## Options considered
 
 - **A Python provider interface** (`provider: module:Class` with `create`, `reset`, `check`, `destroy`, `list`). The verbs map onto the hooks; worth adding when someone wants to write hooks in Python. Not needed for the shell-hook users today.
-- **Dynamic pools** (keys created per run, destroyed after, a `testo lease sweep` that destroys keys with no live lease). This is the owner's original create-and-delete design with crash cleanup. Left until there is real demand: a fixed pool reset on take covers VMs, devices, accounts and databases, and creating per run brings quotas, cost and orphan handling.
-- **A reconcile loop** that keeps a desired number of keys alive. That is a controller to run and watch, and would push Testosterone toward managing infrastructure. Rejected.
-- **Stop the command when its lease is lost** (fencing). `testo lease run` warns today. A follow-up could stop the command instead; it changes what users see, so it waits for a decision.
+- **Dynamic pools** (keys created per run, destroyed after, a `qasight lease sweep` that destroys keys with no live lease). This is the owner's original create-and-delete design with crash cleanup. Left until there is real demand: a fixed pool reset on take covers VMs, devices, accounts and databases, and creating per run brings quotas, cost and orphan handling.
+- **A reconcile loop** that keeps a desired number of keys alive. That is a controller to run and watch, and would push QASight toward managing infrastructure. Rejected.
+- **Stop the command when its lease is lost** (fencing). `qasight lease run` warns today. A follow-up could stop the command instead; it changes what users see, so it waits for a decision.
 
 ## Consequences
 

@@ -9,7 +9,7 @@ updated: 2026-11-02
 
 ## Context
 
-Taltal asked whether the reports miss a metric or insight users would benefit from. The research (Allure TestOps, ReportPortal, Datadog CI, BuildPulse, Trunk, Launchable, Currents, DORA) found that Testosterone answers "what is broken, flaky or slower now" well, but not **how long tests stay red, what the suite costs, and whether red builds can be trusted**. It ranked thirteen metrics (M1 to M13), almost all computable from history already stored. On 2026-11-02 Taltal chose to build them in four waves:
+Taltal asked whether the reports miss a metric or insight users would benefit from. The research (Allure TestOps, ReportPortal, Datadog CI, BuildPulse, Trunk, Launchable, Currents, DORA) found that QASight answers "what is broken, flaky or slower now" well, but not **how long tests stay red, what the suite costs, and whether red builds can be trusted**. It ranked thirteen metrics (M1 to M13), almost all computable from history already stored. On 2026-11-02 Taltal chose to build them in four waves:
 
 1. M1 time to fix and failure age, M2 suite and CI time, M5 default-branch health.
 2. M3 real failures vs noise, M4 cost of flakiness.
@@ -22,7 +22,7 @@ This note records each wave as it lands.
 
 ### Wave 1: time to fix, suite time, default branch health
 
-`testo_core/services/delivery_metrics.py` computes everything from runs (time, exit code, branch, pull request target, commit, stage timings) and per-test results (the `test_result` rows):
+`qasight/services/delivery_metrics.py` computes everything from runs (time, exit code, branch, pull request target, commit, stage timings) and per-test results (the `test_result` rows):
 
 - **Time to fix.** A test that starts failing opens a red spell; the first run where it passes again closes it. The period's median closed spell is the time to fix, against the period before. Spells still open are **open failures**, bucketed by age (under a day, 1 to 7 days, 1 to 4 weeks, over a month), with the oldest listed. Flaky tests (by the [Better Flaky Signal](Better%20Flaky%20Signal%20-%202026-11-01.md) rules) are left out, and so is a pass on the commit that failed, which is a retry, not a fix. A test that disappears or is skipped stops counting as open. Red spells are traced back up to 90 days before the period.
 - **Suite and CI time.** Each run's wall time: median and slowest tenth per cycle, against the period before; all runs together as CI minutes; and the stage whose median time grew most (beyond the same noise floor "got slower" uses).
@@ -35,7 +35,7 @@ Where it shows:
 
 ### Wave 2: real failures vs noise, cost of flakiness
 
-`testo_core/services/failure_signal.py`:
+`qasight/services/failure_signal.py`:
 
 - **Why runs were red.** Each red run in the period gets one cause from what made it red: the cause someone marked on its failures (triage memory, `services/triage.py`, matched by message signature), the flaky classification, or nothing. The most decisive wins: product bug, test bug, environment, other, not marked yet, then flaky, so a run counts as flaky only when every failure in it was a flaky test. A red run with no failing test is "crash or setup". The report gives the counts, the share that were real bugs, and the share that was noise (test bugs, environment, flaky, crashes), against the period before. Flakiness is judged over both periods together.
 - **Cost of flakiness.** Per flaky test: the time of its passing retries plus its share of the wall time of red runs that only flaky tests caused (someone reran those jobs), the number of such runs, and the branches they held up. Runs whose failures were marked as another cause are not charged. `flaky_service.flaky_costs()` does the sum for both the report and the cycle page.
@@ -65,7 +65,7 @@ A true escape rate (bugs found in production that no test caught) needs bug data
 ## Consequences
 
 - No new tables or settings: the metrics are read-side only and recomputed on each request from up to 5000 recent runs (the manager report's existing scan limit) and at most 400 runs of test results per cycle.
-- A project that never sends branch data gets red time over all runs, which is right for a single-branch setup and noisy when feature branches run too. `ci_base_ref` (sent by the GitHub Action, GitLab template and `testo ingest` in CI) fixes it.
+- A project that never sends branch data gets red time over all runs, which is right for a single-branch setup and noisy when feature branches run too. `ci_base_ref` (sent by the GitHub Action, GitLab template and `qasight ingest` in CI) fixes it.
 - Time to fix needs per-test results; a cycle whose runs have none shows red time and suite time only.
 - The real-bug share is only as good as the causes people mark. Unmarked failures are shown as their own group, not guessed, and the page says how to mark them.
 - A team server without a checkout has no CODEOWNERS file, so only `owner` labels name teams there.

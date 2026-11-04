@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27.0", "hatch-fancy-pypi-readme>=25.1.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "testo-core"
+name = "qasight"
 version = "1.5.0"
 description = "See what broke, what's flaky and what got slower on every run: test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest or any JUnit-writing runner."
 dynamic = ["readme"]
@@ -44,7 +44,7 @@ classifiers = [
     "Topic :: Software Development :: Testing",
     "Typing :: Typed",
 ]
-# Lean runtime: only what `testo run` and `testo report` strictly need.
+# Lean runtime: only what `qasight run` and `qasight report` strictly need.
 # Run history is always saved (SQLite by default), so sqlmodel is core; database
 # drivers other than SQLite, the API and metrics live in extras groups below.
 dependencies = [
@@ -62,17 +62,21 @@ dependencies = [
 ]
 
 [project.scripts]
-testo = "testo_core.cli.app:main"
-testo-api = "testo_api.main:run"
-testo-runner-service = "testo_core.engine.backends.runner_service:main"
+qasight = "qasight.cli.app:main"
+qasight-api = "qasight_api.main:run"
+qasight-runner-service = "qasight.engine.backends.runner_service:main"
+# The names from before the rename to QASight (1.6), kept so scripts and CI keep working.
+testo = "qasight.cli.app:main"
+testo-api = "qasight_api.main:run"
+testo-runner-service = "qasight.engine.backends.runner_service:main"
 
-# `pytest --testo` records the session as a run; inert without the flag.
+# `pytest --qasight` records the session as a run; inert without the flag.
 [project.entry-points.pytest11]
-testo = "testo_core.pytest_plugin"
+qasight = "qasight.pytest_plugin"
 
 [project.optional-dependencies]
 # Behave and BehaveX stages (`equipment: behave` / `behavex`) and their Allure formatter.
-# Optional since 1.2: pytest, Playwright, `command` and `testo ingest` don't need them.
+# Optional since 1.2: pytest, Playwright, `command` and `qasight ingest` don't need them.
 bdd = [
     "behave>=1.3.3,<2",
     "behavex>=4.6.0",
@@ -95,13 +99,13 @@ metrics = [
     "matplotlib>=3.10.0",
     "influxdb-client>=1.48.0",
 ]
-# `otel` reporter and `testo otel`: runs as OpenTelemetry traces over OTLP/HTTP.
+# `otel` reporter and `qasight otel`: runs as OpenTelemetry traces over OTLP/HTTP.
 # For OTLP/gRPC also install opentelemetry-exporter-otlp-proto-grpc.
 otel = [
     "opentelemetry-sdk>=1.27.0",
     "opentelemetry-exporter-otlp-proto-http>=1.27.0",
 ]
-# `testo export` and the Report page's downloads: PDF and PNG are drawn by headless
+# `qasight export` and the Report page's downloads: PDF and PNG are drawn by headless
 # Chromium (run `playwright install chromium` once, or set TESTO_CHROMIUM to a Chrome),
 # PowerPoint by python-pptx, Excel by openpyxl. HTML, CSV and JSON need none of them.
 export = [
@@ -109,7 +113,7 @@ export = [
     "python-pptx>=1.0.0",
     "openpyxl>=3.1.0",
 ]
-# `testo mcp`: the run history as an MCP server for coding agents (stdio).
+# `qasight mcp`: the run history as an MCP server for coding agents (stdio).
 # Works with the SDK's 1.x FastMCP and 2.x MCPServer. Not in `dev`: mcp 2.x pulls in
 # httpx2, which starlette's TestClient then uses instead of httpx for every API test.
 mcp = [
@@ -134,17 +138,17 @@ dev = [
     "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
     # surface area without needing per-test installs.
-    "testo-core[api,bdd,db,metrics,otel,export]",
+    "qasight[api,bdd,db,metrics,otel,export]",
 ]
 
 [project.urls]
-Homepage = "https://github.com/taltal-beep/testosterone"
-Documentation = "https://taltal-beep.github.io/testosterone/docs/"
-Demo = "https://taltal-beep.github.io/testosterone/"
-Source = "https://github.com/taltal-beep/testosterone"
-Issues = "https://github.com/taltal-beep/testosterone/issues"
-Changelog = "https://github.com/taltal-beep/testosterone/blob/main/CHANGELOG.md"
-"Release notes" = "https://github.com/taltal-beep/testosterone/releases"
+Homepage = "https://github.com/arieleven/qasight"
+Documentation = "https://arieleven.github.io/qasight/docs/"
+Demo = "https://arieleven.github.io/qasight/"
+Source = "https://github.com/arieleven/qasight"
+Issues = "https://github.com/arieleven/qasight/issues"
+Changelog = "https://github.com/arieleven/qasight/blob/main/CHANGELOG.md"
+"Release notes" = "https://github.com/arieleven/qasight/releases"
 
 [tool.hatch.metadata.hooks.fancy-pypi-readme]
 content-type = "text/markdown"
@@ -157,26 +161,26 @@ path = "README.md"
 # last rule then points every remaining relative link at the file on GitHub.
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '(src|srcset)="(?!https?://)([^"]+)"'
-replacement = '\1="https://raw.githubusercontent.com/taltal-beep/testosterone/main/\2"'
+replacement = '\1="https://raw.githubusercontent.com/arieleven/qasight/main/\2"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '!\[([^\]]*)\]\((?!https?://)([^)\s]+)\)'
-replacement = '![\1](https://raw.githubusercontent.com/taltal-beep/testosterone/main/\2)'
+replacement = '![\1](https://raw.githubusercontent.com/arieleven/qasight/main/\2)'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'href="(?!https?://|#)([^"]+)"'
-replacement = 'href="https://github.com/taltal-beep/testosterone/blob/main/\1"'
+replacement = 'href="https://github.com/arieleven/qasight/blob/main/\1"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '\]\((?!https?://|#)([^)\s]+)\)'
-replacement = '](https://github.com/taltal-beep/testosterone/blob/main/\1)'
+replacement = '](https://github.com/arieleven/qasight/blob/main/\1)'
 
 # The sdist carries what is needed to build and test the Python package; the
 # frontend, docs vault and CI wrappers stay in the repository.
 [tool.hatch.build.targets.sdist]
 include = [
-    "/testo_core",
-    "/testo_api",
+    "/qasight",
+    "/qasight_api",
     "/tests",
     "/README.md",
     "/CHANGELOG.md",
@@ -185,11 +189,11 @@ include = [
 ]
 # The built UI is gitignored, so it has to be named to reach the sdist (and the
 # wheel built from it). Present only after scripts/build_ui_bundle.sh.
-artifacts = ["/testo_api/ui_dist"]
+artifacts = ["/qasight_api/ui_dist"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["testo_core", "testo_api"]
-artifacts = ["testo_api/ui_dist"]
+packages = ["qasight", "qasight_api"]
+artifacts = ["qasight_api/ui_dist"]
 
 [tool.ruff]
 target-version = "py311"
@@ -204,7 +208,7 @@ select = ["E", "F", "I", "UP", "B"]
 ignore = [
     "E501",
     # Typer/FastAPI both use `Depends(...)`/`typer.Option(...)` as default-arg values —
-    # the idiomatic pattern for both frameworks, used throughout testo_api and the CLI.
+    # the idiomatic pattern for both frameworks, used throughout qasight_api and the CLI.
     "B008",
     # `class Foo(str, Enum)` -> `enum.StrEnum` is a real behavior-adjacent change
     # (repr/serialization edge cases) affecting enums used pervasively (RunStatus,
@@ -219,70 +223,70 @@ ignore_missing_imports = true
 # Layer check (`lint-imports`, run in the CI `format` job): the layer table in
 # ARCHITECTURE.md as contracts. Each ignore_imports is a known, documented exception.
 [tool.importlinter]
-root_packages = ["testo_core", "testo_api"]
+root_packages = ["qasight", "qasight_api"]
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
-name = "testo_core does not import testo_api (the CLI's `testo ui` starts the server lazily)"
+name = "qasight does not import qasight_api (the CLI's `qasight ui` starts the server lazily)"
 type = "forbidden"
-source_modules = ["testo_core"]
-forbidden_modules = ["testo_api"]
-ignore_imports = ["testo_core.cli.commands.ui_cmd -> testo_api.*"]
+source_modules = ["qasight"]
+forbidden_modules = ["qasight_api"]
+ignore_imports = ["qasight.cli.commands.ui_cmd -> qasight_api.*"]
 
 [[tool.importlinter.contracts]]
-name = "testo_api does not import the CLI"
+name = "qasight_api does not import the CLI"
 type = "forbidden"
-source_modules = ["testo_api"]
-forbidden_modules = ["testo_core.cli"]
+source_modules = ["qasight_api"]
+forbidden_modules = ["qasight.cli"]
 
 [[tool.importlinter.contracts]]
 name = "nothing below the analytics imports services or cli (db_backend's stdlib-only CI provenance, run environment and release lookups are the exceptions)"
 type = "forbidden"
 source_modules = [
-    "testo_core.paths",
-    "testo_core.config",
-    "testo_core.frameworks",
-    "testo_core.engine",
-    "testo_core.persistence",
-    "testo_core.repository",
-    "testo_core.history",
-    "testo_core.resources",
+    "qasight.paths",
+    "qasight.config",
+    "qasight.frameworks",
+    "qasight.engine",
+    "qasight.persistence",
+    "qasight.repository",
+    "qasight.history",
+    "qasight.resources",
 ]
-forbidden_modules = ["testo_core.services", "testo_core.cli"]
+forbidden_modules = ["qasight.services", "qasight.cli"]
 ignore_imports = [
-    "testo_core.persistence.db_backend -> testo_core.services.ci_provenance",
-    "testo_core.persistence.db_backend -> testo_core.services.run_environment",
-    "testo_core.persistence.db_backend -> testo_core.services.run_release",
+    "qasight.persistence.db_backend -> qasight.services.ci_provenance",
+    "qasight.persistence.db_backend -> qasight.services.run_environment",
+    "qasight.persistence.db_backend -> qasight.services.run_release",
 ]
 
 [[tool.importlinter.contracts]]
 name = "repository is the bottom: it imports only config (database.url) and paths"
 type = "forbidden"
-source_modules = ["testo_core.repository"]
+source_modules = ["qasight.repository"]
 forbidden_modules = [
-    "testo_core.engine",
-    "testo_core.frameworks",
-    "testo_core.reporting",
-    "testo_core.persistence",
-    "testo_core.history",
-    "testo_core.services",
-    "testo_core.cli",
-    "testo_core.resources",
+    "qasight.engine",
+    "qasight.frameworks",
+    "qasight.reporting",
+    "qasight.persistence",
+    "qasight.history",
+    "qasight.services",
+    "qasight.cli",
+    "qasight.resources",
 ]
 
 [[tool.importlinter.contracts]]
 name = "paths, config and frameworks sit under engine, persistence, history and reporting (the plugin loader's reporter base class is the one exception)"
 type = "forbidden"
-source_modules = ["testo_core.paths", "testo_core.config", "testo_core.frameworks"]
+source_modules = ["qasight.paths", "qasight.config", "qasight.frameworks"]
 forbidden_modules = [
-    "testo_core.engine",
-    "testo_core.persistence",
-    "testo_core.history",
-    "testo_core.reporting",
+    "qasight.engine",
+    "qasight.persistence",
+    "qasight.history",
+    "qasight.reporting",
 ]
-ignore_imports = ["testo_core.plugins -> testo_core.reporting.reporters.base"]
+ignore_imports = ["qasight.plugins -> qasight.reporting.reporters.base"]
 
 [[tool.importlinter.contracts]]
 name = "persistence (write side) and history (read side) do not import each other"
 type = "independence"
-modules = ["testo_core.persistence", "testo_core.history"]
+modules = ["qasight.persistence", "qasight.history"]

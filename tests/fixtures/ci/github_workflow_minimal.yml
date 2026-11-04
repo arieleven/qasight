@@ -1,4 +1,4 @@
-name: Testosterone Minimal
+name: QASight Minimal
 on:
   push:
     branches:
@@ -8,6 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: taltal-beep/testosterone@v1
+      - uses: arieleven/qasight@v1
         with:
           cycle: sample-pytests

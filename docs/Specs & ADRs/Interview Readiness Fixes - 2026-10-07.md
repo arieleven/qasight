@@ -15,35 +15,35 @@ A review of the repo and the live Pages demo, done as a reader would see them in
 
 | Area | Change | Pull request |
 |------|--------|--------------|
-| Engine | Keep `junit_xml` and `tier` when resolving cycle stages | [#73](https://github.com/taltal-beep/testosterone/pull/73) |
-| Engine | Pyramid buckets a run by the tiers it ran with | [#71](https://github.com/taltal-beep/testosterone/pull/71) |
-| Engine | Stage workers are honest per framework | [#77](https://github.com/taltal-beep/testosterone/pull/77) |
-| Pytest | Keep the target repo's own rootdir | [#69](https://github.com/taltal-beep/testosterone/pull/69) |
-| Storage | Drop MinIO and pre-v1.1 run-history compatibility | [#75](https://github.com/taltal-beep/testosterone/pull/75) |
-| Storage | Each run gets its own copy of its artifacts | [#68](https://github.com/taltal-beep/testosterone/pull/68) |
-| API | Optional token, strict CORS and origin check | [#76](https://github.com/taltal-beep/testosterone/pull/76) |
-| API | Bounded execution registry; async SSE tail | [#81](https://github.com/taltal-beep/testosterone/pull/81) |
-| CLI | `uqo` alias and legacy frontend redirects removed | [#72](https://github.com/taltal-beep/testosterone/pull/72) |
-| Naming | UQO → Testosterone rename finished in code and UI (env vars `TESTO_*`) | [#78](https://github.com/taltal-beep/testosterone/pull/78) |
-| Frontend | Same-cycle compare; honest health for crashed stages | [#82](https://github.com/taltal-beep/testosterone/pull/82) |
-| Frontend | Runs named by cycle and time; Compare as tables | [#85](https://github.com/taltal-beep/testosterone/pull/85) |
-| Frontend | Top nav collapses into a menu on phones | [#83](https://github.com/taltal-beep/testosterone/pull/83) |
-| Demo | Self-hosting CI publishes the UI to GitHub and GitLab Pages | [#67](https://github.com/taltal-beep/testosterone/pull/67) |
-| Demo | The read-only Pages demo explains itself | [#84](https://github.com/taltal-beep/testosterone/pull/84) |
-| CI | Coverage enforced on the fast suite; nightly fixed | [#79](https://github.com/taltal-beep/testosterone/pull/79) |
-| Repo | Dead code and failure injection deleted; root tidied | [#80](https://github.com/taltal-beep/testosterone/pull/80) |
-| Docs | Vault readable on GitHub; work log archived | [#74](https://github.com/taltal-beep/testosterone/pull/74) |
-| Docs | README top section with demo link and architecture diagram | [#70](https://github.com/taltal-beep/testosterone/pull/70) |
+| Engine | Keep `junit_xml` and `tier` when resolving cycle stages | [#73](https://github.com/arieleven/qasight/pull/73) |
+| Engine | Pyramid buckets a run by the tiers it ran with | [#71](https://github.com/arieleven/qasight/pull/71) |
+| Engine | Stage workers are honest per framework | [#77](https://github.com/arieleven/qasight/pull/77) |
+| Pytest | Keep the target repo's own rootdir | [#69](https://github.com/arieleven/qasight/pull/69) |
+| Storage | Drop MinIO and pre-v1.1 run-history compatibility | [#75](https://github.com/arieleven/qasight/pull/75) |
+| Storage | Each run gets its own copy of its artifacts | [#68](https://github.com/arieleven/qasight/pull/68) |
+| API | Optional token, strict CORS and origin check | [#76](https://github.com/arieleven/qasight/pull/76) |
+| API | Bounded execution registry; async SSE tail | [#81](https://github.com/arieleven/qasight/pull/81) |
+| CLI | `uqo` alias and legacy frontend redirects removed | [#72](https://github.com/arieleven/qasight/pull/72) |
+| Naming | UQO → QASight rename finished in code and UI (env vars `TESTO_*`) | [#78](https://github.com/arieleven/qasight/pull/78) |
+| Frontend | Same-cycle compare; honest health for crashed stages | [#82](https://github.com/arieleven/qasight/pull/82) |
+| Frontend | Runs named by cycle and time; Compare as tables | [#85](https://github.com/arieleven/qasight/pull/85) |
+| Frontend | Top nav collapses into a menu on phones | [#83](https://github.com/arieleven/qasight/pull/83) |
+| Demo | Self-hosting CI publishes the UI to GitHub and GitLab Pages | [#67](https://github.com/arieleven/qasight/pull/67) |
+| Demo | The read-only Pages demo explains itself | [#84](https://github.com/arieleven/qasight/pull/84) |
+| CI | Coverage enforced on the fast suite; nightly fixed | [#79](https://github.com/arieleven/qasight/pull/79) |
+| Repo | Dead code and failure injection deleted; root tidied | [#80](https://github.com/arieleven/qasight/pull/80) |
+| Docs | Vault readable on GitHub; work log archived | [#74](https://github.com/arieleven/qasight/pull/74) |
+| Docs | README top section with demo link and architecture diagram | [#70](https://github.com/arieleven/qasight/pull/70) |
 
 ### Second wave
 
 | Area | Change | Pull request |
 |------|--------|--------------|
-| CI | mypy gates `testo_api` as well as `testo_core` | [#87](https://github.com/taltal-beep/testosterone/pull/87) |
-| Code | Root modules moved into subpackages: `db*` → `repository/`, metrics, integrations and report generator → `reporting/`, `triggers` → `config/`; only `paths.py` stays at the root | [#88](https://github.com/taltal-beep/testosterone/pull/88) |
-| Docs | Current UI screenshots in the README (`docs/assets/screenshots/`) | [#89](https://github.com/taltal-beep/testosterone/pull/89) |
-| Code | Silent `except` blocks in I/O and reporting paths now log or re-raise | [#90](https://github.com/taltal-beep/testosterone/pull/90) |
-| Release | Version 1.1.0: `pyproject.toml` bump and `CHANGELOG.md` cut | [#91](https://github.com/taltal-beep/testosterone/pull/91) |
+| CI | mypy gates `qasight_api` as well as `qasight` | [#87](https://github.com/arieleven/qasight/pull/87) |
+| Code | Root modules moved into subpackages: `db*` → `repository/`, metrics, integrations and report generator → `reporting/`, `triggers` → `config/`; only `paths.py` stays at the root | [#88](https://github.com/arieleven/qasight/pull/88) |
+| Docs | Current UI screenshots in the README (`docs/assets/screenshots/`) | [#89](https://github.com/arieleven/qasight/pull/89) |
+| Code | Silent `except` blocks in I/O and reporting paths now log or re-raise | [#90](https://github.com/arieleven/qasight/pull/90) |
+| Release | Version 1.1.0: `pyproject.toml` bump and `CHANGELOG.md` cut | [#91](https://github.com/arieleven/qasight/pull/91) |
 
 The vault and wiki work done the same day is its own decision: [Docs Vault and Wiki Sync - 2026-10-07](Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md).
 

@@ -58,7 +58,7 @@ def _exporter(module, client: _FakeClient):
 def test_only_cycles_with_an_exported_run_are_published() -> None:
     module = _load_exporter_module()
     listing = {
-        "config_path": "testosterone.yaml",
+        "config_path": "qasight.yaml",
         "items": [{"name": "sample-pytests"}, {"name": "self-test"}, {"name": "fake-api"}],
     }
     runs = [{"run_id": "a", "cycle": "fake-api"}, {"run_id": "b", "cycle": "self-test"}]
@@ -66,7 +66,7 @@ def test_only_cycles_with_an_exported_run_are_published() -> None:
     filtered = module._ran_cycles_only(listing, runs)
 
     assert [c["name"] for c in filtered["items"]] == ["self-test", "fake-api"]
-    assert filtered["config_path"] == "testosterone.yaml"
+    assert filtered["config_path"] == "qasight.yaml"
 
 
 def test_ai_summaries_are_skipped_without_a_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -128,7 +128,7 @@ def test_a_failing_summary_does_not_stop_the_export(monkeypatch: pytest.MonkeyPa
 def test_run_cases_are_read_once_per_run_and_the_cache_ends_with_the_export() -> None:
     """The per-test pages reread every run's cases per test; the export reads each run once."""
     module = _load_exporter_module()
-    from testo_core.services import flaky_service
+    from qasight.services import flaky_service
 
     original = flaky_service._cases_for_run
     loads: list[str] = []

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.services.failure_analysis_service import FailureAnalysisSummary
+from qasight.services.failure_analysis_service import FailureAnalysisSummary
+from qasight_api.main import create_app
 
 
 class _FakeFailureService:
@@ -84,7 +84,7 @@ class _FakeSettingsStore:
 
 def _client() -> TestClient:
     app = create_app()
-    from testo_api.dependencies import get_ai_settings_store, get_failure_analysis_service
+    from qasight_api.dependencies import get_ai_settings_store, get_failure_analysis_service
 
     app.dependency_overrides[get_failure_analysis_service] = lambda: _FakeFailureService()
     app.dependency_overrides[get_ai_settings_store] = lambda: _FakeSettingsStore()
@@ -122,8 +122,8 @@ def test_generate_run_ai_summary_contract() -> None:
 
 
 def test_openai_compatible_config_needs_a_base_url_but_no_key() -> None:
-    from testo_api.dependencies import get_ai_settings_store
-    from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
+    from qasight.services.ai.integration_settings import InMemoryAiSettingsStore
+    from qasight_api.dependencies import get_ai_settings_store
 
     app = create_app()
     store = InMemoryAiSettingsStore()
@@ -146,8 +146,8 @@ def test_openai_compatible_config_needs_a_base_url_but_no_key() -> None:
 def test_claude_code_config_needs_no_key_and_is_configured_when_the_cli_is_found(
     monkeypatch,  # noqa: ANN001
 ) -> None:
-    from testo_api.dependencies import get_ai_settings_store
-    from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
+    from qasight.services.ai.integration_settings import InMemoryAiSettingsStore
+    from qasight_api.dependencies import get_ai_settings_store
 
     app = create_app()
     store = InMemoryAiSettingsStore()
@@ -155,13 +155,13 @@ def test_claude_code_config_needs_no_key_and_is_configured_when_the_cli_is_found
     client = TestClient(app)
     body = {"enabled": True, "provider": "claude_code", "model": "sonnet", "timeout_s": 120}
 
-    monkeypatch.setattr("testo_api.routes.ai.resolve_claude_cli", lambda: None)
+    monkeypatch.setattr("qasight_api.routes.ai.resolve_claude_cli", lambda: None)
     resp = client.put("/api/v1/ai/config", json=body)
     assert resp.status_code == 200
     assert resp.json()["configured"] is False
     assert resp.json()["key_present"] is None
 
-    monkeypatch.setattr("testo_api.routes.ai.resolve_claude_cli", lambda: "/usr/bin/claude")
+    monkeypatch.setattr("qasight_api.routes.ai.resolve_claude_cli", lambda: "/usr/bin/claude")
     payload = client.get("/api/v1/ai/config/status").json()
     assert payload["provider"] == "claude_code"
     assert payload["configured"] is True

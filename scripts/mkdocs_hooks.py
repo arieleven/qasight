@@ -7,7 +7,7 @@ bridge the differences when mkdocs.yml builds them:
   hyphenated URL (``CLI Commands/Command Reference.md`` -> ``cli-commands/command-reference/``).
 - The vault's ``status`` frontmatter key is dropped: Material reads it as a
   page badge and would mark every page in the nav.
-- Links that leave ``docs/`` (``../README.md``, ``../testo_core/...``) point at
+- Links that leave ``docs/`` (``../README.md``, ``../qasight/...``) point at
   the file on GitHub, the same rewrite the wiki export does.
 """
 
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from docs_vault import _EXTERNAL_RE, _LINK_RE, DOCS_ROOT, INDEX, REPO_ROOT, _mask_code  # noqa: E402
 
-REPO = "taltal-beep/testosterone"
+REPO = "arieleven/qasight"
 REF = "main"
 _BLOB = f"https://github.com/{REPO}/blob/{REF}"
 _RAW = f"https://raw.githubusercontent.com/{REPO}/{REF}"

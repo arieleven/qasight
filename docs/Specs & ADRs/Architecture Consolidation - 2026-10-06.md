@@ -15,13 +15,13 @@ Before this batch the CLI and the API ran cycles through two different code path
 
 | Change | Pull request |
 |--------|--------------|
-| Accurate `ARCHITECTURE.md` with a system diagram; frontend CI job; generated artifacts untracked | [#61](https://github.com/taltal-beep/testosterone/pull/61) |
-| The cycle use case moves into `services/cycle_run.CycleRunService`, shared by CLI and API | [#60](https://github.com/taltal-beep/testosterone/pull/60) |
-| The legacy execution stack is retired; every run goes through the cycle engine | [#62](https://github.com/taltal-beep/testosterone/pull/62) |
-| Frontend API types are generated from FastAPI's OpenAPI schema and typechecked in CI | [#63](https://github.com/taltal-beep/testosterone/pull/63) |
-| One storage boundary for run history (`testo_core/history/`) | [#65](https://github.com/taltal-beep/testosterone/pull/65) |
-| mypy backlog cleared; mypy and `ruff format` are blocking in CI | [#64](https://github.com/taltal-beep/testosterone/pull/64) |
-| `changelog-on-main` skips instead of failing when bot secrets are missing | [#66](https://github.com/taltal-beep/testosterone/pull/66) |
+| Accurate `ARCHITECTURE.md` with a system diagram; frontend CI job; generated artifacts untracked | [#61](https://github.com/arieleven/qasight/pull/61) |
+| The cycle use case moves into `services/cycle_run.CycleRunService`, shared by CLI and API | [#60](https://github.com/arieleven/qasight/pull/60) |
+| The legacy execution stack is retired; every run goes through the cycle engine | [#62](https://github.com/arieleven/qasight/pull/62) |
+| Frontend API types are generated from FastAPI's OpenAPI schema and typechecked in CI | [#63](https://github.com/arieleven/qasight/pull/63) |
+| One storage boundary for run history (`qasight/history/`) | [#65](https://github.com/arieleven/qasight/pull/65) |
+| mypy backlog cleared; mypy and `ruff format` are blocking in CI | [#64](https://github.com/arieleven/qasight/pull/64) |
+| `changelog-on-main` skips instead of failing when bot secrets are missing | [#66](https://github.com/arieleven/qasight/pull/66) |
 
 ## Consequences
 

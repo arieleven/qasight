@@ -35,7 +35,7 @@ export function RunPanel({ initialCycle, lockCycle = false, selection, onClearSe
     queryFn: () => apiClient.listCycles(),
     enabled: !lockCycle
   });
-  // Recorded-only cycles (testo ingest) have no config to run.
+  // Recorded-only cycles (qasight ingest) have no config to run.
   const runnable = (cyclesQuery.data?.items ?? []).filter((item) => item.source === "config");
 
   const [cycle, setCycle] = useState(initialCycle ?? "");
@@ -182,7 +182,7 @@ export function RunPanel({ initialCycle, lockCycle = false, selection, onClearSe
                     className="rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 focus:border-brand-500 focus:outline-none font-mono text-sm text-ink-100"
                     value={configPath}
                     onChange={(ev) => setConfigPath(ev.target.value)}
-                    placeholder="testosterone.yaml (auto-discover)"
+                    placeholder="qasight.yaml (auto-discover)"
                     disabled={busy}
                   />
                 </label>
@@ -213,7 +213,7 @@ export function RunPanel({ initialCycle, lockCycle = false, selection, onClearSe
             {IS_STATIC_BUILD && cycle ? (
               <span className="text-xs text-ink-400">
                 Read-only demo. Run locally with{" "}
-                <code className="font-mono text-ink-200">testo run --cycle {cycle}</code>
+                <code className="font-mono text-ink-200">qasight run --cycle {cycle}</code>
               </span>
             ) : null}
             {execution.executionId ? (

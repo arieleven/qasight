@@ -599,7 +599,7 @@ function TestLevelChanges({ query: casesQuery, changes, counts, cycle, kindFilte
         {casesQuery.data ? <span className="font-normal text-ink-400">({changes.length})</span> : null}
       </button>
       <p className="mt-1 text-xs text-ink-400">
-        Per test: which ones regressed, were fixed, added or removed between the two runs, same as <code>testo diff</code>.
+        Per test: which ones regressed, were fixed, added or removed between the two runs, same as <code>qasight diff</code>.
       </p>
 
       {expanded && (

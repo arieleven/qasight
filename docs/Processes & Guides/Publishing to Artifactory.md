@@ -9,7 +9,7 @@ updated: 2026-10-07
 
 [Index](../Index.md) · [Publishing to PyPI](Publishing%20to%20PyPI.md) · [Publishing Docker Images](Publishing%20Docker%20Images.md) · [v1.0.0 Publish Execution Plan - 2026-09-05](../Archive/v1.0.0%20Publish%20Execution%20Plan%20-%202026-09-05.md)
 
-Artifactory is a **mirror** of the public release, not a replacement for it. The canonical channels stay PyPI (`testo-core`) and GHCR (`testo-runner`); Artifactory exists so consumers behind a corporate proxy can pull from an internal registry.
+Artifactory is a **mirror** of the public release, not a replacement for it. The canonical channels stay PyPI (`qasight`) and GHCR (`qasight-runner`); Artifactory exists so consumers behind a corporate proxy can pull from an internal registry.
 
 Workflow: `.github/workflows/artifactory-publish.yml`.
 
@@ -53,8 +53,8 @@ Both paths strip a leading `v`: the git tag is `v1.0.0`, the package version is 
 ## Consuming
 
 ```bash
-pip install --index-url https://<user>:<token>@acme.jfrog.io/artifactory/api/pypi/testo-pypi-local/simple testo-core==1.0.0
-docker pull acme.jfrog.io/testo-docker-local/testo-runner:1.0.0
+pip install --index-url https://<user>:<token>@acme.jfrog.io/artifactory/api/pypi/testo-pypi-local/simple qasight==1.0.0
+docker pull acme.jfrog.io/testo-docker-local/qasight-runner:1.0.0
 ```
 
 Prefer a `~/.netrc` entry or `pip config` over inlining the token in the index URL.

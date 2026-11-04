@@ -186,7 +186,7 @@ export function AiReviewCard({ cycle }: { cycle?: string }) {
       {IS_STATIC_BUILD ? (
         <p className="mt-3 rounded-xl border border-white/10 bg-ink-800/60 px-3 py-2 text-sm text-ink-200" data-testid="ai-review-demo-note">
           This demo is read-only, so the AI review can't run here. Browse the checks below, then run it on your own project with{" "}
-          <code className="font-mono text-xs">testo ui</code> and an AI provider (a free Gemini key works).
+          <code className="font-mono text-xs">qasight ui</code> and an AI provider (a free Gemini key works).
         </p>
       ) : aiStatus.data && !aiReady ? (
         <AiNotReadyNote status={aiStatus.data} />

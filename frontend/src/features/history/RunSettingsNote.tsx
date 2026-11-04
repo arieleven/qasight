@@ -11,7 +11,7 @@ function plural(n: number, word: string): string {
 export function retentionLine(settings: RunSettings): string {
   const { days, runs_per_cycle: perCycle, enabled } = settings.retention;
   if (!enabled && !settings.config_found) {
-    return "No testosterone.yaml or TESTO_RETENTION_DAYS here, so no run is deleted automatically.";
+    return "No qasight.yaml or TESTO_RETENTION_DAYS here, so no run is deleted automatically.";
   }
   if (!enabled) return "Runs are kept until you delete them: no history.retention or TESTO_RETENTION_DAYS is set.";
   const limits = [
@@ -30,7 +30,7 @@ export function timeoutLine(settings: RunSettings): string | null {
     : `A stage is stopped after ${limit} s unless it sets its own timeout_s.`;
 }
 
-/** How long runs are kept and how long a stage may take, read from testosterone.yaml. */
+/** How long runs are kept and how long a stage may take, read from qasight.yaml. */
 export function RunSettingsNote() {
   const query = useQuery({
     queryKey: ["run-settings"],
@@ -47,7 +47,7 @@ export function RunSettingsNote() {
       {timeout ? <p className="mt-1">{timeout}</p> : null}
       {query.data.config_found ? (
         <p className="mt-1 text-ink-400">
-          Change these in testosterone.yaml (<code>history.retention</code>, <code>timeout_s</code>), then restart the
+          Change these in qasight.yaml (<code>history.retention</code>, <code>timeout_s</code>), then restart the
           server.
         </p>
       ) : null}

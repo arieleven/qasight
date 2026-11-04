@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.history.views import CompletedRunView, RunSessionView
-from testo_core.repository.models import RunStatus
+from qasight.history.views import CompletedRunView, RunSessionView
+from qasight.repository.models import RunStatus
+from qasight_api.main import create_app
 
 
 def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "testo_api.routes.history.list_run_sessions",
+        "qasight_api.routes.history.list_run_sessions",
         lambda limit=30, cycle=None: [  # noqa: ARG005
             RunSessionView(
                 run_id="run-1",
@@ -27,7 +27,7 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
         ],
     )
     monkeypatch.setattr(
-        "testo_api.routes.history.get_run",
+        "qasight_api.routes.history.get_run",
         lambda run_id: CompletedRunView(  # noqa: ARG005
             run_id="run-1",
             status=RunStatus.COMPLETED,
@@ -55,7 +55,7 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
         ),
     )
     monkeypatch.setattr(
-        "testo_api.routes.history.snapshot_file_names",
+        "qasight_api.routes.history.snapshot_file_names",
         lambda record: ["allure_report.html"],  # noqa: ARG005
     )
 
@@ -93,7 +93,7 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
 
 def test_run_pyramid_contract(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "testo_api.routes.history.get_run",
+        "qasight_api.routes.history.get_run",
         lambda run_id: CompletedRunView(  # noqa: ARG005
             run_id="run-1",
             status=RunStatus.COMPLETED,
@@ -169,12 +169,12 @@ def test_run_pyramid_uses_tiers_recorded_in_the_run(monkeypatch) -> None:  # noq
             {"name": "ui-tests", "tier": "e2e", "total_tests": 1},
         ]
     )
-    monkeypatch.setattr("testo_api.routes.history.get_run", lambda run_id: run)  # noqa: ARG005
+    monkeypatch.setattr("qasight_api.routes.history.get_run", lambda run_id: run)  # noqa: ARG005
 
     def _no_config(**_kwargs):  # noqa: ANN202, ANN003
-        raise AssertionError("pyramid must not read testosterone.yaml when tiers are recorded")
+        raise AssertionError("pyramid must not read qasight.yaml when tiers are recorded")
 
-    monkeypatch.setattr("testo_api.routes.history.discover_and_load", _no_config)
+    monkeypatch.setattr("qasight_api.routes.history.discover_and_load", _no_config)
 
     resp = TestClient(create_app()).get("/api/v1/runs/run-2/pyramid")
     assert resp.status_code == 200
@@ -188,8 +188,8 @@ def test_run_pyramid_falls_back_to_yaml_for_runs_without_tiers(  # noqa: ANN001
     monkeypatch, tmp_path
 ) -> None:
     run = _cycle_run([{"name": "api-tests", "total_tests": 3}])
-    monkeypatch.setattr("testo_api.routes.history.get_run", lambda run_id: run)  # noqa: ARG005
-    config = tmp_path / "testosterone.yaml"
+    monkeypatch.setattr("qasight_api.routes.history.get_run", lambda run_id: run)  # noqa: ARG005
+    config = tmp_path / "qasight.yaml"
     config.write_text(
         "cycles:\n"
         "  smoke:\n"
@@ -210,7 +210,7 @@ def test_run_pyramid_falls_back_to_yaml_for_runs_without_tiers(  # noqa: ANN001
 
 
 def test_run_pyramid_contract_missing_run(monkeypatch) -> None:  # noqa: ANN001
-    monkeypatch.setattr("testo_api.routes.history.get_run", lambda run_id: None)  # noqa: ARG005
+    monkeypatch.setattr("qasight_api.routes.history.get_run", lambda run_id: None)  # noqa: ARG005
     client = TestClient(create_app())
     resp = client.get("/api/v1/runs/does-not-exist/pyramid")
     assert resp.status_code == 404
@@ -219,8 +219,8 @@ def test_run_pyramid_contract_missing_run(monkeypatch) -> None:  # noqa: ANN001
 def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
     from datetime import UTC, datetime
 
-    from testo_core.services.run_failures import FailingTest, FailureGroup, RunFailures
-    from testo_core.services.triage import Triage
+    from qasight.services.run_failures import FailingTest, FailureGroup, RunFailures
+    from qasight.services.triage import Triage
 
     failing = FailingTest(
         key="k1",
@@ -248,7 +248,7 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
         ),
     )
     monkeypatch.setattr(
-        "testo_api.routes.history.load_run_failures",
+        "qasight_api.routes.history.load_run_failures",
         lambda run_id: (
             RunFailures(  # noqa: ARG005
                 run_id="run-1",
@@ -297,7 +297,7 @@ def test_runs_filtered_by_cycle_contract(monkeypatch) -> None:  # noqa: ANN001
         seen.update(limit=limit, cycle=cycle)
         return []
 
-    monkeypatch.setattr("testo_api.routes.history.list_run_sessions", sessions)
+    monkeypatch.setattr("qasight_api.routes.history.list_run_sessions", sessions)
     client = TestClient(create_app())
     assert client.get("/api/v1/runs", params={"cycle": "web", "limit": 10}).json() == {
         "items": [],
@@ -310,7 +310,7 @@ def test_runs_filtered_by_cycle_contract(monkeypatch) -> None:  # noqa: ANN001
 
 def test_run_reports_for_a_run_older_than_the_recent_list(monkeypatch, tmp_path) -> None:  # noqa: ANN001
     """The run page used to 404 for any run older than the newest 200: reports looked it up there."""
-    from testo_core import paths
+    from qasight import paths
 
     history = tmp_path / "static" / "history"
     snapshot = history / "old-run" / "artifacts"
@@ -318,10 +318,10 @@ def test_run_reports_for_a_run_older_than_the_recent_list(monkeypatch, tmp_path)
     (snapshot / "unit" / "run.log").write_text("boom", encoding="utf-8")
     monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(paths, "STATIC_HISTORY_ROOT", history)
-    monkeypatch.setattr("testo_api.routes.history.list_run_sessions", lambda **_: [])
-    monkeypatch.setattr("testo_api.routes.history.local_report_links", lambda run_id: {})  # noqa: ARG005
+    monkeypatch.setattr("qasight_api.routes.history.list_run_sessions", lambda **_: [])
+    monkeypatch.setattr("qasight_api.routes.history.local_report_links", lambda run_id: {})  # noqa: ARG005
     monkeypatch.setattr(
-        "testo_api.routes.history.get_run",
+        "qasight_api.routes.history.get_run",
         lambda run_id: CompletedRunView(  # noqa: ARG005
             run_id="old-run",
             status=RunStatus.COMPLETED,
@@ -354,7 +354,7 @@ def test_run_reports_for_a_run_older_than_the_recent_list(monkeypatch, tmp_path)
 
 
 def test_run_markdown_drops_the_comment_marker(monkeypatch) -> None:  # noqa: ANN001
-    from testo_core.services import run_summary_markdown as rsm
+    from qasight.services import run_summary_markdown as rsm
 
     monkeypatch.setattr(
         rsm, "load_run_summary", lambda run_id: object() if run_id == "run-1" else None
@@ -362,9 +362,7 @@ def test_run_markdown_drops_the_comment_marker(monkeypatch) -> None:  # noqa: AN
     monkeypatch.setattr(
         rsm,
         "render_markdown",
-        lambda summary: (
-            "<!-- testo-summary:api -->\n### ✅ Testosterone: `api` passed\n\nRan in 1s"
-        ),  # noqa: ARG005
+        lambda summary: "<!-- testo-summary:api -->\n### ✅ QASight: `api` passed\n\nRan in 1s",  # noqa: ARG005
     )
 
     client = TestClient(create_app())
@@ -372,6 +370,6 @@ def test_run_markdown_drops_the_comment_marker(monkeypatch) -> None:  # noqa: AN
     assert resp.status_code == 200
     assert resp.json() == {
         "run_id": "run-1",
-        "markdown": "### ✅ Testosterone: `api` passed\n\nRan in 1s",
+        "markdown": "### ✅ QASight: `api` passed\n\nRan in 1s",
     }
     assert client.get("/api/v1/runs/missing/markdown").status_code == 404

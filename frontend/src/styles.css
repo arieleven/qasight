@@ -77,7 +77,7 @@ body {
   }
 }
 
-/* A report exported by `testo export` (single-file HTML, PDF, PNG): grey desk, white page. */
+/* A report exported by `qasight export` (single-file HTML, PDF, PNG): grey desk, white page. */
 body.report-standalone {
   background: #e9ecf2;
   background-image: none;

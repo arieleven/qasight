@@ -40,7 +40,7 @@ describe("Releases", () => {
     vi.spyOn(apiClient, "getReleases").mockResolvedValue({ items: [] });
     renderAt("/releases");
     expect(await screen.findByText("No releases recorded yet")).toBeInTheDocument();
-    expect(screen.getByText("testo run --release 2.3")).toBeInTheDocument();
+    expect(screen.getByText("qasight run --release 2.3")).toBeInTheDocument();
   });
 
   it("lists releases with their pass rate", async () => {

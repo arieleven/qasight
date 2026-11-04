@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.services.delta_models import (
+from qasight.services.delta_models import (
     DeltaComparisonResult,
     DeltaStatusSummary,
     MetricDelta,
     StageDelta,
 )
-from testo_core.services.delta_service import (
+from qasight.services.delta_service import (
     IncompatibleRunDataError,
     InvalidRunIdError,
     RunNotFoundComparisonError,
 )
+from qasight_api.main import create_app
 
 
 def _fake_result() -> DeltaComparisonResult:
@@ -157,7 +157,7 @@ def _fake_result() -> DeltaComparisonResult:
 
 def test_analytics_delta_contract_success(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "testo_api.routes.analytics.DeltaComparisonService.compare_runs",
+        "qasight_api.routes.analytics.DeltaComparisonService.compare_runs",
         lambda self, **_: _fake_result(),
     )
     client = TestClient(create_app())
@@ -199,7 +199,7 @@ def test_analytics_delta_contract_includes_stage_deltas(monkeypatch) -> None:  #
         ),
     )
     monkeypatch.setattr(
-        "testo_api.routes.analytics.DeltaComparisonService.compare_runs",
+        "qasight_api.routes.analytics.DeltaComparisonService.compare_runs",
         lambda self, **_: result_with_stages,
     )
     client = TestClient(create_app())
@@ -223,9 +223,9 @@ def test_analytics_delta_contract_includes_stage_deltas(monkeypatch) -> None:  #
 
 
 def test_analytics_delta_cases_contract(monkeypatch) -> None:  # noqa: ANN001
-    from testo_core.history.views import CompletedRunView
-    from testo_core.repository.models import RunStatus
-    from testo_core.services.report_archive_diff import CaseChange
+    from qasight.history.views import CompletedRunView
+    from qasight.repository.models import RunStatus
+    from qasight.services.report_archive_diff import CaseChange
 
     def _fake_run(*, run_id: str):
         return CompletedRunView(
@@ -250,9 +250,9 @@ def test_analytics_delta_cases_contract(monkeypatch) -> None:  # noqa: ANN001
             audit_json=None,
         )
 
-    monkeypatch.setattr("testo_api.routes.analytics.get_run", _fake_run)
+    monkeypatch.setattr("qasight_api.routes.analytics.get_run", _fake_run)
     monkeypatch.setattr(
-        "testo_api.routes.analytics.diff_run_snapshots",
+        "qasight_api.routes.analytics.diff_run_snapshots",
         lambda **_: [
             CaseChange(
                 key="a",
@@ -285,7 +285,7 @@ def test_analytics_delta_cases_contract(monkeypatch) -> None:  # noqa: ANN001
 
 
 def test_analytics_delta_cases_missing_run(monkeypatch) -> None:  # noqa: ANN001
-    monkeypatch.setattr("testo_api.routes.analytics.get_run", lambda *, run_id: None)
+    monkeypatch.setattr("qasight_api.routes.analytics.get_run", lambda *, run_id: None)
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta/cases?current_run_id=missing&baseline_run_id=run-1")
     assert resp.status_code == 404
@@ -296,7 +296,7 @@ def test_analytics_delta_invalid_id(monkeypatch) -> None:  # noqa: ANN001
         raise InvalidRunIdError("current_run_id must be a non-empty string.")
 
     monkeypatch.setattr(
-        "testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_invalid
+        "qasight_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_invalid
     )
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=&baseline_run_id=run-1")
@@ -310,7 +310,7 @@ def test_analytics_delta_run_not_found(monkeypatch) -> None:  # noqa: ANN001
         raise RunNotFoundComparisonError("missing")
 
     monkeypatch.setattr(
-        "testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_not_found
+        "qasight_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_not_found
     )
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=missing")
@@ -324,7 +324,7 @@ def test_analytics_delta_incompatible_data(monkeypatch) -> None:  # noqa: ANN001
         raise IncompatibleRunDataError("Cannot compare runs with different test kinds.")
 
     monkeypatch.setattr(
-        "testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_incompatible
+        "qasight_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_incompatible
     )
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=run-1")
@@ -334,7 +334,7 @@ def test_analytics_delta_incompatible_data(monkeypatch) -> None:  # noqa: ANN001
 
 
 def test_analytics_flaky_contract(monkeypatch) -> None:  # noqa: ANN001
-    from testo_core.services.flaky_service import FlakyReport, FlakyTest
+    from qasight.services.flaky_service import FlakyReport, FlakyTest
 
     seen: dict[str, object] = {}
 
@@ -361,7 +361,7 @@ def test_analytics_flaky_contract(monkeypatch) -> None:  # noqa: ANN001
             ),
         )
 
-    monkeypatch.setattr("testo_api.routes.analytics.find_flaky_tests", _fake_find)
+    monkeypatch.setattr("qasight_api.routes.analytics.find_flaky_tests", _fake_find)
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/flaky?cycle=fake-api")
     assert resp.status_code == 200
@@ -374,7 +374,7 @@ def test_analytics_flaky_contract(monkeypatch) -> None:  # noqa: ANN001
 
 
 def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  # noqa: ANN001
-    from testo_core.services import test_history as th
+    from qasight.services import test_history as th
 
     summary = th.TestSummary(
         key="k1",
@@ -408,9 +408,9 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
         seen.update(cycle=cycle, window=window, query=query)
         return th.CycleTests(cycle=cycle, runs_considered=4, tests=(summary,))
 
-    monkeypatch.setattr("testo_api.routes.analytics.list_cycle_tests", fake_list)
+    monkeypatch.setattr("qasight_api.routes.analytics.list_cycle_tests", fake_list)
     monkeypatch.setattr(
-        "testo_api.routes.analytics.load_test_history",
+        "qasight_api.routes.analytics.load_test_history",
         lambda cycle, key, *, window: (
             th.TestHistory(cycle=cycle, summary=summary, points=(point,)) if key == "k1" else None
         ),
@@ -418,9 +418,9 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
 
     (tmp_path / "CODEOWNERS").write_text("tests/api/ @org/api\n", encoding="utf-8")
     monkeypatch.setattr(
-        "testo_api.routes.analytics.cycle_source", lambda cycle: (tmp_path, "acme/shop")
+        "qasight_api.routes.analytics.cycle_source", lambda cycle: (tmp_path, "acme/shop")
     )
-    from testo_core.services.test_attachments import Attachment
+    from qasight.services.test_attachments import Attachment
 
     screenshot = Attachment(
         name="screenshot",
@@ -429,9 +429,9 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
         url="history/run-4/artifacts/a-attachment.png",
         size_bytes=70,
     )
-    monkeypatch.setattr("testo_api.routes.analytics.get_run", lambda *, run_id: run_id)
+    monkeypatch.setattr("qasight_api.routes.analytics.get_run", lambda *, run_id: run_id)
     monkeypatch.setattr(
-        "testo_api.routes.analytics.attachments_for",
+        "qasight_api.routes.analytics.attachments_for",
         lambda run, key: (screenshot,) if (run, key) == ("run-4", "k1") else (),
     )
 
@@ -469,7 +469,7 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
 
 
 def test_releases_contract(monkeypatch) -> None:  # noqa: ANN001
-    from testo_core.services.releases import (
+    from qasight.services.releases import (
         ReleaseCycle,
         ReleaseDetail,
         ReleaseSummary,
@@ -486,9 +486,9 @@ def test_releases_contract(monkeypatch) -> None:  # noqa: ANN001
         flaky=0,
         previous=previous,
     )
-    monkeypatch.setattr("testo_api.routes.analytics.list_releases", lambda: (summary, previous))
+    monkeypatch.setattr("qasight_api.routes.analytics.list_releases", lambda: (summary, previous))
     monkeypatch.setattr(
-        "testo_api.routes.analytics.load_release", lambda r: detail if r == "2.4" else None
+        "qasight_api.routes.analytics.load_release", lambda r: detail if r == "2.4" else None
     )
     client = TestClient(create_app())
     listed = client.get("/api/v1/releases").json()

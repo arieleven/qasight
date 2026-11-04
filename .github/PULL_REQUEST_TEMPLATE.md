@@ -13,4 +13,4 @@
 - [ ] `pytest -q -m "tier_fast and not quarantined" --no-cov` passes locally
 - [ ] `ruff check .` passes locally
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]`, or this PR has the `no-changelog` label
-- [ ] Relevant `docs/` note updated if this changes CLI args, exit codes, `testosterone.yaml` parsing, or a workflow lifecycle (its `updated` date bumped; `python scripts/docs_vault.py lint` passes)
+- [ ] Relevant `docs/` note updated if this changes CLI args, exit codes, `qasight.yaml` parsing, or a workflow lifecycle (its `updated` date bumped; `python scripts/docs_vault.py lint` passes)

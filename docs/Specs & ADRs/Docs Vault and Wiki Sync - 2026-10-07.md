@@ -13,14 +13,14 @@ The project's notes existed in three places that drifted apart: `docs/` in the r
 
 ## Decision
 
-Introduced in [#86](https://github.com/taltal-beep/testosterone/pull/86), on top of the vault restructure in [#74](https://github.com/taltal-beep/testosterone/pull/74):
+Introduced in [#86](https://github.com/arieleven/qasight/pull/86), on top of the vault restructure in [#74](https://github.com/arieleven/qasight/pull/74):
 
 | Change | Where |
 |--------|-------|
 | `docs/` is the one source; the vault and the wiki are views of it | [Vault schema § Sync](../CLAUDE.md#sync) |
 | A schema for the vault: layers, frontmatter, writing rules, ingest / query / lint / log | [Vault schema](../CLAUDE.md) |
 | Frontmatter (`type`, `status`, `created`, `updated`) on every note; append-only [log](../log.md) | every note |
-| `scripts/docs_vault.py lint` checks frontmatter, broken links, wikilinks, orphans and stale `updated` dates; runs in CI and as a contract test | `scripts/docs_vault.py`, `tests/contract/testo_core/test_docs_vault.py` |
+| `scripts/docs_vault.py lint` checks frontmatter, broken links, wikilinks, orphans and stale `updated` dates; runs in CI and as a contract test | `scripts/docs_vault.py`, `tests/contract/qasight/test_docs_vault.py` |
 | `.github/workflows/wiki-sync.yml` regenerates the wiki from `docs/` on every push to `main` that touches the vault | [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) |
 | Six "second brain" rules in the root `CLAUDE.md`: vault first, docs in sync, point don't paste, architectural consistency, document significant work, archive don't rewrite | `CLAUDE.md` |
 

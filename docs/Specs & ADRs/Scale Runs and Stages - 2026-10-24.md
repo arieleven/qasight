@@ -12,7 +12,7 @@ related: "Deep Dive - Execution Logic, Team Server, Technical Debt Tracker, Proj
 
 The [Project Review](../project-review.md) listed two scale limits (A1, A2):
 
-- **A1.** `testo_api/cycle_execution_manager.py` started a daemon thread for every execution. One run per cycle was enforced, but nothing capped how many cycles ran at once. On a team server, ten people pressing Run started ten sets of test subprocesses on one host.
+- **A1.** `qasight_api/cycle_execution_manager.py` started a daemon thread for every execution. One run per cycle was enforced, but nothing capped how many cycles ran at once. On a team server, ten people pressing Run started ten sets of test subprocesses on one host.
 - **A2.** `engine/orchestrator.run_plan()` ran stages one at a time, so a cycle with an independent unit stage, API stage and UI stage took the sum of all three. Item 3 in the [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 Both fixes had to keep one engine entered through `CycleRunService` and stay small enough to explain.
@@ -39,4 +39,4 @@ Both fixes had to keep one engine entered through `CycleRunService` and stay sma
 - The queue lives in memory, like the execution registry. A restart drops queued runs; they never started, so nothing needs cleaning up. Running ones are handled by the existing orphan cleanup.
 - `TESTO_MAX_CONCURRENT_RUNS` is per server process. Running several API workers multiplies it.
 - Parallel stages share the host: N stages each with `workers: 4` can start 4N test processes. The [Deep Dive](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md#orchestrator-level--opt-in-parallel-stages) says so.
-- Tests: `tests/unit/test_cycle_execution_manager.py` (cap, FIFO, no double queueing, env parsing), `tests/unit/testo_core/engine/test_orchestrator_parallel.py` (cap, config order, `fail_fast`, crash isolation, duration, single renderer thread) and `tests/unit/testo_core/test_parallel_stages_config.py` (parsing, unique names, JSON Schema).
+- Tests: `tests/unit/test_cycle_execution_manager.py` (cap, FIFO, no double queueing, env parsing), `tests/unit/qasight/engine/test_orchestrator_parallel.py` (cap, config order, `fail_fast`, crash isolation, duration, single renderer thread) and `tests/unit/qasight/test_parallel_stages_config.py` (parsing, unique names, JSON Schema).

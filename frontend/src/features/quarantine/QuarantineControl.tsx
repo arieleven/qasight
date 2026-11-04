@@ -5,7 +5,7 @@ import { apiClient, type QuarantineItem } from "../../lib/api-client";
 import { Badge } from "../../components/ui";
 import { IS_STATIC_BUILD } from "../../lib/static-backend";
 
-/** fnmatch's rules (testo_core/engine/quarantine.py): `*`, `?` and `[...]`, case-sensitive. */
+/** fnmatch's rules (qasight/engine/quarantine.py): `*`, `?` and `[...]`, case-sensitive. */
 export function globMatches(pattern: string, name: string): boolean {
   let source = "";
   for (let i = 0; i < pattern.length; i += 1) {
@@ -42,8 +42,8 @@ export function matchingEntry(items: QuarantineItem[], name: string, fullName = 
  * "Quarantine" for a test, or a "Quarantined" badge and "Release" for one that is.
  *
  * A quarantined test still runs and is reported; its failure just stops failing the
- * run (`testo run`, `testo ingest`, `pytest --testo`). Only an exact stored entry can be
- * released here: a glob or a testosterone.yaml rule is changed where it was written.
+ * run (`qasight run`, `qasight ingest`, `pytest --qasight`). Only an exact stored entry can be
+ * released here: a glob or a qasight.yaml rule is changed where it was written.
  * The read-only demo shows the badge and no buttons.
  */
 export function QuarantineControl({

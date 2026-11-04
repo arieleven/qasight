@@ -11,7 +11,7 @@ def test_gitlab_template_invokes_testo_run_ci() -> None:
     assert '--config "$TESTO_CONFIG_PATH"' in template
     assert '--cycle "$TESTO_CYCLE"' in template
     assert "--no-persist" in template
-    assert 'testo "${TESTO_ARGS[@]}"' in template
+    assert 'qasight "${TESTO_ARGS[@]}"' in template
 
 
 def test_gitlab_template_defines_summary_artifacts() -> None:

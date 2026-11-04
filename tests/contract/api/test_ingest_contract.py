@@ -1,4 +1,4 @@
-"""``POST /api/v1/ingest`` (``testo ingest --server``), the UI served by the API
+"""``POST /api/v1/ingest`` (``qasight ingest --server``), the UI served by the API
 (``TESTO_UI_DIR``), and the upload client."""
 
 from __future__ import annotations
@@ -9,9 +9,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.repository.db import get_repository, reset_repository_cache
-from testo_core.services import ingest_client, junit_ingest
+from qasight.repository.db import get_repository, reset_repository_cache
+from qasight.services import ingest_client, junit_ingest
+from qasight_api.main import create_app
 
 PASSING = b"""<testsuite name="cart"><testcase classname="cart" name="adds" time="0.2"/>
 <testcase classname="cart" name="skips" time="0"><skipped/></testcase></testsuite>"""
@@ -24,9 +24,9 @@ def _isolated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     for name in ("TESTO_API_TOKEN", "TESTO_CORS_ORIGINS", "TESTO_UI_DIR"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
-    monkeypatch.setattr("testo_core.paths.ORCHESTRATOR_ROOT", tmp_path)
-    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", tmp_path / "static" / "history")
-    monkeypatch.chdir(tmp_path)  # no testosterone.yaml here: built-in defaults
+    monkeypatch.setattr("qasight.paths.ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr("qasight.paths.STATIC_HISTORY_ROOT", tmp_path / "static" / "history")
+    monkeypatch.chdir(tmp_path)  # no qasight.yaml here: built-in defaults
     reset_repository_cache()
     yield
     reset_repository_cache()
@@ -136,7 +136,7 @@ def test_unsafe_cycle_name_is_400(cycle: str) -> None:
 
 def test_oversized_file_is_400(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(junit_ingest, "MAX_FILE_BYTES", 10)
-    monkeypatch.setattr("testo_api.routes.ingest.MAX_FILE_BYTES", 10)
+    monkeypatch.setattr("qasight_api.routes.ingest.MAX_FILE_BYTES", 10)
     resp = TestClient(create_app()).post(
         "/api/v1/ingest", data={"cycle": "web"}, files=_files(("ok.xml", PASSING))
     )
@@ -151,7 +151,7 @@ def test_oversized_file_is_400(monkeypatch: pytest.MonkeyPatch) -> None:
 def ui(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     dist = tmp_path / "dist"
     (dist / "assets").mkdir(parents=True)
-    (dist / "index.html").write_text("<html>testo ui</html>", encoding="utf-8")
+    (dist / "index.html").write_text("<html>qasight ui</html>", encoding="utf-8")
     (dist / "assets" / "app.js").write_text("console.log(1)", encoding="utf-8")
     monkeypatch.setenv("TESTO_UI_DIR", str(dist))
     return dist
@@ -159,12 +159,12 @@ def ui(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_ui_routes_fall_back_to_index_but_api_404s_stay(ui: Path) -> None:
     client = TestClient(create_app())
-    assert "testo ui" in client.get("/").text
-    assert "testo ui" in client.get("/runs/some-id").text
+    assert "qasight ui" in client.get("/").text
+    assert "qasight ui" in client.get("/runs/some-id").text
     assert client.get("/assets/app.js").text == "console.log(1)"
     missing = client.get("/api/v1/nope")
     assert missing.status_code == 404
-    assert "testo ui" not in missing.text
+    assert "qasight ui" not in missing.text
     assert client.get("/api/v1/health/live").status_code == 200
 
 
@@ -240,7 +240,7 @@ def test_client_posts_files_and_raises_the_servers_message(tmp_path: Path) -> No
 def test_cli_upload_exit_codes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from typer.testing import CliRunner
 
-    from testo_core.cli.app import app
+    from qasight.cli.app import app
 
     (tmp_path / "a.xml").write_bytes(PASSING)
     runner = CliRunner()

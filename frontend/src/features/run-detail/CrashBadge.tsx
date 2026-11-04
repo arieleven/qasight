@@ -1,6 +1,6 @@
 import { Badge } from "../../components/ui";
 
-// Kinds the API reports (testo_core/engine/crash_signatures.py).
+// Kinds the API reports (qasight/engine/crash_signatures.py).
 const CRASH_LABELS: Record<string, { label: string; title: string }> = {
   stack_overflow: {
     label: "Stack overflow",

@@ -13,7 +13,7 @@ Rules for the `docs/` vault, the project's second brain. It follows the LLM-wiki
 
 | Layer | Where | Rule |
 |-------|-------|------|
-| Sources | The code, `testosterone.yaml`, `CHANGELOG.md`, merged pull requests | The source of truth. Notes describe it and never override it |
+| Sources | The code, `qasight.yaml`, `CHANGELOG.md`, merged pull requests | The source of truth. Notes describe it and never override it |
 | Notes | Every folder under `docs/` except `Archive/` | Maintained. They describe the code as it is today |
 | Archive | `docs/Archive/` | Frozen. Dated plans, audits and checklists; fix a broken link, never the content |
 | Schema | This file | Changes when the conventions change |
@@ -55,7 +55,7 @@ updated: YYYY-MM-DD
 
 ### Ingest: every pull request
 
-1. List what the change alters: CLI flags, exit codes, `testosterone.yaml` keys, engine flow, API, CI, release steps.
+1. List what the change alters: CLI flags, exit codes, `qasight.yaml` keys, engine flow, API, CI, release steps.
 2. Find the notes that own those facts through the [Agent Context Guide](Prompts%20&%20Snippets/Agent%20Context%20Guide.md) and update them in the same pull request. Bump `updated`.
 3. A design decision gets a note under `Specs & ADRs/`, linked from its [README](Specs%20&%20ADRs/README.md).
 4. A note that stops describing the code moves to `Archive/` with `type: archive` and `status: archived`, and is linked from the [Archive README](Archive/README.md).

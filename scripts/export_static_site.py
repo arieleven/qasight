@@ -46,7 +46,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
                                            (<id> is test_history.stable_id(key))
     data/resources.json                    GET /api/v1/resources (with --demo-resources:
-                                           made-up pools from testo_core/resources/demo.py)
+                                           made-up pools from qasight/resources/demo.py)
     data/runs.json                         GET /api/v1/runs
     data/runs/<run_id>/detail.json         GET /api/v1/runs/{id}
     data/runs/<run_id>/reports.json        GET /api/v1/runs/{id}/reports
@@ -111,7 +111,7 @@ def _git(*args: str) -> str | None:
 def _scrub(payload: Any) -> Any:
     """Make checkout-absolute paths relative before they are published.
 
-    Several payloads echo filesystem paths (the resolved ``testosterone.yaml``,
+    Several payloads echo filesystem paths (the resolved ``qasight.yaml``,
     artifact snapshot dirs). On a public site those would expose the CI runner's
     directory layout and read as noise, so the checkout root is stripped.
     """
@@ -135,7 +135,7 @@ def _cache_run_cases() -> Iterator[None]:
     30-minute limit. Recorded runs do not change while the export reads them, so a
     cache by run id in this throwaway process is safe.
     """
-    from testo_core.services import flaky_service
+    from qasight.services import flaky_service
 
     load = flaky_service._cases_for_run
     cache: dict[str, dict[str, dict[str, Any]]] = {}
@@ -174,7 +174,7 @@ class Exporter:
 
         # The export switches AI on for its own run; keep that out of the local settings file.
         os.environ["TESTO_AI_SETTINGS_PATH"] = ""
-        from testo_api.main import create_app
+        from qasight_api.main import create_app
 
         self.out_dir = out_dir
         self.data_dir = out_dir / "data"
@@ -312,7 +312,7 @@ class Exporter:
 
     def export_tests(self, cycle: str) -> None:
         """The cycle's test list, and one history file per test for the per-test page."""
-        from testo_core.services.test_history import stable_id
+        from qasight.services.test_history import stable_id
 
         listing = self._dump(
             f"/api/v1/analytics/tests?cycle={quote(cycle, safe='')}", f"tests/{cycle}.json"
@@ -390,12 +390,12 @@ class Exporter:
         self._dump("/api/v1/resources", "resources.json")
 
     def seed_demo_resources(self) -> None:
-        """Made-up pools and leases (``testo lease demo``), so the Resources page has content.
+        """Made-up pools and leases (``qasight lease demo``), so the Resources page has content.
 
         The demo's runs never lease keys, so without this the page would be empty.
         """
-        from testo_core.resources.demo import seed_demo
-        from testo_core.resources.store import LeaseStore
+        from qasight.resources.demo import seed_demo
+        from qasight.resources.store import LeaseStore
 
         result = seed_demo(LeaseStore())
         print(f"[export] demo resources: {result.held} held, {result.waiting} waiting")
@@ -404,7 +404,7 @@ class Exporter:
 
     def copy_reports(self, runs: list[dict[str, Any]]) -> int:
         """Copy ``static/history/<run_id>/`` for each exported run into the site."""
-        from testo_core.paths import STATIC_HISTORY_ROOT
+        from qasight.paths import STATIC_HISTORY_ROOT
 
         copied = 0
         for item in runs:
@@ -508,7 +508,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--demo-resources",
         action="store_true",
-        help="Fill the history database with made-up resource pools first (testo lease demo), "
+        help="Fill the history database with made-up resource pools first (qasight lease demo), "
         "so the Resources page shows something. Only for a throwaway demo database.",
     )
     args = parser.parse_args(argv)

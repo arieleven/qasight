@@ -87,7 +87,7 @@ export interface paths {
         };
         /**
          * Get Delta Case Changes
-         * @description Per-test added/removed/regression/fix breakdown -- UI parity with ``testo diff``.
+         * @description Per-test added/removed/regression/fix breakdown -- UI parity with ``qasight diff``.
          *
          *     Computed on-demand from each run's own artifact snapshot every request (no
          *     caching): extracts both snapshots into a temp dir and matches cases by
@@ -115,7 +115,7 @@ export interface paths {
          *
          *     Tests that failed every one of their last runs come back as ``broken`` instead.
          *
-         *     UI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.
+         *     UI parity with ``qasight flaky --cycle``; see ``qasight/services/flaky_service.py``.
          */
         get: operations["get_flaky_tests_api_v1_analytics_flaky_get"];
         put?: never;
@@ -138,7 +138,7 @@ export interface paths {
          * @description The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.
          *
          *     An issue is failing when one of its tests failed in its latest run. Read-only: the
-         *     issue tracker is never called. See ``testo_core/services/test_issues.py``.
+         *     issue tracker is never called. See ``qasight/services/test_issues.py``.
          */
         get: operations["get_cycle_issues_api_v1_analytics_issues_get"];
         put?: never;
@@ -161,7 +161,7 @@ export interface paths {
          * @description A cycle's tests counted by label (feature, story, severity, owner, tag...).
          *
          *     Each label's tests, how many failed in their latest run and how many are flaky,
-         *     features first. See ``testo_core/services/test_labels.py``.
+         *     features first. See ``qasight/services/test_labels.py``.
          */
         get: operations["get_cycle_labels_api_v1_analytics_labels_get"];
         put?: never;
@@ -378,7 +378,7 @@ export interface paths {
         };
         /**
          * List Cycles
-         * @description Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs.
+         * @description Every cycle in the config (as ``qasight cycles list``), then cycles that only have recorded runs.
          */
         get: operations["list_cycles_api_v1_cycles_get"];
         put?: never;
@@ -398,7 +398,7 @@ export interface paths {
         };
         /**
          * Get Cycle
-         * @description Resolved view of one cycle (as ``testo cycles show <name>``), or a recorded-only cycle.
+         * @description Resolved view of one cycle (as ``qasight cycles show <name>``), or a recorded-only cycle.
          */
         get: operations["get_cycle_api_v1_cycles__cycle__get"];
         put?: never;
@@ -550,7 +550,7 @@ export interface paths {
          * Ingest Reports
          * @description Record JUnit XML files as one run of *cycle*. Nothing in the upload is executed.
          *
-         *     ``exit_code`` follows ``testo run``: 0 when every test passed or was skipped,
+         *     ``exit_code`` follows ``qasight run``: 0 when every test passed or was skipped,
          *     1 when one failed. Needs ``Authorization: Bearer <TESTO_API_TOKEN>`` when the
          *     server has a token set, like every other write.
          */
@@ -636,7 +636,7 @@ export interface paths {
          * List Quarantine
          * @description Every quarantined test kept on the server, newest first, optionally one cycle's.
          *
-         *     ``testosterone.yaml`` rules aren't listed here; runs apply both.
+         *     ``qasight.yaml`` rules aren't listed here; runs apply both.
          */
         get: operations["list_quarantine_api_v1_quarantine_get"];
         /**
@@ -664,7 +664,7 @@ export interface paths {
         };
         /**
          * Get Releases
-         * @description Every release a run recorded (``testo run --release``), newest first.
+         * @description Every release a run recorded (``qasight run --release``), newest first.
          */
         get: operations["get_releases_api_v1_releases_get"];
         put?: never;
@@ -725,7 +725,7 @@ export interface paths {
         };
         /**
          * Export Report
-         * @description The report as a file: the same as ``testo export FORMAT`` on this server's history.
+         * @description The report as a file: the same as ``qasight export FORMAT`` on this server's history.
          *
          *     PDF and PNG need the ``export`` extra and Chromium on the server; PowerPoint and
          *     Excel need the ``export`` extra; HTML needs the built UI (bundled in released wheels).
@@ -768,7 +768,7 @@ export interface paths {
         };
         /**
          * List Actions
-         * @description Provider commands people ran (``testo pool add/remove/sweep --apply``), newest first.
+         * @description Provider commands people ran (``qasight pool add/remove/sweep --apply``), newest first.
          */
         get: operations["list_actions_api_v1_resources_actions_get"];
         put?: never;
@@ -934,7 +934,7 @@ export interface paths {
          * Run Settings
          * @description How long runs are kept (``history.retention``) and the default stage time limit.
          *
-         *     Read from ``testosterone.yaml``, with ``TESTO_RETENTION_DAYS`` /
+         *     Read from ``qasight.yaml``, with ``TESTO_RETENTION_DAYS`` /
          *     ``TESTO_RETENTION_RUNS_PER_CYCLE`` on top (they also work without a file). The
          *     server reads retention when it starts, so restart it after an edit.
          */
@@ -1049,7 +1049,7 @@ export interface paths {
          * Get Run Markdown
          * @description The run as Markdown (headline, stages, failing tests, changes since its baseline).
          *
-         *     The same text as ``testo report markdown --run-id``, so the UI's "Copy summary"
+         *     The same text as ``qasight report markdown --run-id``, so the UI's "Copy summary"
          *     pastes into a pull request, Confluence, Notion or Jira the way the CLI's does.
          */
         get: operations["get_run_markdown_api_v1_runs__run_id__markdown_get"];
@@ -1070,7 +1070,7 @@ export interface paths {
         };
         /**
          * Get Run Pyramid
-         * @description Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``).
+         * @description Unit/integration/e2e tier composition for a run (UI/API parity with ``qasight report pyramid``).
          */
         get: operations["get_run_pyramid_api_v1_runs__run_id__pyramid_get"];
         put?: never;
@@ -1188,7 +1188,7 @@ export interface components {
     schemas: {
         /**
          * AdhocExecutionRequest
-         * @description Run one framework directly, without a cycle in ``testosterone.yaml``.
+         * @description Run one framework directly, without a cycle in ``qasight.yaml``.
          */
         AdhocExecutionRequest: {
             /** Args */
@@ -2002,7 +2002,7 @@ export interface components {
          * DeliveryResponse
          * @description Time to fix failing tests, suite and CI time, and how often the default branch was red.
          *
-         *     See ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no
+         *     See ``qasight/services/delivery_metrics.py``. ``default_branch`` is null when no
          *     run recorded a branch; then every run counts as the default branch.
          */
         DeliveryResponse: {
@@ -2404,7 +2404,7 @@ export interface components {
         };
         /**
          * IngestResponse
-         * @description A recorded upload (``POST /api/v1/ingest``, what ``testo ingest --server`` sends).
+         * @description A recorded upload (``POST /api/v1/ingest``, what ``qasight ingest --server`` sends).
          */
         IngestResponse: {
             /** Cycle */
@@ -2472,7 +2472,7 @@ export interface components {
         };
         /**
          * ManagerReportResponse
-         * @description How testing went over a period: the ``/report`` page and every ``testo export`` format.
+         * @description How testing went over a period: the ``/report`` page and every ``qasight export`` format.
          */
         ManagerReportResponse: {
             /** Cycles */
@@ -2945,7 +2945,7 @@ export interface components {
         /**
          * ResourceActionRequest
          * @description ``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran
-         *     with ``testo pool ... --apply``. The server only keeps this log; it never runs one.
+         *     with ``qasight pool ... --apply``. The server only keeps this log; it never runs one.
          */
         ResourceActionRequest: {
             /**
@@ -3178,7 +3178,7 @@ export interface components {
         };
         /**
          * ResourceTakeRequest
-         * @description ``POST /api/v1/resources/leases``: what ``testo lease`` and the workers send.
+         * @description ``POST /api/v1/resources/leases``: what ``qasight lease`` and the workers send.
          *
          *     ``spec`` is the pool from the caller's ``resources:`` config, without its hooks:
          *     the server only keeps the leases, so it learns pools from the people using them.
@@ -3402,7 +3402,7 @@ export interface components {
         };
         /**
          * RunMarkdownResponse
-         * @description A run as GitHub-flavored Markdown, the same text as ``testo report markdown``.
+         * @description A run as GitHub-flavored Markdown, the same text as ``qasight report markdown``.
          */
         RunMarkdownResponse: {
             /** Markdown */
@@ -3441,7 +3441,7 @@ export interface components {
         };
         /**
          * RunSettingsResponse
-         * @description How long runs are kept and how long a stage may take: read from ``testosterone.yaml``.
+         * @description How long runs are kept and how long a stage may take: read from ``qasight.yaml``.
          */
         RunSettingsResponse: {
             /** Cleanup Interval Hours */
@@ -3477,7 +3477,7 @@ export interface components {
          * SignalResponse
          * @description What the red runs were (real bugs vs noise) and what flaky tests cost.
          *
-         *     See ``testo_core/services/failure_signal.py``.
+         *     See ``qasight/services/failure_signal.py``.
          */
         SignalResponse: {
             /** By Cause */
@@ -3671,7 +3671,7 @@ export interface components {
         };
         /**
          * TestSummaryItem
-         * @description One test across a cycle's recent runs (``testo_core/services/test_history.py``).
+         * @description One test across a cycle's recent runs (``qasight/services/test_history.py``).
          */
         TestSummaryItem: {
             /** Failed */

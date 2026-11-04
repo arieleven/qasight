@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../schema/qasight.schema.json
+version: 1
+cycles:
+  unit:
+    description: unittest through the example plugin.
+    stages:
+      - name: unit
+        equipment: unittest        # from the qasight.frameworks entry point
+        args: [tests.test_math]
+reporters:
+  - type: json-summary              # from the qasight.reporters entry point
+    out_dir: reports

@@ -1,8 +1,8 @@
-"""GitHub Actions wrapper around ``testo run --ci`` and ``testo ingest --ci``.
+"""GitHub Actions wrapper around ``qasight run --ci`` and ``qasight ingest --ci``.
 
-With a ``testosterone.yaml`` it runs one cycle (or every cycle, for ``all``).
+With a ``qasight.yaml`` it runs one cycle (or every cycle, for ``all``).
 With no config file at all, or when the ``results`` input names files, it
-records result files an earlier step wrote instead (``testo ingest``; with no
+records result files an earlier step wrote instead (``qasight ingest``; with no
 ``results`` it finds them itself), so a workflow needs no config to get the
 summary and the pull request comment. Either way it echoes the NDJSON event
 stream and turns the final ``plan_finished`` event into step outputs
@@ -10,15 +10,15 @@ stream and turns the final ``plan_finished`` event into step outputs
 
 Before that, ``prepare-history`` decides where the run history lives: unless
 ``DATABASE_URL`` or the config's ``database.url`` says otherwise, a SQLite
-file under ``~/.cache/testosterone`` that the action restores from and saves
+file under ``~/.cache/qasight`` that the action restores from and saves
 to the Actions cache, so each run is compared with the ones before it.
 
 With the run persisted, it also renders the run as Markdown
-(``testo report markdown``) for the job summary and, when asked, for one
+(``qasight report markdown``) for the job summary and, when asked, for one
 pull request comment per cycle that later runs edit in place; prints failing
-tests as annotations on the diff (``testo report annotations``); sends a Slack
-or Teams alert when a webhook secret is given (``testo notify``); and, when
-asked, opens one issue per newly flaky test (``testo flaky --new``). All of
+tests as annotations on the diff (``qasight report annotations``); sends a Slack
+or Teams alert when a webhook secret is given (``qasight notify``); and, when
+asked, opens one issue per newly flaky test (``qasight flaky --new``). All of
 it is best-effort: a failure there is a warning, never a changed exit code.
 """
 
@@ -51,7 +51,7 @@ def _parse_bool(value: str, *, default: bool) -> bool:
 def build_command(
     *, config_path: str, cycle: str, ci_mode: bool, persist: bool, coverage: str = ""
 ) -> list[str]:
-    cmd = ["testo", "run"]
+    cmd = ["qasight", "run"]
     if config_path:
         cmd += ["--config", config_path]
     if cycle:
@@ -65,12 +65,14 @@ def build_command(
     return cmd
 
 
-CONFIG_NAMES = ("testosterone.yaml", "testosterone.yml")
+# The testosterone names are from before the rename to QASight (1.6).
+CONFIG_NAMES = ("qasight.yaml", "qasight.yml", "testosterone.yaml", "testosterone.yml")
+# Kept from before the rename so the Actions cache of existing users still restores.
 HISTORY_DIR = Path("~/.cache/testosterone")
 
 
 def has_config(workspace: Path, config_path: str) -> bool:
-    """Whether a Testosterone config is given or would be discovered in *workspace*."""
+    """Whether a QASight config is given or would be discovered in *workspace*."""
     if config_path:
         return True
     if any((workspace / name).is_file() for name in CONFIG_NAMES):
@@ -79,7 +81,7 @@ def has_config(workspace: Path, config_path: str) -> bool:
         pyproject = (workspace / "pyproject.toml").read_text(encoding="utf-8")
     except OSError:
         return False
-    return "[tool.testosterone]" in pyproject
+    return "[tool.qasight]" in pyproject or "[tool.testosterone]" in pyproject
 
 
 def split_results(value: str) -> list[str]:
@@ -90,7 +92,7 @@ def split_results(value: str) -> list[str]:
 def build_ingest_command(
     *, results: list[str], cycle: str, ci_mode: bool, persist: bool, coverage: str = ""
 ) -> list[str]:
-    cmd = ["testo", "ingest", *results]
+    cmd = ["qasight", "ingest", *results]
     if cycle and cycle != "all":
         cmd += ["--cycle", cycle]
     if ci_mode:
@@ -127,7 +129,7 @@ def prepare_history(*, history: str, config_path: str, env: dict[str, str]) -> d
         return outputs
     workspace = Path(env.get("GITHUB_WORKSPACE") or ".")
     try:
-        from testo_core.config.database_section import (
+        from qasight.config.database_section import (
             database_url_from_discovered_config,
             extract_database_url_from_mapping,
             load_raw_config_dict,
@@ -138,7 +140,7 @@ def prepare_history(*, history: str, config_path: str, env: dict[str, str]) -> d
             configured = extract_database_url_from_mapping(raw)
         else:
             configured = database_url_from_discovered_config(cwd=workspace)
-    except Exception:  # noqa: BLE001 - an older testo-core or a broken config: no cache, no harm
+    except Exception:  # noqa: BLE001 - an older qasight or a broken config: no cache, no harm
         return outputs
     if configured:
         return outputs
@@ -182,7 +184,7 @@ def _extract_summary(stdout: str, *, fallback_exit_code: int) -> dict[str, Any]:
             return {**payload, "exit_code": int(fallback_exit_code)}
     return {
         "event": "error",
-        "error": "Unable to parse a plan_finished event from testo output.",
+        "error": "Unable to parse a plan_finished event from qasight output.",
         "exit_code": int(fallback_exit_code),
     }
 
@@ -226,8 +228,8 @@ def _warn(message: str) -> None:
 
 
 def render_markdown(*, cycle: str, env: dict[str, str]) -> str | None:
-    """``testo report markdown`` for the run that just finished, or ``None``."""
-    cmd = ["testo", "report", "markdown"]
+    """``qasight report markdown`` for the run that just finished, or ``None``."""
+    cmd = ["qasight", "report", "markdown"]
     if cycle and cycle != "all":
         cmd += ["--cycle", cycle]
     server, repo, run_id = (
@@ -343,7 +345,7 @@ def write_comment_artifact(*, markdown: str, cycle: str, env: dict[str, str]) ->
 
 
 def safe_comment(text: str) -> str | None:
-    """*text* if it is a Testosterone comment of a sane size, with mentions defused."""
+    """*text* if it is a QASight comment of a sane size, with mentions defused."""
     if not text.startswith(COMMENT_MARKER) or len(text.encode("utf-8")) > MAX_COMMENT_BYTES:
         return None
     first, _, rest = text.partition("\n")
@@ -403,7 +405,7 @@ def post_comments(*, folder: Path, env: dict[str, str]) -> int:
     for path in files:
         body = safe_comment(path.read_text(encoding="utf-8", errors="replace"))
         if body is None:
-            _warn(f"skipped {path.name}: not a Testosterone comment, or too large")
+            _warn(f"skipped {path.name}: not a QASight comment, or too large")
             continue
         try:
             upsert_pr_comment(markdown=body, number=number, token=token, env=env)
@@ -415,7 +417,7 @@ def post_comments(*, folder: Path, env: dict[str, str]) -> int:
 
 def _testo(cmd: list[str], env: dict[str, str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603
-        ["testo", *cmd], check=False, capture_output=True, text=True, env=env
+        ["qasight", *cmd], check=False, capture_output=True, text=True, env=env
     )
 
 
@@ -427,7 +429,7 @@ def _run_url(env: dict[str, str]) -> str | None:
 
 
 def annotate(*, cycle: str, config_path: str, env: dict[str, str]) -> None:
-    """Print ``testo report annotations`` so GitHub puts failing tests on the diff."""
+    """Print ``qasight report annotations`` so GitHub puts failing tests on the diff."""
     cmd = ["report", "annotations", "--cycle", cycle]
     if env.get("GITHUB_WORKSPACE"):
         cmd += ["--workspace", env["GITHUB_WORKSPACE"]]
@@ -441,7 +443,7 @@ def annotate(*, cycle: str, config_path: str, env: dict[str, str]) -> None:
 
 
 def notify(*, cycle: str, when: str, env: dict[str, str]) -> None:
-    """``testo notify`` to every chat whose webhook secret was passed in."""
+    """``qasight notify`` to every chat whose webhook secret was passed in."""
     channels = [
         c for c in ("slack", "teams") if env.get(f"TESTO_{c.upper()}_WEBHOOK_URL", "").strip()
     ]
@@ -479,9 +481,9 @@ def _flaky_issue_body(test: dict[str, Any], *, cycle: str, run_url: str | None) 
         lines.append(f"- Found by [this workflow run]({run_url})")
     lines += [
         "",
-        f"Check it locally with `testo flaky --cycle {cycle}`. Close this issue once it is fixed.",
+        f"Check it locally with `qasight flaky --cycle {cycle}`. Close this issue once it is fixed.",
         "",
-        "<sub>Opened by [Testosterone](https://github.com/taltal-beep/testosterone)</sub>",
+        "<sub>Opened by [QASight](https://github.com/arieleven/qasight)</sub>",
     ]
     return "\n".join(lines)
 
@@ -527,10 +529,10 @@ def history_note(env: dict[str, str]) -> str | None:
 
 
 def stage_result_dirs(*, workspace: Path, config_path: str, cycle: str) -> list[str]:
-    """The ``allure-results`` folders ``testo run`` wrote for *cycle*, one per stage."""
+    """The ``allure-results`` folders ``qasight run`` wrote for *cycle*, one per stage."""
     try:
-        from testo_core.config.loader import discover_and_load
-        from testo_core.paths import plan_artifacts_dir
+        from qasight.config.loader import discover_and_load
+        from qasight.paths import plan_artifacts_dir
 
         cfg = discover_and_load(
             config_path=(workspace / config_path) if config_path else None, cwd=workspace
@@ -539,7 +541,7 @@ def stage_result_dirs(*, workspace: Path, config_path: str, cycle: str) -> list[
         if not root.is_absolute():
             root = workspace / root
         plan_dir = plan_artifacts_dir(root, cycle)
-    except Exception:  # noqa: BLE001 - an older testo-core or a broken config: nothing to upload
+    except Exception:  # noqa: BLE001 - an older qasight or a broken config: nothing to upload
         return []
     return sorted(str(d) for d in plan_dir.glob("*/allure-results") if d.is_dir())
 
@@ -552,7 +554,7 @@ def cycle_stage_name(result_dirs: list[str]) -> str:
 def upload_to_server(
     *, cycle: str, reports: list[str], stage: str, server: str, token: str, env: dict[str, str]
 ) -> None:
-    """Send the same results to a team server with ``testo ingest --server`` (best effort)."""
+    """Send the same results to a team server with ``qasight ingest --server`` (best effort)."""
     cmd = ["ingest", *reports, "--server", server, "--ci"]
     if cycle:
         cmd += ["--cycle", cycle]
@@ -580,7 +582,7 @@ def main(argv: list[str] | None = None) -> int:
         folder = Path(posting.parse_args(argv[1:]).dir)
         print(f"Posted {post_comments(folder=folder, env=dict(os.environ))} comment(s).")
         return 0
-    parser = argparse.ArgumentParser(description="Run a Testosterone cycle in GitHub Actions.")
+    parser = argparse.ArgumentParser(description="Run a QASight cycle in GitHub Actions.")
     parser.add_argument("--config-path", default="")
     parser.add_argument("--cycle", default="")
     parser.add_argument("--ci-mode", default="true")
@@ -664,7 +666,7 @@ def main(argv: list[str] | None = None) -> int:
     finished = summary.get("event") == "plan_finished"
     if persist and not finished:
         _warn(
-            f"testo {'ingest' if ingest else 'run'} did not finish a run (exit code "
+            f"qasight {'ingest' if ingest else 'run'} did not finish a run (exit code "
             f"{proc.returncode}); no summary, comment, annotations or alert were published"
         )
     if persist and finished:

@@ -8,10 +8,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.login_throttle import login_throttle
-from testo_api.main import create_app
-from testo_api.security import account_store
-from testo_core.repository.db_config import reset_engine_cache
+from qasight.repository.db_config import reset_engine_cache
+from qasight_api.login_throttle import login_throttle
+from qasight_api.main import create_app
+from qasight_api.security import account_store
 
 _READ = "/api/v1/runs"
 _OLD = "old-token-0123456789"

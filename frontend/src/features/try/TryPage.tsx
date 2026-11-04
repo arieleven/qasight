@@ -108,23 +108,23 @@ function Results({ report, names }: { report: JunitReport; names: string[] }) {
 
       <Card title="Get this on every pull request">
         <p className="text-sm text-ink-300">
-          One file shows one run. In your repository, <code className="font-mono text-xs">testo init</code> finds
+          One file shows one run. In your repository, <code className="font-mono text-xs">qasight init</code> finds
           your test runners, writes the config and a GitHub Actions workflow that comments on each pull request,
           and records a first run:
         </p>
         <pre className="mt-2 overflow-x-auto rounded-xl bg-ink-950/80 p-3 font-mono text-xs text-ink-100" data-testid="try-setup">
-          {"pip install 'testo-core[api]'\ntesto init --dry-run   # see the files first\ntesto init --pr        # write them and open the pull request\ntesto ui"}
+          {"pip install 'qasight[api]'\nqasight init --dry-run   # see the files first\nqasight init --pr        # write them and open the pull request\nqasight ui"}
         </pre>
         <p className="mt-2 text-xs text-ink-400">
-          No Python? <code className="font-mono">uvx --from testo-core testo init</code>. Only want to record results
-          you already have? <code className="font-mono">testo ingest</code> finds them.
+          No Python? <code className="font-mono">uvx --from qasight qasight init</code>. Only want to record results
+          you already have? <code className="font-mono">qasight ingest</code> finds them.
         </p>
       </Card>
     </>
   );
 }
 
-/** Drop JUnit XML and see it the way Testosterone shows a run, entirely in the browser. */
+/** Drop JUnit XML and see it the way QASight shows a run, entirely in the browser. */
 export function TryPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);

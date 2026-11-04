@@ -1,5 +1,5 @@
 // Request/response types are generated from the FastAPI OpenAPI schema, so the
-// backend's Pydantic models in testo_api/models.py are the single source of
+// backend's Pydantic models in qasight_api/models.py are the single source of
 // truth for the HTTP contract. To regenerate after changing a model:
 //   python scripts/export_openapi.py && npm --prefix frontend run gen:api
 // CI fails if either generated file is stale.

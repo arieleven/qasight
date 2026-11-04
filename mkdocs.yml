@@ -7,11 +7,11 @@
 #
 # See docs/Specs & ADRs/Docs Site - 2026-10-19.md
 
-site_name: Testosterone
+site_name: QASight
 site_description: See what broke, what's flaky and what got slower on every run. Test history, run-to-run diffs and flaky detection for any test runner.
-site_url: https://taltal-beep.github.io/testosterone/docs/
-repo_url: https://github.com/taltal-beep/testosterone
-repo_name: taltal-beep/testosterone
+site_url: https://arieleven.github.io/qasight/docs/
+repo_url: https://github.com/arieleven/qasight
+repo_name: arieleven/qasight
 edit_uri: edit/main/docs/
 
 docs_dir: docs
@@ -82,15 +82,15 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/taltal-beep/testosterone
+      link: https://github.com/arieleven/qasight
     - icon: fontawesome/brands/python
-      link: https://pypi.org/project/testo-core/
+      link: https://pypi.org/project/qasight/
 
 nav:
   - Home: Index.md
   - Getting Started: Getting Started.md
   - Compared With Other Tools: Compared With Other Tools.md
-  - Using Testosterone:
+  - Using QASight:
       - Command Reference: CLI Commands/Command Reference.md
       - Troubleshooting and Error Codes: CLI Commands/Troubleshooting and Error Codes.md
       - CI-CD Pipeline Setup: Processes & Guides/CI-CD Pipeline Setup.md
@@ -119,6 +119,7 @@ nav:
       - Importer and Integration Bug Hunt: Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md
       - Engine Fixes: Specs & ADRs/Engine Fixes - 2026-11-01.md
       - Lifecycle Fixes: Specs & ADRs/Lifecycle Fixes - 2026-11-02.md
+      - Rename to QASight: Specs & ADRs/Rename to QASight - 2026-11-04.md
       - MCP Server: Specs & ADRs/MCP Server - 2026-11-01.md
       - Affected Test Selection: Specs & ADRs/Affected Test Selection - 2026-10-30.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md

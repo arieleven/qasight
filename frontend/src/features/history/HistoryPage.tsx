@@ -198,7 +198,7 @@ export function HistoryPage() {
         <EmptyState
           mascot={<MuscleShrug />}
           title="No runs yet"
-          message="Run a cycle or record a report with testo ingest, and it will show up here."
+          message="Run a cycle or record a report with qasight ingest, and it will show up here."
           action={
             <Link to="/cycles" className={buttonClasses("primary", "sm")}>
               Browse cycles

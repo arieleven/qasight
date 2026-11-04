@@ -70,8 +70,8 @@ jobs:
           python -m pip install \
             --index-url "https://${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_TOKEN }}@${INDEX#https://}" \
             --extra-index-url https://pypi.org/simple/ \
-            testo-core==${{ steps.version.outputs.version }}
-          testo --version
+            qasight==${{ steps.version.outputs.version }}
+          qasight --version
 
   docker:
     name: Push runner image
@@ -103,12 +103,12 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile.testo-runner
+          file: Dockerfile.qasight-runner
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/testo-runner:${{ steps.version.outputs.version }}
-            ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/testo-runner:latest
+            ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/qasight-runner:${{ steps.version.outputs.version }}
+            ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/qasight-runner:latest
           build-args: |
             TESTO_VERSION=${{ steps.version.outputs.version }}
             TESTO_COMMIT_SHA=${{ github.sha }}
@@ -118,5 +118,5 @@ jobs:
       - name: Verify image
         run: |
           docker run --rm \
-            ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/testo-runner:${{ steps.version.outputs.version }} \
+            ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/qasight-runner:${{ steps.version.outputs.version }} \
             run --help

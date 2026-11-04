@@ -5,10 +5,10 @@ Usage::
     python scripts/db_revision.py "add cycle column to runrecord"
 
 Builds the current head schema in a throwaway SQLite database, compares it with
-``testo_core.repository.models`` and writes ``testo_core/repository/migrations/versions/<n>_<slug>.py``.
+``qasight.repository.models`` and writes ``qasight/repository/migrations/versions/<n>_<slug>.py``.
 Read the script before committing it: autogenerate cannot see a rename (it
 emits drop + add) and ignores server defaults. Then run
-``pytest tests/unit/testo_core/repository/test_migrations.py``.
+``pytest tests/unit/qasight/repository/test_migrations.py``.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from sqlalchemy import create_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from testo_core.repository import migrations  # noqa: E402
+from qasight.repository import migrations  # noqa: E402
 
 
 def _next_revision_id() -> str:

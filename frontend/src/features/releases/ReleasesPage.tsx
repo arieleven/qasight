@@ -18,7 +18,7 @@ export function releasePath(release: string): string {
 function HowTo() {
   return (
     <>
-      Record the release a run tests with <code>testo run --release 2.3</code> (or <code>testo ingest --release</code>, the{" "}
+      Record the release a run tests with <code>qasight run --release 2.3</code> (or <code>qasight ingest --release</code>, the{" "}
       <code>TESTO_RELEASE</code> variable, or the GitHub Action&apos;s <code>release</code> input). Each release then gets a page
       with its pass rate, failing and flaky tests, and what changed from the release before.
     </>

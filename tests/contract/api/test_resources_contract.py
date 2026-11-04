@@ -9,11 +9,11 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.repository.db_config import reset_engine_cache
-from testo_core.resources.client import RemoteLeases, acquire, default_holder
-from testo_core.resources.pools import parse_pool
-from testo_core.resources.store import LeaseError
+from qasight.repository.db_config import reset_engine_cache
+from qasight.resources.client import RemoteLeases, acquire, default_holder
+from qasight.resources.pools import parse_pool
+from qasight.resources.store import LeaseError
+from qasight_api.main import create_app
 
 _TOKEN = "s3cret-token"
 _AUTH = {"Authorization": f"Bearer {_TOKEN}"}
@@ -130,7 +130,7 @@ def test_disable_enable_and_take_back(client: TestClient) -> None:
 def test_taking_a_key_back_needs_an_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     from starlette.requests import Request
 
-    from testo_api.security import required_role
+    from qasight_api.security import required_role
 
     def role(path: str) -> str:
         return required_role(
@@ -193,7 +193,7 @@ def test_a_clean_release_reaches_the_next_taker(client: TestClient) -> None:
 def test_the_server_keeps_the_provider_log_and_never_runs_it(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from testo_core.resources.store import ProviderAction
+    from qasight.resources.store import ProviderAction
 
     action = {"pool": "vms", "item": "testo-vm-1", "verb": "create", "ok": True}
     assert client.post("/api/v1/resources/actions", json=action).status_code == 401

@@ -1,0 +1,68 @@
+# QASight team server: the API, the web UI and the run history in one image.
+# CI jobs upload JUnit XML with `qasight ingest --server`; everyone browses the
+# same history. Run it with deploy/server/docker-compose.yml (adds Postgres).
+
+# The UI, built to call the API on its own origin.
+FROM node:26-trixie-slim AS ui
+WORKDIR /ui
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN VITE_API_BASE_URL="" npm run build
+
+FROM python:3.15-slim-trixie AS builder
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1
+WORKDIR /build
+COPY pyproject.toml README.md ./
+COPY qasight ./qasight
+COPY qasight_api ./qasight_api
+RUN python -m pip install --upgrade pip build && \
+    python -m build --wheel --outdir /dist
+
+FROM python:3.15-slim-trixie AS runtime
+
+ARG TESTO_VERSION=dev
+ARG TESTO_COMMIT_SHA=unknown
+ARG TESTO_CREATED=unknown
+
+LABEL org.opencontainers.image.title="qasight-server" \
+      org.opencontainers.image.description="QASight team server: API, web UI and shared run history." \
+      org.opencontainers.image.version="${TESTO_VERSION}" \
+      org.opencontainers.image.revision="${TESTO_COMMIT_SHA}" \
+      org.opencontainers.image.created="${TESTO_CREATED}"
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TESTO_HOME=/data \
+    TESTO_UI_DIR=/app/ui \
+    TESTO_API_HOST=0.0.0.0 \
+    TESTO_PROTECT_READS=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+    TESTO_API_PORT=8000
+
+# The Report page's Download menu: PowerPoint and Excel always (two small libraries).
+# PDF and PNG need Chromium (~400 MB), so only with --build-arg TESTO_REPORT_PDF=1.
+ARG TESTO_REPORT_PDF=0
+COPY --from=builder /dist/*.whl /tmp/
+RUN WHEEL="$(ls /tmp/*.whl)" && python -m pip install "${WHEEL}[api,db]" "python-pptx>=1.0.0" "openpyxl>=3.1.0" && \
+    if [ "${TESTO_REPORT_PDF}" = "1" ]; then \
+      python -m pip install "playwright>=1.48.0" && \
+      PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python -m playwright install --with-deps chromium; \
+    fi && \
+    rm -f /tmp/*.whl && \
+    useradd --create-home --uid 10001 qasight && \
+    mkdir -p /data/artifacts /repos /backups && chown qasight:qasight /data /data/artifacts /repos /backups
+COPY --from=ui /ui/dist /app/ui
+
+USER qasight
+WORKDIR /data
+VOLUME ["/data"]
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live', timeout=4)"
+
+ENTRYPOINT ["qasight-api"]

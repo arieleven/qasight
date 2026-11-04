@@ -1,13 +1,13 @@
 name: Pages demo
 
 # GitHub twin of the GitLab demo pipeline (.gitlab-ci.yml): runs real
-# `testo run` cycles, freezes the read-only API into JSON with
+# `qasight run` cycles, freezes the read-only API into JSON with
 # scripts/export_static_site.py and publishes the React UI to GitHub Pages at
 # https://<owner>.github.io/<repo>/, with the MkDocs docs site (mkdocs.yml)
 # under /docs/.
 #
-#   - self-test: testosterone running its own fast suite. Red fails the job.
-#   - fake-api:  github.com/taltal-beep/fake-api, whose flaky, broken and slow
+#   - self-test: qasight running its own fast suite. Red fails the job.
+#   - fake-api:  github.com/arieleven/fake-api, whose flaky, broken and slow
 #                routes fail its tests on purpose. Red is expected.
 #
 # Pull requests that touch the demo build the site without deploying it, so a
@@ -28,7 +28,7 @@ on:
       - "scripts/export_static_site.py"
       - "frontend/src/lib/static-backend.ts"
       - "frontend/src/components/StaticBuildBanner.tsx"
-      - "testosterone.yaml"
+      - "qasight.yaml"
       - "mkdocs.yml"
       - "scripts/mkdocs_hooks.py"
   schedule:
@@ -44,7 +44,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  FAKE_API_REPO: https://github.com/taltal-beep/fake-api.git
+  FAKE_API_REPO: https://github.com/arieleven/fake-api.git
   FAKE_API_REF: main
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
@@ -97,13 +97,13 @@ jobs:
           python -m playwright install --with-deps chromium
           mkdir -p .ci-history static/history
 
-      - name: Testosterone tests itself
+      - name: QASight tests itself
         run: |
           set -o pipefail
-          testo run --cycle self-test --ci | tee self-test.ndjson
+          qasight run --cycle self-test --ci | tee self-test.ndjson
 
-      - name: Testosterone tests fake-api (fails on purpose)
-        run: testo run --cycle fake-api --ci | tee fake-api.ndjson || true
+      - name: QASight tests fake-api (fails on purpose)
+        run: qasight run --cycle fake-api --ci | tee fake-api.ndjson || true
 
       - name: Export the API as static JSON
         env:

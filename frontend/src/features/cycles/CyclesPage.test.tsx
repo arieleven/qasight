@@ -57,7 +57,7 @@ describe("CyclesPage", () => {
               source: "history"
             }
           ],
-          config_path: "/repo/testosterone.yaml"
+          config_path: "/repo/qasight.yaml"
         })
       })
     );
@@ -72,7 +72,7 @@ describe("CyclesPage", () => {
     expect(screen.getByRole("link", { name: "web" })).toHaveAttribute("href", "/cycles/web");
     expect(screen.getByText("Recorded")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Run" })).toHaveLength(2);
-    expect(screen.getByText(/Defined in \/repo\/testosterone.yaml/)).toBeInTheDocument();
+    expect(screen.getByText(/Defined in \/repo\/qasight.yaml/)).toBeInTheDocument();
   });
 
   it("shows each cycle's latest result on its card", async () => {
@@ -103,7 +103,7 @@ describe("CyclesPage", () => {
             },
             { name: "never-ran", description: null, stage_count: 1, equipment: ["pytest"], source: "config", latest_run: null }
           ],
-          config_path: "/repo/testosterone.yaml"
+          config_path: "/repo/qasight.yaml"
         })
       })
     );
@@ -127,10 +127,10 @@ describe("CyclesPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText("Couldn't load cycles")).toBeInTheDocument());
-    expect(screen.getByText(/testo config validate/)).toBeInTheDocument();
+    expect(screen.getByText(/qasight config validate/)).toBeInTheDocument();
   });
 
-  it("points at testo ingest when there are no cycles at all", async () => {
+  it("points at qasight ingest when there are no cycles at all", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [], config_path: null }) })
@@ -139,6 +139,6 @@ describe("CyclesPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText("No cycles yet")).toBeInTheDocument());
-    expect(screen.getByText(/testo ingest/)).toBeInTheDocument();
+    expect(screen.getByText(/qasight ingest/)).toBeInTheDocument();
   });
 });

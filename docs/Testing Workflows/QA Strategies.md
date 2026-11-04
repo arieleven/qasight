@@ -19,7 +19,7 @@ A **cycle** (plan) is an ordered list of **stages**. Each stage names an **equip
 
 ```mermaid
 flowchart LR
-  YAML[testosterone.yaml] --> Load[discover_and_load]
+  YAML[qasight.yaml] --> Load[discover_and_load]
   Load --> Trigger{trigger + force?}
   Trigger -->|skip| Rest[exit 0 resting]
   Trigger -->|run| Engine[run_plan]
@@ -31,9 +31,9 @@ flowchart LR
 
 ---
 
-## Defining work in `testosterone.yaml`
+## Defining work in `qasight.yaml`
 
-Example cycle (from repo `testosterone.yaml`):
+Example cycle (from repo `qasight.yaml`):
 
 ```yaml
 cycles:
@@ -49,7 +49,7 @@ cycles:
 
 **Multi-framework cycle:** `sample-all-frameworks` chains pytest → native Behave → BehaveX on `sample_target_repo`.
 
-**JavaScript runners (`equipment: jest`, `vitest`, `cypress`, `playwright`):** `args` go to the runner; the adapter adds the report Testosterone reads (the runner's own JSON for Jest and Vitest, the built-in JUnit reporter for Cypress) and `--maxWorkers` from `workers`:
+**JavaScript runners (`equipment: jest`, `vitest`, `cypress`, `playwright`):** `args` go to the runner; the adapter adds the report QASight reads (the runner's own JSON for Jest and Vitest, the built-in JUnit reporter for Cypress) and `--maxWorkers` from `workers`:
 
 ```yaml
       - name: app-unit
@@ -62,7 +62,7 @@ cycles:
         args: ["--spec", "cypress/e2e/**/*.cy.ts"]
 ```
 
-**Any other runner (`equipment: command`):** `args` is the whole command. Point `junit_xml` at the report it writes (JUnit XML, or the runner's own format: [which file each runner writes](../CLI%20Commands/Command%20Reference.md#testo-ingest)), and the results show up like a pytest stage's:
+**Any other runner (`equipment: command`):** `args` is the whole command. Point `junit_xml` at the report it writes (JUnit XML, or the runner's own format: [which file each runner writes](../CLI%20Commands/Command%20Reference.md#qasight-ingest)), and the results show up like a pytest stage's:
 
 ```yaml
       - name: api-unit
@@ -81,7 +81,7 @@ cycles:
 
 Validation: a `command` stage needs `args`, and `junit_xml` patterns must be relative and stay inside `target_repo`. `junit_xml` also works on pytest/Behave stages.
 
-**Quarantine** (top-level and/or per cycle): failures of the listed tests don't fail their stage. The tests still run and still show as failed in results, reports, Compare and the PR comment. Without editing this file, the UI's Quarantine button or [`testo quarantine`](../CLI%20Commands/Command%20Reference.md#testo-quarantine) adds a test to a list kept in the run history, which runs add to these rules.
+**Quarantine** (top-level and/or per cycle): failures of the listed tests don't fail their stage. The tests still run and still show as failed in results, reports, Compare and the PR comment. Without editing this file, the UI's Quarantine button or [`qasight quarantine`](../CLI%20Commands/Command%20Reference.md#qasight-quarantine) adds a test to a list kept in the run history, which runs add to these rules.
 
 ```yaml
 quarantine:                       # every cycle
@@ -94,7 +94,7 @@ cycles:
         owner: "@taltal"
 ```
 
-A stage that exits `1` passes when every failed test matches a rule; one unquarantined failure, or any other exit code (timeout, crash, collection error), still fails it. The same goes for `equipment: junit` stages, whose exit code comes from the recorded results. `testo flaky` marks quarantined tests and prints a snippet for the rest. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
+A stage that exits `1` passes when every failed test matches a rule; one unquarantined failure, or any other exit code (timeout, crash, collection error), still fails it. The same goes for `equipment: junit` stages, whose exit code comes from the recorded results. `qasight flaky` marks quarantined tests and prints a snippet for the rest. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
 
 **Parallel stages** (per cycle): `max_parallel_stages: N` runs up to N independent stages at once (default `1`, one at a time). Stage names must be unique; output prints per stage as each finishes.
 
@@ -108,7 +108,7 @@ See [Deep Dive § Orchestrator level](../Architecture/Deep%20Dive%20-%20Executio
 
 **Keys for parallel workers** (per stage): `resources: POOL` gives each worker (or each test, or the stage) its own key from a pool under the top-level `resources:`, and `workers: auto` starts one worker per free key. See [Shared Resource Pools § Use a pool in a cycle](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#use-a-pool-in-a-cycle).
 
-**Results an earlier step wrote (`equipment: junit`):** no command runs; the stage records the JUnit XML its `junit_xml` globs match (files of any age) and fails when a test failed or nothing matched. `testo ingest` builds exactly this stage on the fly ([Command Reference § testo ingest](../CLI%20Commands/Command%20Reference.md#testo-ingest)).
+**Results an earlier step wrote (`equipment: junit`):** no command runs; the stage records the JUnit XML its `junit_xml` globs match (files of any age) and fails when a test failed or nothing matched. `qasight ingest` builds exactly this stage on the fly ([Command Reference § qasight ingest](../CLI%20Commands/Command%20Reference.md#qasight-ingest)).
 
 ```yaml
       - name: go-tests
@@ -121,8 +121,8 @@ See [Deep Dive § Orchestrator level](../Architecture/Deep%20Dive%20-%20Executio
 Validate before running:
 
 ```bash
-testo config validate
-testo cycles show sample-pytests
+qasight config validate
+qasight cycles show sample-pytests
 ```
 
 ---
@@ -134,19 +134,19 @@ testo cycles show sample-pytests
 Primary path:
 
 ```bash
-testo run --cycle sample-pytests
+qasight run --cycle sample-pytests
 ```
 
 Run every cycle (respecting each cycle’s trigger unless `--force`):
 
 ```bash
-testo run --cycle all
-testo run --cycle all --tag smoke
+qasight run --cycle all
+qasight run --cycle all --tag smoke
 ```
 
 ### 2. Selective triggers
 
-Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `testo_core/config/triggers.py`:
+Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `qasight/config/triggers.py`:
 
 | Mode | Behavior |
 |------|----------|
@@ -164,19 +164,19 @@ After a successful snapshot-triggered run, state is persisted via `persist_trigg
 ### 3. Watch mode (local TDD)
 
 ```bash
-testo watch --cycle sample-pytests --path sample_target_repo
+qasight watch --cycle sample-pytests --path sample_target_repo
 ```
 
-Debounced filesystem events call `testo run` repeatedly; useful for fast feedback loops.
+Debounced filesystem events call `qasight run` repeatedly; useful for fast feedback loops.
 
 ### 4. CI/automation
 
 | Mechanism | Notes |
 |-----------|--------|
-| `testo run --ci` | NDJSON on stdout for parsers |
-| `testo run --no-persist` / `--no-report-db` | Lighter CI without DB |
-| GitHub Action / GitLab template | `integrations/github-action/`, `ci/gitlab/testo.gitlab-ci.yml` — both wrap `testo run --ci` |
-| `testo-api` | `POST /cycles/{cycle}/executions` or `POST /adhoc-executions` + SSE event stream |
+| `qasight run --ci` | NDJSON on stdout for parsers |
+| `qasight run --no-persist` / `--no-report-db` | Lighter CI without DB |
+| GitHub Action / GitLab template | `integrations/github-action/`, `ci/gitlab/testo.gitlab-ci.yml` — both wrap `qasight run --ci` |
+| `qasight-api` | `POST /cycles/{cycle}/executions` or `POST /adhoc-executions` + SSE event stream |
 
 ---
 
@@ -184,7 +184,7 @@ Debounced filesystem events call `testo run` repeatedly; useful for fast feedbac
 
 1. **Resolve config** — `discover_and_load`, `resolve_stages_for_plan` (env-specific stage filtering if configured).
 2. **Pick renderer** — `BufferedRenderer` (default), `StreamRenderer` (`--stream`), or `CIRenderer` (`--ci`).
-3. **`run_plan()`** (`testo_core/engine/orchestrator.py`):
+3. **`run_plan()`** (`qasight/engine/orchestrator.py`):
    - Creates `artifacts/<cycle>/`.
    - Opens `events.ndjson` recorder.
    - For each stage: `run_stage()` in `executor.py`.
@@ -212,7 +212,7 @@ There is no other execution path: the API (cycle and ad-hoc executions) and the 
 | Plan events | `artifacts/<cycle>/events.ndjson` | Machine-readable timeline |
 | Plan summary | `artifacts/<cycle>/plan_result.json` | Aggregated outcome |
 
-The collector (`testo_core/reporting/collector.py`) scans this tree; `testo report` uses the latest cycle when `--cycle` is omitted.
+The collector (`qasight/reporting/collector.py`) scans this tree; `qasight report` uses the latest cycle when `--cycle` is omitted.
 
 ### Reporters (after run)
 
@@ -234,17 +234,17 @@ If `reporters:` is set or `--reporter` is passed, `run_configured_reporters()` r
 
 ### Database archive (optional)
 
-With `testo-core[db]` and `database.url` (or `DATABASE_URL`):
+With `qasight[db]` and `database.url` (or `DATABASE_URL`):
 
 - Post-run zip of cycle artifacts + metrics row.
-- `testo report list` / `testo report open --id …` / `testo diff` / `testo report compare`.
+- `qasight report list` / `qasight report open --id …` / `qasight diff` / `qasight report compare`.
 
 Use `--no-report-db` to skip; `--async-report-db` for background archive with join timeout (ignored under `--ci`).
 
 ### Unified Allure dashboard
 
 ```bash
-testo report --cycle sample-pytests
+qasight report --cycle sample-pytests
 ```
 
 Runs `allure generate` (with optional **trend** history from prior archives), serves local HTTP, opens browser by default.
@@ -252,14 +252,14 @@ Runs `allure generate` (with optional **trend** history from prior archives), se
 **Native framework reports** (BehaveX HTML, etc.):
 
 ```bash
-testo report native
+qasight report native
 ```
 
 ---
 
 ## CI and streaming output
 
-**`--ci` on `testo run`:**
+**`--ci` on `qasight run`:**
 
 - No Rich panels; NDJSON lines suitable for log aggregators.
 - Same exit code contract as interactive mode.
@@ -271,12 +271,12 @@ testo report native
 **Dry-run in CI:**
 
 ```bash
-testo run --cycle sample-pytests --dry-run --ci
+qasight run --cycle sample-pytests --dry-run --ci
 ```
 
 Emits `dry_run_stage` objects with `argv`, `cwd`, `framework` without executing.
 
-**CI:** use `testo run --ci` so the CLI stays non-interactive (NDJSON on stdout, `plan_finished` last). Run records written in CI carry `ci_provider`, `ci_pipeline_id`, `ci_job_id`, `ci_commit_sha` and `ci_ref_name` (detected from the CI environment by `DbBackend`). Wrappers: [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md).
+**CI:** use `qasight run --ci` so the CLI stays non-interactive (NDJSON on stdout, `plan_finished` last). Run records written in CI carry `ci_provider`, `ci_pipeline_id`, `ci_job_id`, `ci_commit_sha` and `ci_ref_name` (detected from the CI environment by `DbBackend`). Wrappers: [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md).
 
 ---
 
@@ -285,15 +285,15 @@ Emits `dry_run_stage` objects with `argv`, `cwd`, `framework` without executing.
 ### Local smoke before commit
 
 ```bash
-testo doctor
-testo run --cycle sample-pytests
-testo report --cycle sample-pytests --no-open
+qasight doctor
+qasight run --cycle sample-pytests
+qasight report --cycle sample-pytests --no-open
 ```
 
 ### PR gate (tagged cycles only)
 
 ```bash
-testo run --cycle all --tag smoke --fail-fast --ci
+qasight run --cycle all --tag smoke --fail-fast --ci
 ```
 
 Parse final `plan_finished` NDJSON line; fail pipeline on `exit_code != 0`.
@@ -301,7 +301,7 @@ Parse final `plan_finished` NDJSON line; fail pipeline on `exit_code != 0`.
 ### Nightly full matrix
 
 ```bash
-testo run --cycle sample-all-frameworks
+qasight run --cycle sample-all-frameworks
 ```
 
 Or split cycles in CI jobs per `cycles:` key.
@@ -309,16 +309,16 @@ Or split cycles in CI jobs per `cycles:` key.
 ### Investigate regressions
 
 ```bash
-testo report list
-testo report compare --cycle sample-pytests
+qasight report list
+qasight report compare --cycle sample-pytests
 # or
-testo diff <older-uuid> <newer-uuid>
+qasight diff <older-uuid> <newer-uuid>
 ```
 
 ### Clean slate
 
 ```bash
-testo clean --yes
+qasight clean --yes
 ```
 
 ---
@@ -330,24 +330,24 @@ testo clean --yes
 - `tests/` — pytest + Allure
 - `features/` — Behave / BehaveX BDD
 
-Cycles in `testosterone.yaml` point `target_repo: sample_target_repo` for demos and docs. Replace with your application repo path in real projects.
+Cycles in `qasight.yaml` point `target_repo: sample_target_repo` for demos and docs. Replace with your application repo path in real projects.
 
 ---
 
 ## Testing the orchestrator itself
 
-The repo’s own QA lives under `tests/`. The **modern `testo run` execution path** (CLI → runner → orchestrator → executor) has a dedicated suite aligned with [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
+The repo’s own QA lives under `tests/`. The **modern `qasight run` execution path** (CLI → runner → orchestrator → executor) has a dedicated suite aligned with [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
 
 ### Layout
 
 | Path | Focus |
 |------|--------|
 | `tests/fixtures/engine/` | YAML builders (`write_minimal_config`, `write_multi_stage_config`, `write_cycles_config`), adapters (`EchoAdapter`, `HangAdapter`, `MissingBinaryAdapter`), `NoopRenderer`, `parse_ndjson`, `assert_ndjson_events`, `read_artifact_events`, `scripts/echo.py` + `scripts/hang.py` |
-| `tests/unit/testo_core/engine/` | `classify_exit_code` (`test_exit_codes.py`), `LogBuffer` (`test_log_buffer.py`), `run_stage` (`test_executor.py`), `run_plan` fail-fast (`test_orchestrator.py`) + lifecycle/state (`test_orchestrator_lifecycle.py`) |
-| `tests/unit/testo_core/cli/` | Exit codes (`test_run_exit_codes.py`), archive (`test_run_archive.py`), flags (`test_run_flags.py`), CI NDJSON (`test_run_ci_ndjson.py`), config discovery (`test_config_discovery.py`), smokes (`test_cli_commands_smoke.py`) |
-| `tests/integration/testo_core/engine/` | Real subprocess smoke via `echo.py` (no Docker) — `test_subprocess_smoke.py` |
-| `tests/contract/testo_core/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`) |
-| `tests/unit/testo_core/` | Cycle-run service, persistence (incl. failure context), reporters, triggers, archives |
+| `tests/unit/qasight/engine/` | `classify_exit_code` (`test_exit_codes.py`), `LogBuffer` (`test_log_buffer.py`), `run_stage` (`test_executor.py`), `run_plan` fail-fast (`test_orchestrator.py`) + lifecycle/state (`test_orchestrator_lifecycle.py`) |
+| `tests/unit/qasight/cli/` | Exit codes (`test_run_exit_codes.py`), archive (`test_run_archive.py`), flags (`test_run_flags.py`), CI NDJSON (`test_run_ci_ndjson.py`), config discovery (`test_config_discovery.py`), smokes (`test_cli_commands_smoke.py`) |
+| `tests/integration/qasight/engine/` | Real subprocess smoke via `echo.py` (no Docker) — `test_subprocess_smoke.py` |
+| `tests/contract/qasight/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`) |
+| `tests/unit/qasight/` | Cycle-run service, persistence (incl. failure context), reporters, triggers, archives |
 | `tests/unit/test_cycle_execution_manager.py`, `tests/contract/api/` | API executions (cycle + ad-hoc) through the engine |
 | `tests/integration/` | Sandbox API, fuller paths |
 | `tests/contract/` | Packaging, CI wrapper contracts |
@@ -408,7 +408,7 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 | ID | Scenario | Test location |
 |----|----------|---------------|
 | INT-01 | `run_plan` + real `echo.py` subprocess (2 stages) | `test_subprocess_smoke.py` |
-| INT-02 | Full `testo run --ci` with echo adapter | `test_subprocess_smoke.py` |
+| INT-02 | Full `qasight run --ci` with echo adapter | `test_subprocess_smoke.py` |
 
 ### Run locally
 
@@ -421,36 +421,36 @@ pip install -e ".[dev]"
 **Engine + CLI slice** (fast, ~2s; PR gate):
 
 ```bash
-pytest tests/unit/testo_core/engine \
-       tests/unit/testo_core/cli/test_run_exit_codes.py \
-       tests/unit/testo_core/cli/test_run_ci_ndjson.py \
-       tests/unit/testo_core/cli/test_run_flags.py \
-       tests/unit/testo_core/cli/test_run_archive.py \
-       tests/unit/testo_core/cli/test_config_discovery.py \
-       tests/unit/testo_core/cli/test_cli_commands_smoke.py \
-       tests/contract/testo_core/test_exit_code_contract.py -q --no-cov
+pytest tests/unit/qasight/engine \
+       tests/unit/qasight/cli/test_run_exit_codes.py \
+       tests/unit/qasight/cli/test_run_ci_ndjson.py \
+       tests/unit/qasight/cli/test_run_flags.py \
+       tests/unit/qasight/cli/test_run_archive.py \
+       tests/unit/qasight/cli/test_config_discovery.py \
+       tests/unit/qasight/cli/test_cli_commands_smoke.py \
+       tests/contract/qasight/test_exit_code_contract.py -q --no-cov
 ```
 
 **With integration smoke** (`tier_heavy`):
 
 ```bash
-pytest tests/unit/testo_core/engine tests/unit/testo_core/cli/test_run_*.py \
-       tests/unit/testo_core/cli/test_config_discovery.py \
-       tests/unit/testo_core/cli/test_cli_commands_smoke.py \
-       tests/integration/testo_core/engine \
-       tests/contract/testo_core/test_exit_code_contract.py -q --no-cov
+pytest tests/unit/qasight/engine tests/unit/qasight/cli/test_run_*.py \
+       tests/unit/qasight/cli/test_config_discovery.py \
+       tests/unit/qasight/cli/test_cli_commands_smoke.py \
+       tests/integration/qasight/engine \
+       tests/contract/qasight/test_exit_code_contract.py -q --no-cov
 ```
 
 **Full unit surface:**
 
 ```bash
-pytest tests/unit/testo_core -q
+pytest tests/unit/qasight -q
 ```
 
-**With coverage** (default `pytest.ini` adds `--cov=testo_core --cov=testo_api --cov-branch --cov-fail-under=80`; the gate is sized for the fast suite or a full run, so narrower selections like this one report coverage but fail the gate):
+**With coverage** (default `pytest.ini` adds `--cov=qasight --cov=qasight_api --cov-branch --cov-fail-under=80`; the gate is sized for the fast suite or a full run, so narrower selections like this one report coverage but fail the gate):
 
 ```bash
-pytest tests/unit/testo_core/engine tests/unit/testo_core/cli -q
+pytest tests/unit/qasight/engine tests/unit/qasight/cli -q
 ```
 
 ### CI/CD

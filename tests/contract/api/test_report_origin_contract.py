@@ -11,8 +11,8 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.paths import STATIC_HISTORY_ROOT
+from qasight.paths import STATIC_HISTORY_ROOT
+from qasight_api.main import create_app
 
 _TOKEN = "s3cret-token"
 _REPORTS = "http://reports.test"

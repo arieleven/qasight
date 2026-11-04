@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Build the React UI to call the API on its own origin and copy it into
-# testo_api/ui_dist/, so the next `python -m build` puts it in the wheel and
-# `testo ui` can serve it. Run from the repository root; needs Node 22 and npm.
+# qasight_api/ui_dist/, so the next `python -m build` puts it in the wheel and
+# `qasight ui` can serve it. Run from the repository root; needs Node 22 and npm.
 # Usage: scripts/build_ui_bundle.sh
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 npm --prefix "$root/frontend" ci --no-audit --no-fund
 VITE_API_BASE_URL="" npm --prefix "$root/frontend" run build
-rm -rf "$root/testo_api/ui_dist"
-cp -r "$root/frontend/dist" "$root/testo_api/ui_dist"
-test -f "$root/testo_api/ui_dist/index.html"
-echo "UI bundled into testo_api/ui_dist/"
+rm -rf "$root/qasight_api/ui_dist"
+cp -r "$root/frontend/dist" "$root/qasight_api/ui_dist"
+test -f "$root/qasight_api/ui_dist/index.html"
+echo "UI bundled into qasight_api/ui_dist/"

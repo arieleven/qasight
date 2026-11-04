@@ -1,0 +1,21 @@
+# Written by `qasight plugins new __NAME__`: a framework adapter and a reporter.
+# pip install -e . then `qasight plugins --check`.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "__DIST__"
+version = "0.1.0"
+description = "QASight plugin: the __NAME__ runner and a JSON summary reporter."
+requires-python = ">=3.11"
+dependencies = ["qasight"]
+
+[project.entry-points."qasight.frameworks"]
+__NAME__ = "__MODULE__:__CLASS__Adapter"
+
+[project.entry-points."qasight.reporters"]
+__NAME__-summary = "__MODULE__:__CLASS__SummaryReporter"
+
+[tool.setuptools]
+packages = ["__MODULE__"]

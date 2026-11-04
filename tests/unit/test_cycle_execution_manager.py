@@ -11,16 +11,16 @@ from pathlib import Path
 
 import pytest
 
-from testo_api.cycle_execution_manager import (
+from qasight.config.triggers import TriggerResult
+from qasight.services import cycle_run as cycle_run_mod
+from qasight_api.cycle_execution_manager import (
     DEFAULT_MAX_CONCURRENT_RUNS,
     DEFAULT_MAX_FINISHED_EXECUTIONS,
     CycleExecutionManager,
     CycleExecutionState,
 )
-from testo_api.execution_events import iter_execution_sse, iter_sse_from_ndjson_file
-from testo_api.run_queue import RunRequest
-from testo_core.config.triggers import TriggerResult
-from testo_core.services import cycle_run as cycle_run_mod
+from qasight_api.execution_events import iter_execution_sse, iter_sse_from_ndjson_file
+from qasight_api.run_queue import RunRequest
 from tests.fixtures.engine import (
     read_artifact_events,
     stage_spec,
@@ -110,7 +110,7 @@ def test_adhoc_execution_runs_one_stage_plan_through_the_engine(
 
 
 def test_adhoc_execution_rejects_unknown_framework_before_starting(tmp_path: Path) -> None:
-    from testo_core.config.errors import ConfigValidationError
+    from qasight.config.errors import ConfigValidationError
 
     manager = CycleExecutionManager()
     with pytest.raises(ConfigValidationError, match="unknown framework"):

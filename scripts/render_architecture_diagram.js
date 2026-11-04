@@ -1,4 +1,4 @@
-// Renders docs/assets/testosterone-architecture-detailed-{dark,light}.png.
+// Renders docs/assets/qasight-architecture-detailed-{dark,light}.png.
 // The diagram is drawn as SVG below; edit nodes/edges here, then run from the
 // repo root (needs Playwright and network access for the Google Fonts):
 //
@@ -14,11 +14,11 @@ const nodes = [];
 const n = (cls, x, y, w, h, t, ...sub) => nodes.push({ cls, x, y, w, h, t, sub });
 // who uses it
 n('user', C1, 40, W, 64, 'React dashboard', 'Vite · React · Tailwind');
-n('user', C2, 40, W, 64, 'CI pipeline', 'testo run --ci → NDJSON');
-n('user', C3, 40, W, 64, 'Developer terminal', 'testo run · report · diff');
+n('user', C2, 40, W, 64, 'CI pipeline', 'qasight run --ci → NDJSON');
+n('user', C3, 40, W, 64, 'Developer terminal', 'qasight run · report · diff');
 // interfaces
-n('iface', C1, 160, W, 84, 'REST API', 'testo_api · FastAPI · /api/v1', 'SSE · one background thread per run');
-n('iface', C2, 160, 660, 84, 'testo CLI', 'cli/runner.py · Typer', 'Rich or NDJSON output · exit codes 0–4');
+n('iface', C1, 160, W, 84, 'REST API', 'qasight_api · FastAPI · /api/v1', 'SSE · one background thread per run');
+n('iface', C2, 160, 660, 84, 'qasight CLI', 'cli/runner.py · Typer', 'Rich or NDJSON output · exit codes 0–4');
 // core rows
 n('core', C1, 320, W, 84, 'Config', 'config/', 'loader · resolver · triggers');
 n('hub', C2, 320, W, 84, 'CycleRunService', 'services/cycle_run.py', 'trigger gate → engine → reporters');
@@ -40,7 +40,7 @@ const edges = [
   ['M210,104 V158', 'HTTP + live SSE', 220, 136, 'start'],
   ['M570,104 V158'], ['M930,104 V158'],
   ['M300,244 V282 H500 V318', 'start runs', 310, 274, 'start'],
-  ['M660,244 V318', 'testo run', 670, 290, 'start'],
+  ['M660,244 V318', 'qasight run', 670, 290, 'start'],
   ['M360,362 H418'],
   ['M720,362 H778'],
   ['M1080,362 H1148'],
@@ -65,7 +65,7 @@ function svg() {
 <text class="layer" x="60" y="148">INTERFACES</text>
 <text class="layer" x="${R}" y="308">OUTSIDE WORLD</text>
 <rect class="corebox" x="30" y="262" width="1080" height="540" rx="16"/>
-<text class="corelabel" x="60" y="294">testo_core · the Python library</text>
+<text class="corelabel" x="60" y="294">qasight · the Python library</text>
 `;
   for (const e of edges) {
     s += `<path class="edge" d="${e[0]}" marker-end="url(#a)"/>`;
@@ -122,7 +122,7 @@ body{margin:0;background:${p.bg}}
     await page.setContent(`<!doctype html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=block"><style>${css(p)}</style></head><body>${svg()}</body></html>`);
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(500);
-    await page.locator('svg').screenshot({ path: path.join(out, `testosterone-architecture-detailed-${name}.png`), omitBackground: false });
+    await page.locator('svg').screenshot({ path: path.join(out, `qasight-architecture-detailed-${name}.png`), omitBackground: false });
   }
   await browser.close();
 })();

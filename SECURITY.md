@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes go into the latest release of `testo-core` on PyPI and the `main` branch.
+Security fixes go into the latest release of `qasight` on PyPI and the `main` branch.
 Older versions are not patched; upgrade to the latest release.
 
 | Version | Supported |
@@ -15,15 +15,15 @@ Older versions are not patched; upgrade to the latest release.
 Please **do not open a public issue** for a security problem.
 
 Report it privately through GitHub: open the repository's **Security** tab and choose
-**Report a vulnerability** ([direct link](https://github.com/taltal-beep/testosterone/security/advisories/new)).
-Include what you found, how to reproduce it, and the version (`testo --version`) or commit.
+**Report a vulnerability** ([direct link](https://github.com/arieleven/qasight/security/advisories/new)).
+Include what you found, how to reproduce it, and the version (`qasight --version`) or commit.
 
 You can expect an acknowledgement within 7 days. Once the problem is confirmed, a fix is
 released and the advisory is published with credit to you, unless you prefer to stay anonymous.
 
 ## Scope
 
-In scope: the `testo` CLI, the `testo_core` engine, the FastAPI backend (`testo_api`), the
+In scope: the `qasight` CLI, the `qasight` engine, the FastAPI backend (`qasight_api`), the
 React frontend in `frontend/`, the GitHub Action and GitLab template, and the published
 runner image.
 
@@ -37,5 +37,5 @@ Areas that deserve particular care:
 - **API authentication.** Bypassing the API's token checks, or running commands through the
   API without the required permission.
 
-Out of scope: problems in the test suites Testosterone runs for you (they run with your
+Out of scope: problems in the test suites QASight runs for you (they run with your
 permissions by design), and the deliberately broken demo app `fake-api`.

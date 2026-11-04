@@ -12,7 +12,7 @@ export function labelText(label: TestLabelItem): string {
 
 /**
  * Whether `labels` holds `wanted`: `name:value` exactly, or a bare value under any name.
- * Case-insensitive; the same rule as `has_label` in testo_core/services/test_history.py.
+ * Case-insensitive; the same rule as `has_label` in qasight/services/test_history.py.
  */
 export function hasLabel(labels: TestLabelItem[] | undefined, wanted: string): boolean {
   const needle = wanted.trim().toLowerCase();

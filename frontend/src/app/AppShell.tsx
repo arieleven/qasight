@@ -29,7 +29,7 @@ const ADVANCED_LINKS: NavLinkSpec[] = [
   { to: "/settings/ai", label: "AI settings", icon: Icons.SparkIcon }
 ];
 
-const DOCS_URL = "https://taltal-beep.github.io/testosterone/docs/";
+const DOCS_URL = "https://arieleven.github.io/qasight/docs/";
 
 /** Breadcrumb for the current page: the section, then the cycle, run or test it shows. */
 function breadcrumbs(pathname: string): { label: string; to?: string }[] {
@@ -130,7 +130,7 @@ export function AppShell() {
           <header className="mb-5 hidden print:hidden items-center justify-between gap-4 lg:flex">
             <nav aria-label="Breadcrumb" className="text-xs text-ink-300">
               <ol className="flex flex-wrap items-center gap-1">
-                <li>Testosterone</li>
+                <li>QASight</li>
                 {breadcrumbs(pathname).map((crumb, i, all) => (
                   <li key={`${crumb.label}-${i}`} className="flex items-center gap-1">
                     <span className="text-ink-500" aria-hidden>
@@ -213,7 +213,7 @@ function DocsLink() {
   );
 }
 
-const RELEASES_URL = "https://github.com/taltal-beep/testosterone/releases";
+const RELEASES_URL = "https://github.com/arieleven/qasight/releases";
 
 /** The running version, and a link when PyPI has a newer one (GET /api/v1/version). */
 export function VersionNote() {
@@ -227,7 +227,7 @@ export function VersionNote() {
   if (!info) return null;
   return (
     <p className="mt-2 px-4 text-[11px] text-ink-400" data-testid="version-note">
-      testo-core {info.version}
+      qasight {info.version}
       {info.update_available && info.latest ? (
         <>
           {" · "}

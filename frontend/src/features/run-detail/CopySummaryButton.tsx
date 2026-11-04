@@ -5,7 +5,7 @@ import { apiClient } from "../../lib/api-client";
 import { copyText } from "../../lib/clipboard";
 
 /**
- * "Copy summary": the run as Markdown (the `testo report markdown` text), ready to
+ * "Copy summary": the run as Markdown (the `qasight report markdown` text), ready to
  * paste into a pull request, Confluence, Notion, Jira or a chat message.
  */
 export function CopySummaryButton({ runId }: { runId: string }) {

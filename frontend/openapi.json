@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AdhocExecutionRequest": {
-        "description": "Run one framework directly, without a cycle in ``testosterone.yaml``.",
+        "description": "Run one framework directly, without a cycle in ``qasight.yaml``.",
         "properties": {
           "args": {
             "items": {
@@ -2517,7 +2517,7 @@
         "type": "object"
       },
       "DeliveryResponse": {
-        "description": "Time to fix failing tests, suite and CI time, and how often the default branch was red.\n\nSee ``testo_core/services/delivery_metrics.py``. ``default_branch`` is null when no\nrun recorded a branch; then every run counts as the default branch.",
+        "description": "Time to fix failing tests, suite and CI time, and how often the default branch was red.\n\nSee ``qasight/services/delivery_metrics.py``. ``default_branch`` is null when no\nrun recorded a branch; then every run counts as the default branch.",
         "properties": {
           "ci_minutes": {
             "title": "Ci Minutes",
@@ -3783,7 +3783,7 @@
         "type": "object"
       },
       "IngestResponse": {
-        "description": "A recorded upload (``POST /api/v1/ingest``, what ``testo ingest --server`` sends).",
+        "description": "A recorded upload (``POST /api/v1/ingest``, what ``qasight ingest --server`` sends).",
         "properties": {
           "cycle": {
             "title": "Cycle",
@@ -3965,7 +3965,7 @@
         "type": "object"
       },
       "ManagerReportResponse": {
-        "description": "How testing went over a period: the ``/report`` page and every ``testo export`` format.",
+        "description": "How testing went over a period: the ``/report`` page and every ``qasight export`` format.",
         "properties": {
           "cycles": {
             "items": {
@@ -5409,7 +5409,7 @@
         "type": "object"
       },
       "ResourceActionRequest": {
-        "description": "``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran\nwith ``testo pool ... --apply``. The server only keeps this log; it never runs one.",
+        "description": "``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran\nwith ``qasight pool ... --apply``. The server only keeps this log; it never runs one.",
         "properties": {
           "command": {
             "default": "",
@@ -5835,7 +5835,7 @@
         "type": "object"
       },
       "ResourceTakeRequest": {
-        "description": "``POST /api/v1/resources/leases``: what ``testo lease`` and the workers send.\n\n``spec`` is the pool from the caller's ``resources:`` config, without its hooks:\nthe server only keeps the leases, so it learns pools from the people using them.",
+        "description": "``POST /api/v1/resources/leases``: what ``qasight lease`` and the workers send.\n\n``spec`` is the pool from the caller's ``resources:`` config, without its hooks:\nthe server only keeps the leases, so it learns pools from the people using them.",
         "properties": {
           "holder": {
             "$ref": "#/components/schemas/ResourceHolder-Input"
@@ -6706,7 +6706,7 @@
         "type": "object"
       },
       "RunMarkdownResponse": {
-        "description": "A run as GitHub-flavored Markdown, the same text as ``testo report markdown``.",
+        "description": "A run as GitHub-flavored Markdown, the same text as ``qasight report markdown``.",
         "properties": {
           "markdown": {
             "title": "Markdown",
@@ -6812,7 +6812,7 @@
         "type": "object"
       },
       "RunSettingsResponse": {
-        "description": "How long runs are kept and how long a stage may take: read from ``testosterone.yaml``.",
+        "description": "How long runs are kept and how long a stage may take: read from ``qasight.yaml``.",
         "properties": {
           "cleanup_interval_hours": {
             "anyOf": [
@@ -6909,7 +6909,7 @@
         "type": "object"
       },
       "SignalResponse": {
-        "description": "What the red runs were (real bugs vs noise) and what flaky tests cost.\n\nSee ``testo_core/services/failure_signal.py``.",
+        "description": "What the red runs were (real bugs vs noise) and what flaky tests cost.\n\nSee ``qasight/services/failure_signal.py``.",
         "properties": {
           "by_cause": {
             "items": {
@@ -7589,7 +7589,7 @@
         "type": "object"
       },
       "TestSummaryItem": {
-        "description": "One test across a cycle's recent runs (``testo_core/services/test_history.py``).",
+        "description": "One test across a cycle's recent runs (``qasight/services/test_history.py``).",
         "properties": {
           "failed": {
             "title": "Failed",
@@ -7976,7 +7976,7 @@
     }
   },
   "info": {
-    "title": "Testosterone API",
+    "title": "QASight API",
     "version": "1.5.0"
   },
   "openapi": "3.1.0",
@@ -8138,7 +8138,7 @@
     },
     "/api/v1/analytics/delta/cases": {
       "get": {
-        "description": "Per-test added/removed/regression/fix breakdown -- UI parity with ``testo diff``.\n\nComputed on-demand from each run's own artifact snapshot every request (no\ncaching): extracts both snapshots into a temp dir and matches cases by\nhistoryId/fullName/uuid, same as the CLI's full (non ``--metrics-only``) diff.",
+        "description": "Per-test added/removed/regression/fix breakdown -- UI parity with ``qasight diff``.\n\nComputed on-demand from each run's own artifact snapshot every request (no\ncaching): extracts both snapshots into a temp dir and matches cases by\nhistoryId/fullName/uuid, same as the CLI's full (non ``--metrics-only``) diff.",
         "operationId": "get_delta_case_changes_api_v1_analytics_delta_cases_get",
         "parameters": [
           {
@@ -8190,7 +8190,7 @@
     },
     "/api/v1/analytics/flaky": {
       "get": {
-        "description": "Flaky tests in a cycle's last runs (retries, same-commit results, flips per branch).\n\nTests that failed every one of their last runs come back as ``broken`` instead.\n\nUI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.",
+        "description": "Flaky tests in a cycle's last runs (retries, same-commit results, flips per branch).\n\nTests that failed every one of their last runs come back as ``broken`` instead.\n\nUI parity with ``qasight flaky --cycle``; see ``qasight/services/flaky_service.py``.",
         "operationId": "get_flaky_tests_api_v1_analytics_flaky_get",
         "parameters": [
           {
@@ -8245,7 +8245,7 @@
     },
     "/api/v1/analytics/issues": {
       "get": {
-        "description": "The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.\n\nAn issue is failing when one of its tests failed in its latest run. Read-only: the\nissue tracker is never called. See ``testo_core/services/test_issues.py``.",
+        "description": "The issues a cycle's tests point at (issue links and ``issue`` labels), red ones first.\n\nAn issue is failing when one of its tests failed in its latest run. Read-only: the\nissue tracker is never called. See ``qasight/services/test_issues.py``.",
         "operationId": "get_cycle_issues_api_v1_analytics_issues_get",
         "parameters": [
           {
@@ -8300,7 +8300,7 @@
     },
     "/api/v1/analytics/labels": {
       "get": {
-        "description": "A cycle's tests counted by label (feature, story, severity, owner, tag...).\n\nEach label's tests, how many failed in their latest run and how many are flaky,\nfeatures first. See ``testo_core/services/test_labels.py``.",
+        "description": "A cycle's tests counted by label (feature, story, severity, owner, tag...).\n\nEach label's tests, how many failed in their latest run and how many are flaky,\nfeatures first. See ``qasight/services/test_labels.py``.",
         "operationId": "get_cycle_labels_api_v1_analytics_labels_get",
         "parameters": [
           {
@@ -8871,7 +8871,7 @@
     },
     "/api/v1/cycles": {
       "get": {
-        "description": "Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs.",
+        "description": "Every cycle in the config (as ``qasight cycles list``), then cycles that only have recorded runs.",
         "operationId": "list_cycles_api_v1_cycles_get",
         "parameters": [
           {
@@ -8921,7 +8921,7 @@
     },
     "/api/v1/cycles/{cycle}": {
       "get": {
-        "description": "Resolved view of one cycle (as ``testo cycles show <name>``), or a recorded-only cycle.",
+        "description": "Resolved view of one cycle (as ``qasight cycles show <name>``), or a recorded-only cycle.",
         "operationId": "get_cycle_api_v1_cycles__cycle__get",
         "parameters": [
           {
@@ -9229,7 +9229,7 @@
     },
     "/api/v1/ingest": {
       "post": {
-        "description": "Record JUnit XML files as one run of *cycle*. Nothing in the upload is executed.\n\n``exit_code`` follows ``testo run``: 0 when every test passed or was skipped,\n1 when one failed. Needs ``Authorization: Bearer <TESTO_API_TOKEN>`` when the\nserver has a token set, like every other write.",
+        "description": "Record JUnit XML files as one run of *cycle*. Nothing in the upload is executed.\n\n``exit_code`` follows ``qasight run``: 0 when every test passed or was skipped,\n1 when one failed. Needs ``Authorization: Bearer <TESTO_API_TOKEN>`` when the\nserver has a token set, like every other write.",
         "operationId": "ingest_reports_api_v1_ingest_post",
         "requestBody": {
           "content": {
@@ -9476,7 +9476,7 @@
         ]
       },
       "get": {
-        "description": "Every quarantined test kept on the server, newest first, optionally one cycle's.\n\n``testosterone.yaml`` rules aren't listed here; runs apply both.",
+        "description": "Every quarantined test kept on the server, newest first, optionally one cycle's.\n\n``qasight.yaml`` rules aren't listed here; runs apply both.",
         "operationId": "list_quarantine_api_v1_quarantine_get",
         "parameters": [
           {
@@ -9566,7 +9566,7 @@
     },
     "/api/v1/releases": {
       "get": {
-        "description": "Every release a run recorded (``testo run --release``), newest first.",
+        "description": "Every release a run recorded (``qasight run --release``), newest first.",
         "operationId": "get_releases_api_v1_releases_get",
         "responses": {
           "200": {
@@ -9719,7 +9719,7 @@
     },
     "/api/v1/report/export": {
       "get": {
-        "description": "The report as a file: the same as ``testo export FORMAT`` on this server's history.\n\nPDF and PNG need the ``export`` extra and Chromium on the server; PowerPoint and\nExcel need the ``export`` extra; HTML needs the built UI (bundled in released wheels).",
+        "description": "The report as a file: the same as ``qasight export FORMAT`` on this server's history.\n\nPDF and PNG need the ``export`` extra and Chromium on the server; PowerPoint and\nExcel need the ``export`` extra; HTML needs the built UI (bundled in released wheels).",
         "operationId": "export_report_api_v1_report_export_get",
         "parameters": [
           {
@@ -9798,7 +9798,7 @@
             "name": "brand",
             "required": false,
             "schema": {
-              "default": "Testosterone",
+              "default": "QASight",
               "maxLength": 60,
               "title": "Brand",
               "type": "string"
@@ -9881,7 +9881,7 @@
     },
     "/api/v1/resources/actions": {
       "get": {
-        "description": "Provider commands people ran (``testo pool add/remove/sweep --apply``), newest first.",
+        "description": "Provider commands people ran (``qasight pool add/remove/sweep --apply``), newest first.",
         "operationId": "list_actions_api_v1_resources_actions_get",
         "parameters": [
           {
@@ -10251,7 +10251,7 @@
     },
     "/api/v1/run-settings": {
       "get": {
-        "description": "How long runs are kept (``history.retention``) and the default stage time limit.\n\nRead from ``testosterone.yaml``, with ``TESTO_RETENTION_DAYS`` /\n``TESTO_RETENTION_RUNS_PER_CYCLE`` on top (they also work without a file). The\nserver reads retention when it starts, so restart it after an edit.",
+        "description": "How long runs are kept (``history.retention``) and the default stage time limit.\n\nRead from ``qasight.yaml``, with ``TESTO_RETENTION_DAYS`` /\n``TESTO_RETENTION_RUNS_PER_CYCLE`` on top (they also work without a file). The\nserver reads retention when it starts, so restart it after an edit.",
         "operationId": "run_settings_api_v1_run_settings_get",
         "responses": {
           "200": {
@@ -10514,7 +10514,7 @@
     },
     "/api/v1/runs/{run_id}/markdown": {
       "get": {
-        "description": "The run as Markdown (headline, stages, failing tests, changes since its baseline).\n\nThe same text as ``testo report markdown --run-id``, so the UI's \"Copy summary\"\npastes into a pull request, Confluence, Notion or Jira the way the CLI's does.",
+        "description": "The run as Markdown (headline, stages, failing tests, changes since its baseline).\n\nThe same text as ``qasight report markdown --run-id``, so the UI's \"Copy summary\"\npastes into a pull request, Confluence, Notion or Jira the way the CLI's does.",
         "operationId": "get_run_markdown_api_v1_runs__run_id__markdown_get",
         "parameters": [
           {
@@ -10557,7 +10557,7 @@
     },
     "/api/v1/runs/{run_id}/pyramid": {
       "get": {
-        "description": "Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``).",
+        "description": "Unit/integration/e2e tier composition for a run (UI/API parity with ``qasight report pyramid``).",
         "operationId": "get_run_pyramid_api_v1_runs__run_id__pyramid_get",
         "parameters": [
           {

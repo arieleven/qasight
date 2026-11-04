@@ -17,9 +17,9 @@ Post-Phase-3 feedback: the React UI read as an unpolished AI-generated beta — 
 ## Decisions
 
 ### 1. Cycle discovery becomes an API + UI feature
-- **`GET /api/v1/cycles`** — list summaries (name, description, stage_count, equipment) via `discover_and_load()`; parity with `testo cycles list`.
-- **`GET /api/v1/cycles/{cycle}`** — resolved stage detail (equipment, target repo, args, timeout, workers, trigger); parity with `testo cycles show`. 404 lists valid names; missing config → 503 `infra_failure`.
-- Models in `testo_api/models.py` (`CycleSummary`, `CycleListResponse`, `StageSummary`, `CycleDetailResponse`); routes in `testo_api/routes/cycles.py`; contract tests in `tests/contract/api/test_cycles_contract.py`.
+- **`GET /api/v1/cycles`** — list summaries (name, description, stage_count, equipment) via `discover_and_load()`; parity with `qasight cycles list`.
+- **`GET /api/v1/cycles/{cycle}`** — resolved stage detail (equipment, target repo, args, timeout, workers, trigger); parity with `qasight cycles show`. 404 lists valid names; missing config → 503 `infra_failure`.
+- Models in `qasight_api/models.py` (`CycleSummary`, `CycleListResponse`, `StageSummary`, `CycleDetailResponse`); routes in `qasight_api/routes/cycles.py`; contract tests in `tests/contract/api/test_cycles_contract.py`.
 
 ### 2. Cycles-first information architecture
 - Nav: **Dashboard · Cycles · Runs · Compare**, plus health indicator (`GET /api/v1/health/ready`, polled 30s) and an **Advanced ▾** menu (Legacy Execution, AI Settings). Since [UI Restyle - 2026-10-19](UI%20Restyle%20-%202026-10-19.md) these sit in a desktop sidebar.
@@ -34,7 +34,7 @@ Post-Phase-3 feedback: the React UI read as an unpolished AI-generated beta — 
 - **Pixel arm-muscle mascot** in `frontend/src/components/mascot/` (crisp-edge SVG grids): logo mark in nav, `MuscleFlex` on run success, `MuscleDefeated` on failure, `MuscleShrug` for empty states. Animations via `muscle-flex`/`muscle-droop` keyframes.
 
 ### 4. Doc drift fixed
-`docs/CLI Commands/Command Reference.md` documented `testo run --tag/--fail-fast/--dry-run/--reporter` and `testo doctor/clean/watch/init` which are **not implemented** in `testo_core/cli/`. Marked as roadmap callouts; the API layer already accepts `fail_fast`/`reporter_override` so the UI surfaces them.
+`docs/CLI Commands/Command Reference.md` documented `qasight run --tag/--fail-fast/--dry-run/--reporter` and `qasight doctor/clean/watch/init` which are **not implemented** in `qasight/cli/`. Marked as roadmap callouts; the API layer already accepts `fail_fast`/`reporter_override` so the UI surfaces them.
 
 ## Verification (performed at ship time)
 

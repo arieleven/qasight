@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Question or idea
-    url: https://github.com/taltal-beep/testosterone/discussions
-    about: Ask how to use Testosterone or float an idea before opening an issue.
+    url: https://github.com/arieleven/qasight/discussions
+    about: Ask how to use QASight or float an idea before opening an issue.
   - name: Security problem
-    url: https://github.com/taltal-beep/testosterone/security/advisories/new
+    url: https://github.com/arieleven/qasight/security/advisories/new
     about: Report a vulnerability privately (see SECURITY.md).
   - name: Live demo
-    url: https://taltal-beep.github.io/testosterone/
+    url: https://arieleven.github.io/qasight/
     about: See the read-only dashboard with real runs.

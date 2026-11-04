@@ -9,7 +9,7 @@ updated: 2026-10-25
 
 [Index](Index.md) · companion to the code-side [Project Review](project-review.md)
 
-The [Project Review](project-review.md) asked "is the code good?" and ended at 10. This note asks a different question: **would a team pick Testosterone over what they already use, and would they keep using it?** It looks at the product, not the code: positioning against the tools people actually adopt, the first ten minutes, the daily "why is CI red" workflow, the UI's design, accessibility and copy.
+The [Project Review](project-review.md) asked "is the code good?" and ended at 10. This note asks a different question: **would a team pick QASight over what they already use, and would they keep using it?** It looks at the product, not the code: positioning against the tools people actually adopt, the first ten minutes, the daily "why is CI red" workflow, the UI's design, accessibility and copy.
 
 How the first pass was checked (2026-10-24, `main` at `9104054`):
 
@@ -21,18 +21,18 @@ How the first pass was checked (2026-10-24, `main` at `9104054`):
 
 ## Verdict
 
-**Overall: 8.5 / 10 as a product (was 7.5), and 9 or more in every area except trust.** Third pass, 2026-10-25, `main` at `ed57b9d`, after the [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md) work in #176 to #184. Every item in [What a 10 needs](#what-a-10-needs) that didn't wait on Taltal has shipped: recorded cycles have pages, "new" means new since the target branch, the dashboard leads with what needs attention, `pytest --testo` records a local run with no CI step, and the test page has attachments, traces, flakiness over time and a remembered cause.
+**Overall: 8.5 / 10 as a product (was 7.5), and 9 or more in every area except trust.** Third pass, 2026-10-25, `main` at `ed57b9d`, after the [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md) work in #176 to #184. Every item in [What a 10 needs](#what-a-10-needs) that didn't wait on Taltal has shipped: recorded cycles have pages, "new" means new since the target branch, the dashboard leads with what needs attention, `pytest --qasight` records a local run with no CI step, and the test page has attachments, traces, flakiness over time and a remembered cause.
 
 What keeps the areas from 10 is small and listed under [Third pass findings](#third-pass-findings): a cycle's own run history is hard to see (P15), the duration chart has no scale (D8), and three copy nits. What keeps the product from 10 overall is trust (one maintainer, nothing launched), which no pull request fixes.
 
-How it was checked: a live API and UI built from `main`, with six ingested JUnit runs of a `web` cycle (a flaky test, a shared `ConnectionRefusedError`, a test that keeps getting slower), a Playwright JSON import with a screenshot, a video and a trace, and a `pytest --testo` session on a branch. Every page opened at 1280 px, 390 px and 640 × 450 (200 % zoom); `axe-core` (WCAG 2 A/AA and best practice) on every page; triage marked and inherited in the browser. No screen reader, no users.
+How it was checked: a live API and UI built from `main`, with six ingested JUnit runs of a `web` cycle (a flaky test, a shared `ConnectionRefusedError`, a test that keeps getting slower), a Playwright JSON import with a screenshot, a video and a trace, and a `pytest --qasight` session on a branch. Every page opened at 1280 px, 390 px and 640 × 450 (200 % zoom); `axe-core` (WCAG 2 A/AA and best practice) on every page; triage marked and inherited in the browser. No screen reader, no users.
 
 ## Scorecard
 
 | Area | Score | Was | In one line |
 |------|:-----:|:---:|-------------|
 | Positioning and value proposition | **9** | 8 | README, PyPI, `--help` and a [comparison page](Compared%20With%20Other%20Tools.md) that says when to pick something else. Left: the name and a Marketplace listing, both Taltal's |
-| Time to first value | **9.5** | 7.5 | `pytest --testo`, `testo ingest` then `testo ui`, a first-run guide on the empty dashboard, and a no-install try-it page. Every recorded cycle has a page |
+| Time to first value | **9.5** | 7.5 | `pytest --qasight`, `qasight ingest` then `qasight ui`, a first-run guide on the empty dashboard, and a no-install try-it page. Every recorded cycle has a page |
 | Core workflow: "why is CI red?" | **9** | 8 | New since the target branch, branch and commit on the run, rerun commands, Compare prefilled, causes remembered. Left: no way to see one cycle's runs over time (P15) |
 | Feature depth against competitors | **9** | 8 | Triage memory, Playwright attachments and traces, flakiness over time. The rest of the gap (ML auto-analysis, CI load balancing, test impact analysis) is a product of its own, and 9 is where this plan said it would stop |
 | Visual design and UX | **9** | 7.5 | The dashboard answers "what needs me?", the run and test pages read in the user's order. Left: the duration chart has no scale (D8), and the Runs list looks the same for every cycle (P15) |
@@ -46,7 +46,7 @@ Every area except trust, in the order that moves the score most. "Realistic" say
 
 | Area | To reach 10 | Realistic |
 |------|-------------|-----------|
-| Time to first value | P10 (ingest cycles get pages), a first-run empty state in `testo ui` with the `testo ingest` command, and a pytest plugin (`pytest -p testo` or `pytest --testo`) that records every local run with no CI step | Yes |
+| Time to first value | P10 (ingest cycles get pages), a first-run empty state in `qasight ui` with the `qasight ingest` command, and a pytest plugin (`pytest -p qasight` or `pytest --qasight`) that records every local run with no CI step | Yes |
 | Core workflow | P11 to P14: "new since `main`" on the run page, branch and commit in its header, Compare prefilled with the run and its baseline, and a copyable "rerun these" command per runner (`pytest` node ids, `--grep` for Playwright) | Yes |
 | Visual design | D7: a dashboard that answers "what needs me?" (failing cycles, new failures, new flaky tests, what got slower) above the numbers, and D3 run labels that differ | Yes |
 | Accessibility | A8 and A9, a 200 % zoom pass, text alternatives for the bars, and one screen-reader pass (VoiceOver or NVDA, which needs a person) | Mostly; the screen-reader pass needs Taltal |
@@ -70,9 +70,9 @@ Second-pass findings P10 to P14, D7, A8, A9, C8 and C10 are fixed (#176 to #181)
 
 ### Second pass verdict (2026-10-25)
 
-**Overall: 7.5 / 10 as a product (was 6.5).** Second pass, 2026-10-25, `main` at `ad4dc9f`, after the roadmap work in #166 to #174 ([Product Roadmap Work](Specs%20&%20ADRs/Product%20Roadmap%20Work%20-%202026-10-25.md)). The red build now lands: the run page leads with its failing tests, groups shared causes, says how long each has failed and links to a page per test, and PR comments compare with the target branch. The first look is three commands (`pip install`, `testo ingest`, `testo ui`) or no install at all on the try-it page.
+**Overall: 7.5 / 10 as a product (was 6.5).** Second pass, 2026-10-25, `main` at `ad4dc9f`, after the roadmap work in #166 to #174 ([Product Roadmap Work](Specs%20&%20ADRs/Product%20Roadmap%20Work%20-%202026-10-25.md)). The red build now lands: the run page leads with its failing tests, groups shared causes, says how long each has failed and links to a page per test, and PR comments compare with the target branch. The first look is three commands (`pip install`, `qasight ingest`, `qasight ui`) or no install at all on the try-it page.
 
-It is 7.5 rather than the 8 the first pass predicted because of one new finding: **a cycle that only exists through `testo ingest` has no cycle page** (P10). `GET /api/v1/cycles/{name}` reads `testosterone.yaml`, so the cycle every ingest user creates is missing from Cycles and its page answers "not found", which hides the test search, the slowest tests and the flaky card from exactly the users the first look was rebuilt for. Fixing it is the single biggest step to 8.
+It is 7.5 rather than the 8 the first pass predicted because of one new finding: **a cycle that only exists through `qasight ingest` has no cycle page** (P10). `GET /api/v1/cycles/{name}` reads `qasight.yaml`, so the cycle every ingest user creates is missing from Cycles and its page answers "not found", which hides the test search, the slowest tests and the flaky card from exactly the users the first look was rebuilt for. Fixing it is the single biggest step to 8.
 
 How it was checked: the static demo rebuilt from `self-test`, `sample-all-frameworks` and three ingested JUnit runs of a `web` cycle; every page opened at 1280 px and 390 px; `axe-core` (WCAG 2 A/AA and best practice) on every page; keyboard tabbing through the shell; touch targets and overflow at 390 px; the API called directly for the ingest-only cycle. No screen reader, no users.
 
@@ -80,8 +80,8 @@ How it was checked: the static demo rebuilt from `self-test`, `sample-all-framew
 
 | Area | Score | Was | In one line |
 |------|:-----:|:---:|-------------|
-| Positioning and value proposition | **8** | 7.5 | README, PyPI and `testo --help` say the same thing, and the demo has a try-it page. The name is still undecided and the Action isn't on the Marketplace |
-| Time to first value | **7.5** | 6 | `testo ui` from the wheel and a no-install try-it page. But an ingest-only cycle has no page (P10), and the first `testo ui` with no runs doesn't show the one command to run |
+| Positioning and value proposition | **8** | 7.5 | README, PyPI and `qasight --help` say the same thing, and the demo has a try-it page. The name is still undecided and the Action isn't on the Marketplace |
+| Time to first value | **7.5** | 6 | `qasight ui` from the wheel and a no-install try-it page. But an ingest-only cycle has no page (P10), and the first `qasight ui` with no runs doesn't show the one command to run |
 | Core workflow: "why is CI red?" | **8** | 5.5 | Failing tests first, grouped causes, a page per test, PR comments against the target branch. The run page's "New" still means "since the previous run on any branch" (P11), shows no branch or commit (P12), Compare opens empty (P13) and there's no command to rerun what failed (P14) |
 | Feature depth against competitors | **8** | 7.5 | Owners from CODEOWNERS, prefilled issues, per-test history, slowest and slowing tests. Still behind on triage memory (ReportPortal), traces and attachments (Currents, Allure) and flake-rate trends (Trunk) |
 | Visual design and UX | **7.5** | 7 | The run page now reads in the user's order. The dashboard still doesn't: rollup chips with "0 unknown", blue icon tiles that carry nothing, a "Quick links" card, and health to two decimals (D7) |
@@ -93,7 +93,7 @@ How it was checked: the static demo rebuilt from `self-test`, `sample-all-framew
 
 | # | Severity | Finding | Fix |
 |---|----------|---------|-----|
-| P10 | High | **Ingest-only cycles have no page.** `GET /api/v1/cycles/web` answers 404 ("Unknown cycle") for a cycle created by `testo ingest`, while `/analytics/tests?cycle=web` has its tests. Cycles doesn't list it and the static export skips it | List cycles from run history as well as config; a history-only cycle gets a read-only page (no Run panel) with its tests, flaky card and runs |
+| P10 | High | **Ingest-only cycles have no page.** `GET /api/v1/cycles/web` answers 404 ("Unknown cycle") for a cycle created by `qasight ingest`, while `/analytics/tests?cycle=web` has its tests. Cycles doesn't list it and the static export skips it | List cycles from run history as well as config; a history-only cycle gets a read-only page (no Run panel) with its tests, flaky card and runs |
 | P11 | Medium | **"New" on the run page is relative to the previous run on any branch.** `load_run_failures` walks the cycle's earlier runs regardless of branch, so on a busy repo "New" and "Failing for N runs" mix branches. #170 fixed this for the PR comment only | Use the same baseline as the PR comment (`pick_baseline`): earlier runs on the run's target or default branch, falling back to all runs; say which in the card |
 | P12 | Low | The run page doesn't show the branch, commit or PR it ran for, though the run records them | A line under the title: branch, short commit (linked when `repository` is set) |
 | P13 | Low | Compare opens with nothing selected, and same-minute runs read the same ("web · Oct 25 03:37" twice; D3 from the first pass) | Prefill the latest run and its baseline; label runs with seconds or a run number and branch |
@@ -113,7 +113,7 @@ Since the second pass, everything in [What a 10 needs](#what-a-10-needs) that do
 
 **Overall: 6.5 / 10 as a product** (the code scores 10). The engineering is ahead of the product. Every capability a team needs is there: ingest from any runner, a shared server, flaky detection and quarantine, PR comments and annotations, Slack and Teams alerts, run-to-run diffs, AI summaries. But the two moments that decide adoption are weaker than the features behind them:
 
-1. **The first look.** A `pip install` user has no UI. `testo-api` serves one only when `TESTO_UI_DIR` points at a `frontend/dist` you built yourself from a checkout with npm, and [Getting Started](Getting%20Started.md) says the web UI "runs from a checkout of the repository". So the laptop story ends in the terminal, and the screenshots in the README show something a new user can't get without cloning the repo or running the Docker team server.
+1. **The first look.** A `pip install` user has no UI. `qasight-api` serves one only when `TESTO_UI_DIR` points at a `frontend/dist` you built yourself from a checkout with npm, and [Getting Started](Getting%20Started.md) says the web UI "runs from a checkout of the repository". So the laptop story ends in the terminal, and the screenshots in the README show something a new user can't get without cloning the repo or running the Docker team server.
 2. **The red build.** The question the README promises to answer is "what broke?". The run page doesn't answer it: it shows a run ID, `Type: cycle`, `Return code 1`, report links, a test pyramid that says *Healthy pyramid* on a failed run, and per-stage health. **It never lists the failing tests**, their error messages or how long they've been failing. You get there through Compare, the Allure report or the AI summary. And the PR comment compares with "the previous run of the cycle", which on a busy team is somebody else's branch, so "what changed" turns into noise.
 
 Fix those two and the product score moves to about 8 without a new feature. After that, the gap to the paid tools is the per-test view (history, flake rate, duration trend, owner) and grouping failures by cause.
@@ -123,7 +123,7 @@ Fix those two and the product score moves to about 8 without a new feature. Afte
 | Area | Score | In one line |
 |------|:-----:|-------------|
 | Positioning and value proposition | **7.5** | The README and PyPI summary now lead with the outcome ("what broke, what's flaky and what got slower"), and "a `pip install` that keeps the history" is a real gap between Allure (one run) and ReportPortal (a server to run). The CLI's own tagline still says "unified quality orchestration CLI", and the name still costs search and workplace adoption (open decision from the gaps review) |
-| Time to first value | **6** | `testo ingest` is one CI step with no config, which is excellent. Seeing it in a UI needs a checkout and npm, or Docker. No hosted "try it with your JUnit file" either |
+| Time to first value | **6** | `qasight ingest` is one CI step with no config, which is excellent. Seeing it in a UI needs a checkout and npm, or Docker. No hosted "try it with your JUnit file" either |
 | Core workflow: "why is CI red?" | **5.5** | The run page has no failing-test list; the baseline is the previous run, not the main branch; there is no page for one test across runs; failures aren't grouped by message |
 | Feature depth against competitors | **7.5** | Ahead of every free tool on history, diffs and flaky quarantine; behind Trunk and Datadog on per-test analytics, ownership and tickets; behind Currents on live per-test streaming and traces |
 | Visual design and UX | **7** | Clean, consistent, responsive. Hierarchy follows the data model (summary, reports, pyramid, stages) instead of the user's question; prime space goes to IDs, a "Need help?" card and status chips; some numbers are noise (a 0.3 % change shown as a red *Regression*) |
@@ -133,9 +133,9 @@ Fix those two and the product score moves to about 8 without a new feature. Afte
 
 ## Competitive position
 
-| | What it is | Where Testosterone wins | Where it loses |
+| | What it is | Where QASight wins | Where it loses |
 |---|---|---|---|
-| **Allure Report** | Free HTML report for one run (with an optional history folder) | Real history and diffs across runs, a shared server, flaky detection; Testosterone can still produce Allure reports | Allure's per-test page (steps, attachments, retries) is far richer than anything in Testosterone's own UI |
+| **Allure Report** | Free HTML report for one run (with an optional history folder) | Real history and diffs across runs, a shared server, flaky detection; QASight can still produce Allure reports | Allure's per-test page (steps, attachments, retries) is far richer than anything in QASight's own UI |
 | **Allure TestOps** | Paid test management with launches and dashboards | Free, small, `pip install`, no test-case management to adopt | Test cases, manual testing, custom dashboards, role-based views, SSO |
 | **ReportPortal** | Open-source server with ML failure clustering; SaaS is enterprise-priced | One `pip install` or one `docker compose up` instead of a multi-service deployment | Auto-analysis that sorts failures into product bug, test bug or system issue, and remembers the decision; per-test history |
 | **Currents** | Cloud dashboard for Playwright and Cypress, usage-priced (from about $49/month) | Any runner, self-hosted, free | Live streaming per test, traces and videos in the browser, CI orchestration and load balancing |
@@ -153,7 +153,7 @@ Severity is product impact: **High** decides whether someone adopts or keeps the
 | # | Severity | Finding | Suggested fix | Size |
 |---|----------|---------|---------------|:----:|
 | P1 | High | **The run page doesn't show what failed.** `RunDetailPage` has Summary, Report Links, Test Pyramid, Stage Health, Artifacts and the AI summary, but no list of failing tests or their messages | Put a "Failing tests" card first on any failed run: test name, stage, first line of the message, "failing since" and a flaky badge, each opening the test's page (P4) | M |
-| P2 | High | **No UI for `pip install` users.** The wheel doesn't contain the built frontend; `TESTO_UI_DIR` must point at a local `npm run build` | Build the frontend in the release workflow, ship it in the wheel and add `testo ui` (open the browser on the local history). Already on the after-publish ideas list | M |
+| P2 | High | **No UI for `pip install` users.** The wheel doesn't contain the built frontend; `TESTO_UI_DIR` must point at a local `npm run build` | Build the frontend in the release workflow, ship it in the wheel and add `qasight ui` (open the browser on the local history). Already on the after-publish ideas list | M |
 | P3 | High | **"What changed" compares with the previous run, not with main.** `run_summary_markdown` and the dashboard take the cycle's previous run as the baseline. With several PRs running, that's another branch | Record branch and commit on every run (ingest already sends them), and default the baseline to the latest run of the same cycle on the default branch, falling back to the previous run | M |
 | P4 | Medium | **No page for one test.** You can't open a test and see its pass/fail history, flake rate, duration trend and last failure message | `/tests/:cycle/:id` page plus a test search box. It's the page every competitor builds first, and the flaky card and P1 can link to it | M |
 | P5 | Medium | **Failures aren't grouped.** Ten tests failing with the same `ConnectionRefusedError` show as ten separate failures | Group failing tests by a normalised first line of the message ("3 failures: connection refused") on the run page and in the PR comment | S |
@@ -193,9 +193,9 @@ Not tested: screen reader output (VoiceOver, NVDA), 200 % zoom, and the charts' 
 
 | # | Where | Now | Suggested |
 |---|-------|-----|-----------|
-| C1 | `testo --help` | "Testosterone — unified quality orchestration CLI." | "See what broke, what's flaky and what got slower on every run." (match the README and PyPI) |
-| C2 | `testo --help` | Command names such as `testo report native` and `--cycle` print wrapped in literal double backticks; "testosterone.yaml (or pyproject )" has a stray space | Plain text or single quotes; fix the space |
-| C3 | Error states | "Failed to load runs." / "Failed to load delta comparison." / "Failed to load AI settings." | Say why and what to do: "Couldn't reach the API at `…`. Is `testo-api` running?" with a Retry button |
+| C1 | `qasight --help` | "QASight — unified quality orchestration CLI." | "See what broke, what's flaky and what got slower on every run." (match the README and PyPI) |
+| C2 | `qasight --help` | Command names such as `qasight report native` and `--cycle` print wrapped in literal double backticks; "qasight.yaml (or pyproject )" has a stray space | Plain text or single quotes; fix the space |
+| C3 | Error states | "Failed to load runs." / "Failed to load delta comparison." / "Failed to load AI settings." | Say why and what to do: "Couldn't reach the API at `…`. Is `qasight-api` running?" with a Retry button |
 | C4 | Run page | `Type: cycle`, `Return code: 1`, subtitle "Run Details" | Drop Type; "Exit code 1 (tests failed)"; drop the subtitle |
 | C5 | Dashboard | "Trend: unknown", "Allure report (state unknown)", "Behave report (not available)" | Hide what isn't known; list only reports that exist |
 | C6 | Everywhere | "AI Integration Settings", "Pass Count", "Report Links" next to "Bring your own key", "Healthy pyramid balance" | Sentence case for every heading and label ("AI settings", "Passed", "Reports") |
@@ -212,7 +212,7 @@ Ordered by what moves adoption most for the least work. Sizes: S is a day or les
 | Item | Findings | Size | Why now |
 |------|----------|:----:|---------|
 | **Failing tests first on the run page** | P1, P5, D1, D2, C4 | M | It's the promise in the tagline, and every visitor to the demo lands on a failed fake-api run |
-| **Ship the UI in the wheel: `testo ui`** | P2 | M | Turns "install, ingest, look" into three commands with no checkout; makes the README screenshots true for a `pip install` user |
+| **Ship the UI in the wheel: `qasight ui`** | P2 | M | Turns "install, ingest, look" into three commands with no checkout; makes the README screenshots true for a `pip install` user |
 | **Noise floor for performance deltas** | P6 | S | Stops the dashboard and Compare crying wolf on every run |
 | **Accessibility and copy pass** | A1–A7, C1–C9, D3–D6 | S | Mostly class and string changes; fixes the one real reflow bug and the CLI's out-of-date tagline |
 
@@ -233,7 +233,7 @@ Ordered by what moves adoption most for the least work. Sizes: S is a day or les
 | **Owners and tickets for flaky tests** | P8 | S–M | CODEOWNERS for owner, a prefilled GitHub issue; Jira and Linear through the plugin API |
 | **Try-it page on the demo** | P9 | L | Drop a JUnit file and see it rendered, entirely in the browser |
 | **Traces and attachments in the UI** | | M | Playwright traces, screenshots and videos on the per-test page, the main thing Currents and Allure do better |
-| **Name decision** | Trust | S to decide | Keep "Testosterone", or lead with "Testo" everywhere. Still Taltal's call; it only gets more expensive after the launch |
+| **Name decision** | Trust | S to decide | Keep "QASight", or lead with "Testo" everywhere. Still Taltal's call; it only gets more expensive after the launch |
 
 ## What this review does not cover
 

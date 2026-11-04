@@ -24,23 +24,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The CI runner image (`testo run` in a container).
-          - image: testo-runner
-            dockerfile: Dockerfile.testo-runner
-            verify: testo-runner:scan run --help
+          # The CI runner image (`qasight run` in a container).
+          - image: qasight-runner
+            dockerfile: Dockerfile.qasight-runner
+            verify: qasight-runner:scan run --help
           # The team server: API + web UI (deploy/server/docker-compose.yml).
-          - image: testo-server
-            dockerfile: Dockerfile.testo-server
+          - image: qasight-server
+            dockerfile: Dockerfile.qasight-server
             # The API and its routes import, and the built UI is in place.
             verify: >-
-              --entrypoint python testo-server:scan -c
-              "import testo_api.main, pathlib; assert pathlib.Path('/app/ui/index.html').is_file()"
+              --entrypoint python qasight-server:scan -c
+              "import qasight_api.main, pathlib; assert pathlib.Path('/app/ui/index.html').is_file()"
           # Starts each stage in a throwaway container (deploy/server/docker-compose.runner.yml).
-          - image: testo-runner-service
-            dockerfile: Dockerfile.testo-runner-service
+          - image: qasight-runner-service
+            dockerfile: Dockerfile.qasight-runner-service
             # The service file loads and the docker client is in place.
             verify: >-
-              --entrypoint python testo-runner-service:scan -c
+              --entrypoint python qasight-runner-service:scan -c
               "import runpy, shutil; runpy.run_path('/app/runner_service.py'); assert shutil.which('docker')"
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}

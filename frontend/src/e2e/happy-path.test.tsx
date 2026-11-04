@@ -30,7 +30,7 @@ describe("happy path", () => {
                   source: "config"
                 }
               ],
-              config_path: "/repo/testosterone.yaml"
+              config_path: "/repo/qasight.yaml"
             })
           });
         }

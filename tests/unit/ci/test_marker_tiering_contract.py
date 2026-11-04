@@ -11,7 +11,7 @@ def test_path_kind_recognizes_both_contract_directories() -> None:
 
 
 def test_path_kind_sets_expected_families() -> None:
-    assert test_conftest._path_kind(Path("tests/unit/testo_core/test_cli_run.py")) == "unit"
+    assert test_conftest._path_kind(Path("tests/unit/qasight/test_cli_run.py")) == "unit"
     assert (
         test_conftest._path_kind(Path("tests/integration/api/test_run_lifecycle.py"))
         == "integration"

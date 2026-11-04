@@ -7,7 +7,7 @@ venv/
 # Local secrets (copy from .env.example)
 .env
 
-# Default local SQLite DB when DATABASE_URL is unset (testo_core/repository/db_config.py)
+# Default local SQLite DB when DATABASE_URL is unset (qasight/repository/db_config.py)
 uqo_history.db
 testo_history.db
 
@@ -22,7 +22,7 @@ tests/artifacts/*.db
 
 # Built Python distribution artifacts
 # The UI copied into the wheel by scripts/build_ui_bundle.sh
-testo_api/ui_dist/
+qasight_api/ui_dist/
 dist/
 build/
 *.egg-info/
@@ -33,7 +33,7 @@ artifacts/release-gate-*/
 # Generated report HTML (static/history/ is served by the API for each run's Report Links)
 static/
 
-# Run data of an installed package run from this directory (testo_core/paths.py)
+# Run data of an installed package run from this directory (qasight/paths.py)
 .testo/
 
 # Persisted run history (SQLite + per-run HTML snapshots)
@@ -64,7 +64,7 @@ frontend/*.tsbuildinfo
 # Root Node tooling (Allure CLI, commitlint)
 node_modules/
 
-# Local sample-cycle run output (testo run --cycle sample-*)
+# Local sample-cycle run output (qasight run --cycle sample-*)
 artifacts/sample-behave/
 artifacts/sample-pytests/
 artifacts/sample-all-frameworks/

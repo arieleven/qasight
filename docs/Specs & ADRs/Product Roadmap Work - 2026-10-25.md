@@ -10,24 +10,24 @@ related: "Product Review, Product Roadmap, Delta Comparison Policy"
 
 ## Context
 
-The [Product Review](../product-review.md) scored Testosterone 6.5 / 10 as a product and ended with a Now / Next / Later roadmap. Taltal said to start on it on 2026-10-25. Each item ships as its own pull request; this note records what each one decided, so the reasons survive the PR threads.
+The [Product Review](../product-review.md) scored QASight 6.5 / 10 as a product and ended with a Now / Next / Later roadmap. Taltal said to start on it on 2026-10-25. Each item ships as its own pull request; this note records what each one decided, so the reasons survive the PR threads.
 
 ## Decisions
 
 ### Failing tests first on the run page (P1, P5, D1, D2, C4)
 
-- **One read, no schema change.** `testo_core/services/run_failures.py::load_run_failures` reads the failing tests from the run's artifact snapshot (the Allure `*-result.json` files), the same source Compare and `testo flaky` use, so engine and ingested runs both work and old runs get the card too. `GET /api/v1/runs/{run_id}/failures` serves it; the static demo exports it as `data/runs/<id>/failures.json`.
+- **One read, no schema change.** `qasight/services/run_failures.py::load_run_failures` reads the failing tests from the run's artifact snapshot (the Allure `*-result.json` files), the same source Compare and `qasight flaky` use, so engine and ingested runs both work and old runs get the card too. `GET /api/v1/runs/{run_id}/failures` serves it; the static demo exports it as `data/runs/<id>/failures.json`.
 - **"Failing since" is a streak, not a first-seen date.** It counts the consecutive earlier runs of the same cycle in which the test also failed, within the flaky window (20 runs). `1` is "New". It is still per cycle, not per branch; the main-branch baseline (P3) changes the comparison, not this count.
-- **Flaky uses the same rule as `testo flaky`** (`flaky_service.classify`) over the same window, ending at this run.
+- **Flaky uses the same rule as `qasight flaky`** (`flaky_service.classify`) over the same window, ending at this run.
 - **Grouping by message.** The first line of `statusDetails.message` (or the trace) with numbers, hex ids and quoted values blanked is the group key; only groups of two or more are shown. Plain matching, no ML: it's predictable and good enough for "ten tests, one connection error".
 - **Page order follows the question.** A one-line verdict under the title, then failing tests, the AI summary (failed runs only), stages, reports, test mix, details and artifacts. The run id, exit code and duration moved to Details. "Healthy pyramid" became "Pyramid-shaped: mostly unit tests" and the card is "Test mix", so a failed run no longer shows a green health word; the header dot says "API connected" instead of "All systems go".
 
-### The UI in the wheel: `testo ui` (P2)
+### The UI in the wheel: `qasight ui` (P2)
 
-- **Built at release time, not at install time.** `scripts/build_ui_bundle.sh` builds the frontend with `VITE_API_BASE_URL=""` into `testo_api/ui_dist/` (gitignored), and hatch's `artifacts` setting puts it in the sdist and the wheel. The publish workflow and CI's `package` job run it before `python -m build`; `scripts/package_smoke.sh` fails when the wheel has no `ui_dist/index.html`. Building with npm in a hatch hook would make every source install need Node.
-- **`TESTO_UI_DIR` still wins**; without it `testo_api/ui.py::ui_dir()` falls back to the bundled build, so `testo-api` serves the UI too when it has one. The team server image keeps its own build.
-- **`testo ui` is local only.** It binds `127.0.0.1` and adds exactly its own two origins to `TESTO_CORS_ORIGINS`, so the UI it serves can start runs without a token while a foreign or DNS-rebinding page is still refused. Anything wider is `testo-api` with a token.
-- **`testo-api` starts uvicorn with the `create_app` factory**, so the app reads the environment at serve time rather than when `testo_api` was first imported.
+- **Built at release time, not at install time.** `scripts/build_ui_bundle.sh` builds the frontend with `VITE_API_BASE_URL=""` into `qasight_api/ui_dist/` (gitignored), and hatch's `artifacts` setting puts it in the sdist and the wheel. The publish workflow and CI's `package` job run it before `python -m build`; `scripts/package_smoke.sh` fails when the wheel has no `ui_dist/index.html`. Building with npm in a hatch hook would make every source install need Node.
+- **`TESTO_UI_DIR` still wins**; without it `qasight_api/ui.py::ui_dir()` falls back to the bundled build, so `qasight-api` serves the UI too when it has one. The team server image keeps its own build.
+- **`qasight ui` is local only.** It binds `127.0.0.1` and adds exactly its own two origins to `TESTO_CORS_ORIGINS`, so the UI it serves can start runs without a token while a foreign or DNS-rebinding page is still refused. Anything wider is `qasight-api` with a token.
+- **`qasight-api` starts uvicorn with the `create_app` factory**, so the app reads the environment at serve time rather than when `qasight_api` was first imported.
 
 ### Timing noise is not a regression (P6)
 
@@ -41,7 +41,7 @@ One pull request for the review's small UI and copy findings, since each is a li
 - Card titles are `h2`, so pages go h1 → h2. AI settings uses `PageHeader` (its h1) and its form no longer overflows a 390px phone (`w-full min-w-0` on the form and inputs).
 - Load errors say what to check ("Couldn't load runs. Check that the API is running, then reload.") instead of "Failed to load X."; loading text uses "…"; titles and nav labels are in sentence case.
 - The sidebar's "Advanced" heading is "Tools" and the help card is a plain "Docs" link. The dashboard hides "Trend: unknown", lists only reports that exist, and formats its duration with `formatDuration`.
-- `testo --help` leads with the README's tagline, and CLI help text no longer shows reStructuredText double-backtick quotes.
+- `qasight --help` leads with the README's tagline, and CLI help text no longer shows reStructuredText double-backtick quotes.
 
 C8 (the default AI model) is left as it is: picking a new model name is a product call, not copy.
 
@@ -65,11 +65,11 @@ Compare keeps its explicit baseline picker; the dashboard trend still compares t
 
 ### A try-it page on the demo (P9)
 
-`/try` ("Try a file" under Tools) reads JUnit XML in the browser with `DOMParser` (`frontend/src/lib/junit.ts`) and shows what a run page would: a verdict, failing tests with the ones that share a message grouped (the same signature rule as `run_failures.message_signature`), and the slowest tests. Nothing is uploaded and the page calls no API, so it works the same on the static demo, where people can try it without installing anything, and in `testo ui`. It ends with the three commands that turn one file into a history. It reads only JUnit XML: Playwright JSON and Allure results stay with `testo ingest`, and a second parser in the browser would drift from the server's. Ships after 1.3.0.
+`/try` ("Try a file" under Tools) reads JUnit XML in the browser with `DOMParser` (`frontend/src/lib/junit.ts`) and shows what a run page would: a verdict, failing tests with the ones that share a message grouped (the same signature rule as `run_failures.message_signature`), and the slowest tests. Nothing is uploaded and the page calls no API, so it works the same on the static demo, where people can try it without installing anything, and in `qasight ui`. It ends with the three commands that turn one file into a history. It reads only JUnit XML: Playwright JSON and Allure results stay with `qasight ingest`, and a second parser in the browser would drift from the server's. Ships after 1.3.0.
 
 ## Consequences
 
 - The run page answers "what broke?" without opening Allure or Compare.
-- Reading a run's failures loads up to 20 earlier snapshots of its cycle, like `testo flaky` does. Fine for the run page; a per-test index would be the next step if it becomes slow.
-- `pip install 'testo-core[api]'` gets the UI from the next release; until then it needs a checkout.
+- Reading a run's failures loads up to 20 earlier snapshots of its cycle, like `qasight flaky` does. Fine for the run page; a per-test index would be the next step if it becomes slow.
+- `pip install 'qasight[api]'` gets the UI from the next release; until then it needs a checkout.
 - The PR comment still lists failing tests without grouping; it can reuse `load_run_failures` later.

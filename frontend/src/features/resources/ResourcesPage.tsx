@@ -144,12 +144,12 @@ function PoolCard({ pool, now }: { pool: ResourcePoolStatus; now: number }) {
   );
 }
 
-/** Create and destroy commands people ran with `testo pool ... --apply`. Testosterone never runs them itself. */
+/** Create and destroy commands people ran with `qasight pool ... --apply`. QASight never runs them itself. */
 function ProviderLog({ actions, now }: { actions: ResourceActionItem[]; now: number }) {
   return (
     <Card
       title="Provider commands"
-      actions={<span className="text-xs text-ink-300">Run by people with testo pool, newest first</span>}
+      actions={<span className="text-xs text-ink-300">Run by people with qasight pool, newest first</span>}
     >
       <ul className="-mx-5 -mb-5 divide-y divide-white/5" data-testid="provider-log">
         {actions.map((a, i) => (
@@ -213,7 +213,7 @@ export function ResourcesPage() {
       />
       {IS_STATIC_BUILD && pools.length > 0 ? (
         <p className="mb-4 text-sm text-ink-300" data-testid="resources-snapshot-note">
-          These pools and holders are made up (<code>testo lease demo</code>), as they were
+          These pools and holders are made up (<code>qasight lease demo</code>), as they were
           {snapshotAt ? ` on ${new Date(snapshotAt * 1000).toUTCString()}` : " when this demo was built"}.
         </p>
       ) : null}
@@ -224,11 +224,11 @@ export function ResourcesPage() {
           message={
             <>
               <p>
-                List your keys under <code>resources:</code> in testosterone.yaml, then run each worker with{" "}
-                <code>testo lease run POOL -- your-command</code>. It gets its key in <code>TESTO_RESOURCE_ID</code>.
+                List your keys under <code>resources:</code> in qasight.yaml, then run each worker with{" "}
+                <code>qasight lease run POOL -- your-command</code>. It gets its key in <code>TESTO_RESOURCE_ID</code>.
               </p>
               <p className="mt-2">
-                Just looking? <code>testo lease demo</code> fills this page with made-up pools and holders.
+                Just looking? <code>qasight lease demo</code> fills this page with made-up pools and holders.
               </p>
               <pre className="mt-3 overflow-x-auto rounded-xl bg-ink-950/80 p-3 text-left text-xs text-ink-200">{EXAMPLE}</pre>
             </>

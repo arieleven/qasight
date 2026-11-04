@@ -8,8 +8,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.config.errors import ConfigValidationError
+from qasight.config.errors import ConfigValidationError
+from qasight_api.main import create_app
 
 
 @dataclass
@@ -33,7 +33,7 @@ class _FakeManager:
 
 
 def _client(manager: _FakeManager) -> TestClient:
-    from testo_api.dependencies import get_cycle_execution_manager
+    from qasight_api.dependencies import get_cycle_execution_manager
 
     app = create_app()
     app.dependency_overrides[get_cycle_execution_manager] = lambda: manager

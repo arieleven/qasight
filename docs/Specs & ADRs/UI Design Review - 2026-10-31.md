@@ -77,7 +77,7 @@ The `Highlights` card on Compare and the top highlights on the dashboard read:
 Five lines, two of them the same number under two names, milliseconds with two decimals, "1 tests", and "health percentage" on a product that now calls this pass rate. This is the one card that is meant to be read aloud in a standup, and it is the least readable thing on the page.
 
 **Fix:** format in `delta_service._build_highlights`: durations through the same rule the UI uses (`6.9 s`, `265 ms`), counts with the right plural ("1 more test passed", "5 more tests failed"), pass rate as "Pass rate up 3.8 points", and skip `Metrics duration` when its delta equals the wall-duration delta. Five lines becomes three.
-**Where:** `testo_core/services/delta_service.py` lines 273 to 294, with the contract tests that pin the strings. Fixed in the polish pull request that accompanies this note.
+**Where:** `qasight/services/delta_service.py` lines 273 to 294, with the contract tests that pin the strings. Fixed in the polish pull request that accompanies this note.
 
 ### U4 Medium: every run has the same label
 
@@ -90,7 +90,7 @@ Runs are labelled `cycle · Oct 31 10:33`, to the minute, with the short id in m
 
 ### U5 Medium: the breadcrumb never names the thing
 
-The breadcrumb is always `Testo / Section`: on the `web` cycle page it says `Testo / Cycles`, on a run `Testo / Runs`, on a test `Testo / Cycles`. The back link on a run says `Back to runs`, so a user who arrived from a cycle page loses the cycle. And `Testo` is not the product's name: the name decision of 2026-10-26 kept "Testosterone", and the README, PyPI and docs say so.
+The breadcrumb is always `Testo / Section`: on the `web` cycle page it says `Testo / Cycles`, on a run `Testo / Runs`, on a test `Testo / Cycles`. The back link on a run says `Back to runs`, so a user who arrived from a cycle page loses the cycle. And `Testo` is not the product's name: the name decision of 2026-10-26 kept "QASight", and the README, PyPI and docs say so.
 
 **Fix:** `Cycles / web`, `Cycles / web / test_search_pagination`, `Runs / web · Oct 31 10:33`, each segment a link. The cycle and test names are in the URL, so the shell can do this without loading data; the run label needs the run, so the run page passes it up or the crumb shows the short id. Fixed for the path-based cases in the polish pull request.
 **Where:** `frontend/src/app/AppShell.tsx` (`sectionLabel`).
@@ -113,13 +113,13 @@ With durations jittered uniformly between 50 ms and 1.5 s, 15 of the 26 `web` te
 The jitter in this data is wider than most suites show, so the threshold may be fine on real runs. This is handed to the bug thread to check against `fake-api` history; the design fix stands either way.
 
 **Fix:** cap the list at three with "and N more" linking to the cycle page's `Got slower` section; show the test's median next to the delta ("+524 ms on 760 ms"), so a reader can judge it; sort by absolute delta, not percent, so a 300 ms change on a 400 ms test does not outrank a 2 s change on a 10 s test.
-**Where:** `frontend/src/features/dashboard/NeedsAttention.tsx`, `frontend/src/features/cycles/CycleTestsCard.tsx`, `testo_core/services/test_history.py` (noise floor).
+**Where:** `frontend/src/features/dashboard/NeedsAttention.tsx`, `frontend/src/features/cycles/CycleTestsCard.tsx`, `qasight/services/test_history.py` (noise floor).
 
 ### U8 Medium: cards that judge, and cards that are empty
 
 ![Run page with three annotations: Test mix lecturing a one-tier cycle, an empty Reports card, a breadcrumb that names neither cycle nor run](../assets/ui-review-2026-10-31/run.png)
 
-- `Test mix` on a run page says `Top-heavy` in red and "More end-to-end tests than unit tests: slow and brittle" for a cycle that was ingested with a single `--tier e2e` stage. Every ingested run has one tier, because `testo ingest` takes one `--tier`, so the card scolds the most common kind of run for a shape it cannot have chosen.
+- `Test mix` on a run page says `Top-heavy` in red and "More end-to-end tests than unit tests: slow and brittle" for a cycle that was ingested with a single `--tier e2e` stage. Every ingested run has one tier, because `qasight ingest` takes one `--tier`, so the card scolds the most common kind of run for a shape it cannot have chosen.
 - `Reports` shows a card whose whole content is "No reports for this run." Same for `Stages (1)` on a recorded cycle's page, which repeats the one stage name the header already implies.
 
 **Fix:** hide Test mix when the run has one tier, or make it informational (no colour, no verdict) and keep the verdict for runs with two or more tiers; fold "No reports" into the `Details` key-value list as a row, and drop the `Stages` card on history-only cycles.
@@ -159,7 +159,7 @@ Opening `Artifacts` on a run prints 29 paths, 26 of them `e2e/allure-results/jun
 The navy glass theme is well done and nothing on it is wrong. Three things about it are decisions rather than defects, and they are Taltal's:
 
 - **Dark only.** Most CI dashboards offer both. Teams that run light-mode IDEs will screenshot a black box into a light Slack. Tokens already live in `tailwind.config.ts`, so a light theme is a second palette, not a rewrite. Proposal only.
-- **The `TESTO` wordmark.** The sidebar and top bar say `TESTO`; everything else says Testosterone. One name.
+- **The `TESTO` wordmark.** The sidebar and top bar say `TESTO`; everything else says QASight. One name.
 - **The syringes.** The background art (vials, a syringe, a steroid molecule) is a good joke at low opacity behind data. On the Quick run, Try and Resources pages, where there is no data, it is the whole screen, and the joke is what a manager sees in a screenshot. Lower its opacity on empty pages, or swap those pages to the molecule only.
 
 ## What the polish pull request does

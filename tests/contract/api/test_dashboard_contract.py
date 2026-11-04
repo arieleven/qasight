@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.services.dashboard_service import (
+from qasight.services.dashboard_service import (
     DashboardDataFreshness,
     DashboardHeadlineKpis,
     DashboardOverview,
@@ -14,6 +13,7 @@ from testo_core.services.dashboard_service import (
     DashboardRollupSummary,
     DashboardTrendIndicator,
 )
+from qasight_api.main import create_app
 
 
 def _overview_payload() -> DashboardOverview:
@@ -75,7 +75,7 @@ def _overview_payload() -> DashboardOverview:
 
 def test_dashboard_overview_contract(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "testo_api.routes.dashboard.DashboardService.get_overview",
+        "qasight_api.routes.dashboard.DashboardService.get_overview",
         lambda self, recent_limit=5: _overview_payload(),  # noqa: ARG005
     )
     client = TestClient(create_app())
@@ -99,7 +99,7 @@ def test_dashboard_overview_contract(monkeypatch) -> None:  # noqa: ANN001
 
 def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "testo_api.routes.dashboard.DashboardService.get_recent_runs",
+        "qasight_api.routes.dashboard.DashboardService.get_recent_runs",
         lambda self, limit=10: (  # noqa: ARG005
             DashboardRecentRun(
                 run_id="run-9",
@@ -127,7 +127,7 @@ def test_dashboard_endpoint_validation_errors_follow_error_envelope(monkeypatch)
     def _raise_value(self, recent_limit=5):  # noqa: ARG001
         raise ValueError("recent_limit must be greater than zero.")
 
-    monkeypatch.setattr("testo_api.routes.dashboard.DashboardService.get_overview", _raise_value)
+    monkeypatch.setattr("qasight_api.routes.dashboard.DashboardService.get_overview", _raise_value)
     client = TestClient(create_app())
     resp = client.get("/api/v1/dashboard/overview?recent_limit=0")
     assert resp.status_code == 400
@@ -137,10 +137,10 @@ def test_dashboard_endpoint_validation_errors_follow_error_envelope(monkeypatch)
 
 
 def test_dashboard_attention_contract(monkeypatch) -> None:  # noqa: ANN001
-    from testo_core.services.attention import Attention, AttentionTest, FailingCycle
+    from qasight.services.attention import Attention, AttentionTest, FailingCycle
 
     monkeypatch.setattr(
-        "testo_api.routes.dashboard.needs_attention",
+        "qasight_api.routes.dashboard.needs_attention",
         lambda: Attention(
             cycles=2,
             passing_cycles=1,

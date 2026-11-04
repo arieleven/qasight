@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-qasight"
+version = "1.0.0"
+description = "pytest --qasight: record every pytest run and see what broke, what's flaky and what got slower (installs qasight)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Taltal" }]
+keywords = ["pytest", "flaky-tests", "test-history", "test-reporting", "junit"]
+# The plugin itself ships in qasight (entry point pytest11 "qasight"), so this
+# package registers no entry point of its own: registering the same module twice
+# would make pytest refuse to start.
+dependencies = [
+    "pytest>=7",
+    "qasight>=1.6.0",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/arieleven/qasight"
+Documentation = "https://arieleven.github.io/qasight/docs/cli-commands/command-reference/#pytest-qasight"
+Source = "https://github.com/arieleven/qasight/tree/main/integrations/pytest-qasight"
+Issues = "https://github.com/arieleven/qasight/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pytest_qasight"]

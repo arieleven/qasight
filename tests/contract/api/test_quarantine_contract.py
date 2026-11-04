@@ -9,13 +9,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.login_throttle import login_throttle
-from testo_api.main import create_app
-from testo_api.security import account_store
-from testo_core.repository.db import reset_repository_cache
-from testo_core.repository.db_config import reset_engine_cache
-from testo_core.services import flaky_service
-from testo_core.services.flaky_service import FlakyReport, FlakyTest
+from qasight.repository.db import reset_repository_cache
+from qasight.repository.db_config import reset_engine_cache
+from qasight.services import flaky_service
+from qasight.services.flaky_service import FlakyReport, FlakyTest
+from qasight_api.login_throttle import login_throttle
+from qasight_api.main import create_app
+from qasight_api.security import account_store
 
 _TOKEN = "s3cret-token"
 _AUTH = {"Authorization": f"Bearer {_TOKEN}"}
@@ -32,9 +32,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     monkeypatch.setenv("TESTO_QUARANTINE_RELEASE_AFTER", "0")
     for name in ("TESTO_AUTH", "TESTO_PROTECT_READS", "TESTO_CORS_ORIGINS", "TESTO_UI_DIR"):
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr("testo_core.paths.ORCHESTRATOR_ROOT", tmp_path)
-    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", tmp_path / "static" / "history")
-    monkeypatch.chdir(tmp_path)  # no testosterone.yaml here
+    monkeypatch.setattr("qasight.paths.ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr("qasight.paths.STATIC_HISTORY_ROOT", tmp_path / "static" / "history")
+    monkeypatch.chdir(tmp_path)  # no qasight.yaml here
     reset_engine_cache()
     reset_repository_cache()
     yield TestClient(create_app())
@@ -90,7 +90,7 @@ def test_server_ingest_honours_the_stored_list(client: TestClient) -> None:
         assert resp.status_code == 201, resp.text
         return resp.json()
 
-    # testo ingest --server exits with this exit_code, so the job turns green too.
+    # qasight ingest --server exits with this exit_code, so the job turns green too.
     assert upload()["exit_code"] == 1
     body = {"cycle": "web", "test": "test_flaky_refund"}
     assert client.put("/api/v1/quarantine", json=body, headers=_AUTH).status_code == 200
@@ -123,7 +123,7 @@ def test_flaky_items_say_whether_they_are_quarantined(
         tests_analyzed=3,
         flaky=(flaky("test_a"), flaky("test_b"), flaky("test_c")),
     )
-    monkeypatch.setattr("testo_api.routes.analytics.find_flaky_tests", lambda **_: report)
+    monkeypatch.setattr("qasight_api.routes.analytics.find_flaky_tests", lambda **_: report)
     monkeypatch.setattr(flaky_service, "_cycle_runs", lambda cycle: [])
     client.put("/api/v1/quarantine", json={"cycle": "web", "test": "test_a"}, headers=_AUTH)
     client.put("/api/v1/quarantine", json={"cycle": "web", "test": "pay#test_b*"}, headers=_AUTH)

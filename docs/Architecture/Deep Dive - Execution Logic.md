@@ -9,7 +9,7 @@ updated: 2026-11-02
 
 [Architecture Overview](Architecture%20Overview.md)
 
-This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [Architecture Overview](Architecture%20Overview.md) and [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
+This note maps how **Testo** (`qasight run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [Architecture Overview](Architecture%20Overview.md) and [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
 Every run uses **host subprocesses** — no Docker. The Docker-based execution stack (the project's original "UQO" design) that existed until v1.1 is summarized at the end.
 
@@ -19,8 +19,8 @@ Every run uses **host subprocesses** — no Docker. The Docker-based execution s
 
 | Property | Behavior |
 |----------|----------|
-| Entry | `testo run` → Typer → `execute_plan_command` |
-| Config | `testosterone.yaml` (or discovery chain) |
+| Entry | `qasight run` → Typer → `execute_plan_command` |
+| Config | `qasight.yaml` (or discovery chain) |
 | Execution unit | **Cycle** (plan) → ordered **stages** |
 | Stage runtime | One `subprocess.Popen` per stage |
 | Stage ordering | Sequential in `run_plan()` by default; up to `max_parallel_stages` at once when a cycle sets it |
@@ -63,14 +63,14 @@ sequenceDiagram
 
 | Phase | Module | What happens |
 |-------|--------|----------------|
-| 1. CLI parse | `testo_core/cli/commands/run.py` | Validates flags; defers heavy imports |
-| 2. Config load | `testo_core/config/loader.py` | `discover_and_load()` → `TestosteroneConfig` |
-| 3. Plan resolve | `testo_core/config/resolver.py` | `resolve_plan()` / `resolve_stages_for_plan()` |
-| 4. Trigger gate | `testo_core/services/cycle_run.py` → `config/triggers.py` | Optional skip (exit 0) unless `--force` |
-| 5. Renderer pick | `testo_core/cli/runner.py` | Buffered / Stream / CI (NDJSON) |
-| 6. Engine run | `testo_core/engine/orchestrator.py` | `run_plan()` — sequential stages, or parallel with `max_parallel_stages` |
-| 7. Subprocess | `testo_core/engine/executor.py` | `run_stage()` per stage |
-| 8. Post-run | `testo_core/services/cycle_run.py` | Reporters, native report snapshot, DB archive, trigger snapshot |
+| 1. CLI parse | `qasight/cli/commands/run.py` | Validates flags; defers heavy imports |
+| 2. Config load | `qasight/config/loader.py` | `discover_and_load()` → `QASightConfig` |
+| 3. Plan resolve | `qasight/config/resolver.py` | `resolve_plan()` / `resolve_stages_for_plan()` |
+| 4. Trigger gate | `qasight/services/cycle_run.py` → `config/triggers.py` | Optional skip (exit 0) unless `--force` |
+| 5. Renderer pick | `qasight/cli/runner.py` | Buffered / Stream / CI (NDJSON) |
+| 6. Engine run | `qasight/engine/orchestrator.py` | `run_plan()` — sequential stages, or parallel with `max_parallel_stages` |
+| 7. Subprocess | `qasight/engine/executor.py` | `run_stage()` per stage |
+| 8. Post-run | `qasight/services/cycle_run.py` | Reporters, native report snapshot, DB archive, trigger snapshot |
 
 ---
 
@@ -78,14 +78,14 @@ sequenceDiagram
 
 ### CLI → runner bridge
 
-`testo run` calls `execute_plan_command()` in `testo_core/cli/runner.py`:
+`qasight run` calls `execute_plan_command()` in `qasight/cli/runner.py`:
 
 - **`--cycle all`** — runs every cycle name (sorted); each trigger evaluated separately; `fail_fast` can stop after the first failing cycle.
 - **Single cycle** — `resolve_plan(cfg, plan_name=...)`.
 - **`--tag`** — filters cycles when using `all`, or validates tag membership for one cycle.
 - **`--dry-run`** — prints resolved argv/cwd table (or NDJSON `dry_run_stage` events); no subprocesses.
 
-Each resolved cycle is handed to `CycleRunService.run()` (`testo_core/services/cycle_run.py`), which owns the trigger gate, the engine call and every post-run step. The API's `testo_api/cycle_execution_manager.py` calls the same service (for named cycles and for ad-hoc one-stage runs built by `single_stage_plan()`), so a run started from the dashboard goes through exactly the same steps; the two callers differ only in the renderer and the listener that presents trigger/archive messages (Rich panels or NDJSON on stdout for the CLI, lines in `events.ndjson` for the API).
+Each resolved cycle is handed to `CycleRunService.run()` (`qasight/services/cycle_run.py`), which owns the trigger gate, the engine call and every post-run step. The API's `qasight_api/cycle_execution_manager.py` calls the same service (for named cycles and for ad-hoc one-stage runs built by `single_stage_plan()`), so a run started from the dashboard goes through exactly the same steps; the two callers differ only in the renderer and the listener that presents trigger/archive messages (Rich panels or NDJSON on stdout for the CLI, lines in `events.ndjson` for the API).
 
 Config errors return exit code **2** (`EngineExitCode.INVALID_INPUT`). In `--ci` mode, errors emit:
 
@@ -95,12 +95,12 @@ Config errors return exit code **2** (`EngineExitCode.INVALID_INPUT`). In `--ci`
 
 ### Config discovery order
 
-From `testo_core/config/loader.py` (first match wins):
+From `qasight/config/loader.py` (first match wins):
 
 1. `--config PATH`
-2. `./testosterone.yaml`
-3. `./testosterone.yml`
-4. `[tool.testosterone]` in `./pyproject.toml`
+2. `./qasight.yaml`
+3. `./qasight.yml`
+4. `[tool.qasight]` in `./pyproject.toml`
 
 Legacy flat `runs:` schemas are wrapped into a single plan named `default`.
 
@@ -128,7 +128,7 @@ Workers override: `_apply_workers_override()` clones the plan with `workers=` se
 
 ## Session execution (`run_plan`)
 
-`testo_core/engine/orchestrator.py` owns the main loop.
+`qasight/engine/orchestrator.py` owns the main loop.
 
 ### Setup (per cycle)
 
@@ -156,11 +156,11 @@ For each stage in order:
 
 ### Health % computation
 
-Both persistence backends (`testo_core/persistence/db_backend.py`,
-`testo_core/persistence/json_backend.py`) call
-`testo_core/persistence/health.py::compute_stage_health()` before writing the
+Both persistence backends (`qasight/persistence/db_backend.py`,
+`qasight/persistence/json_backend.py`) call
+`qasight/persistence/health.py::compute_stage_health()` before writing the
 run record. It re-parses each stage's Allure result JSON (via
-`testo_core.reporting.allure_results.parse_collected_results`, the same
+`qasight.reporting.allure_results.parse_collected_results`, the same
 machinery the Extent/ReportPortal/TestBeats reporters use) to get real
 per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
 
@@ -186,7 +186,7 @@ per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
 
 The same parse gives each test's duration (Allure `stop - start`), so both
 backends also store test time, summed by `run_test_totals()` in
-`testo_core/persistence/health.py`:
+`qasight/persistence/health.py`:
 
 - **`test_time_ms`** on each stage: the sum of that stage's test durations.
 - **`metrics_duration_ms`** on the run: the sum over every test. It is not wall
@@ -196,14 +196,14 @@ backends also store test time, summed by `run_test_totals()` in
 
 Compare shows these as "Test time (sum)" and "Avg per test". Runs persisted
 before 2026-10-10 have neither key and show `n/a` there.
-`tests/contract/testo_core/test_run_metadata_contract.py` fails when
-`testo_core/history/views.py` reads a metadata key that persistence never writes.
+`tests/contract/qasight/test_run_metadata_contract.py` fails when
+`qasight/history/views.py` reads a metadata key that persistence never writes.
 
 ---
 
 ## Subprocess execution (`run_stage`)
 
-`testo_core/engine/executor.py` is a pure subprocess wrapper.
+`qasight/engine/executor.py` is a pure subprocess wrapper.
 
 ### Layout before spawn
 
@@ -217,14 +217,14 @@ When the run ends, `run_plan` removes any other stage folder under `artifacts/<c
 
 Steps:
 
-1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `PlaywrightAdapter` | `CommandAdapter` (argv = `stage.args` verbatim) | `JunitAdapter` (no process, see the post-stage hook below), or a `testo.frameworks` plugin adapter
+1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `PlaywrightAdapter` | `CommandAdapter` (argv = `stage.args` verbatim) | `JunitAdapter` (no process, see the post-stage hook below), or a `qasight.frameworks` plugin adapter
 2. `adapter.build_argv(target_repo, results_dir, stage_args, workers)`
 3. `merged_env(parent_env, stage.extra_env)` plus injected vars:
    - `TESTO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
    - `TESTO_ARTIFACTS_ROOT` → artifacts root
    - `TESTO_LAST_TEST_TYPE` → framework name
 
-`extra_env` values are read like a shell would want them: YAML `true` / `false` become `true` / `false`, `null` becomes an empty string, and a list or mapping is a config error. A stage's `if:` (evaluated by `testo_core/config/if_expr.py` before the run) is `${env:VAR}` alone or one `==` / `!=` comparison; the operator is found before `${env:...}` is replaced, so a value containing `==` can't change it, and `and` / `or` / `not` / parentheses are a config error.
+`extra_env` values are read like a shell would want them: YAML `true` / `false` become `true` / `false`, `null` becomes an empty string, and a list or mapping is a config error. A stage's `if:` (evaluated by `qasight/config/if_expr.py` before the run) is `${env:VAR}` alone or one `==` / `!=` comparison; the operator is found before `${env:...}` is replaced, so a value containing `==` can't change it, and `and` / `or` / `not` / parentheses are a config error.
 
 ### Process model
 
@@ -241,13 +241,13 @@ subprocess.Popen(argv, cwd=target_repo, stdout=PIPE, stderr=STDOUT)
 
 ### Post-stage hook
 
-For `behavex`, `_finish_behavex_reports` runs best-effort. The adapter starts BehaveX without `--formatter` (BehaveX skips `report.html` whenever one is set), so BehaveX writes its own HTML report and `report.json` to `behave_reports/`. The hook then converts `report.json` into Allure results in `allure-results/behavex/` with BehaveX's own Allure formatter (`testo_core/reporting/behavex_allure.py`), and calls `ensure_behavex_report_html`, which renders `report.html` only if a stage passed its own `--formatter`. A failure in either step is logged, appended to `run.log` and set as the stage's `error` (unless a timeout or launch error is already there). The exit code is unchanged. See [BehaveX Reports - 2026-10-21](../Specs%20&%20ADRs/BehaveX%20Reports%20-%202026-10-21.md).
+For `behavex`, `_finish_behavex_reports` runs best-effort. The adapter starts BehaveX without `--formatter` (BehaveX skips `report.html` whenever one is set), so BehaveX writes its own HTML report and `report.json` to `behave_reports/`. The hook then converts `report.json` into Allure results in `allure-results/behavex/` with BehaveX's own Allure formatter (`qasight/reporting/behavex_allure.py`), and calls `ensure_behavex_report_html`, which renders `report.html` only if a stage passed its own `--formatter`. A failure in either step is logged, appended to `run.log` and set as the stage's `error` (unless a timeout or launch error is already there). The exit code is unchanged. See [BehaveX Reports - 2026-10-21](../Specs%20&%20ADRs/BehaveX%20Reports%20-%202026-10-21.md).
 
-A `junit` stage skips the subprocess entirely: `_record_junit_stage` imports its `junit_xml` reports without the age filter (they predate the stage by definition), sets the returncode to 1 when a case failed or broke or no file matched (0 otherwise), uses the reports' summed test time as the stage duration, and writes what it read to `run.log` as `[testo] junit: ...`. The plan's `duration_s` is the larger of the wall clock and the summed stage durations, so an ingested run shows its test time rather than the milliseconds the import took.
+A `junit` stage skips the subprocess entirely: `_record_junit_stage` imports its `junit_xml` reports without the age filter (they predate the stage by definition), sets the returncode to 1 when a case failed or broke or no file matched (0 otherwise), uses the reports' summed test time as the stage duration, and writes what it read to `run.log` as `[qasight] junit: ...`. The plan's `duration_s` is the larger of the wall clock and the summed stage durations, so an ingested run shows its test time rather than the milliseconds the import took.
 
-For any stage with `junit_xml` globs (typically `equipment: command`), `_import_junit` converts the matching result files (only files inside `target_repo`, only files written since the stage started) into Allure `*-result.json` files in `allure-results/<framework>/`. JUnit XML gives one result per `<testcase>`: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed. Other formats are recognised by content and read by their own importer ([Runner Coverage](../Specs%20&%20ADRs/Runner%20Coverage%20-%202026-10-26.md)). It is best-effort, like the BehaveX hook. The process exit code still decides the stage result, and the import outcome (count, or malformed files skipped) is appended to `run.log` as `[testo] junit_xml: ...`.
+For any stage with `junit_xml` globs (typically `equipment: command`), `_import_junit` converts the matching result files (only files inside `target_repo`, only files written since the stage started) into Allure `*-result.json` files in `allure-results/<framework>/`. JUnit XML gives one result per `<testcase>`: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed. Other formats are recognised by content and read by their own importer ([Runner Coverage](../Specs%20&%20ADRs/Runner%20Coverage%20-%202026-10-26.md)). It is best-effort, like the BehaveX hook. The process exit code still decides the stage result, and the import outcome (count, or malformed files skipped) is appended to `run.log` as `[qasight] junit_xml: ...`.
 
-Last, when the plan has `quarantine:` rules and the process exited `1`, `testo_core/engine/quarantine.py` reads the stage's Allure results. If every failed or broken test matches a rule, the stage's `returncode` becomes `0` and the original goes to `waived_returncode`; the matched names go to `StageResult.quarantined` either way and to `run.log` as `[testo] quarantine: ...`. The result files are not changed, so the failures still count in health, reports and Compare. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
+Last, when the plan has `quarantine:` rules and the process exited `1`, `qasight/engine/quarantine.py` reads the stage's Allure results. If every failed or broken test matches a rule, the stage's `returncode` becomes `0` and the original goes to `waived_returncode`; the matched names go to `StageResult.quarantined` either way and to `run.log` as `[qasight] quarantine: ...`. The result files are not changed, so the failures still count in health, reports and Compare. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
 
 ---
 
@@ -293,7 +293,7 @@ Stages run one at a time, in config order, unless the cycle sets `max_parallel_s
 
 ### Stopping a run
 
-`testo_core/engine/interrupt.py` keeps a `StopScope` per run: the stage processes it runs and what asked it to stop. The CLI uses one process-wide scope, which the SIGINT/SIGTERM handlers pull. Each API run enters its own scope (`interrupt.scoped`, in `CycleExecutionManager`), so `POST /api/v1/cycle-executions/{id}/cancel` terminates that run's stages only (a second call kills them), and the run's next stages are skipped. A queued run is dropped before it starts. Interpreter exit still kills every scope's stages.
+`qasight/engine/interrupt.py` keeps a `StopScope` per run: the stage processes it runs and what asked it to stop. The CLI uses one process-wide scope, which the SIGINT/SIGTERM handlers pull. Each API run enters its own scope (`interrupt.scoped`, in `CycleExecutionManager`), so `POST /api/v1/cycle-executions/{id}/cancel` terminates that run's stages only (a second call kills them), and the run's next stages are skipped. A queued run is dropped before it starts. Interpreter exit still kills every scope's stages.
 - Stage names must be unique (each writes `artifacts/<cycle>/<stage>/`). Stages sharing a `target_repo` share its caches, ports and databases, so only mark a cycle parallel when its stages are independent. N stages with `workers: 4` can start 4N test processes.
 
 See [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%20Stages%20-%202026-10-24.md).
@@ -351,7 +351,7 @@ Cycles run **one after another** in sorted name order. No thread pool across cyc
 
 ### Process exit
 
-`testo run` raises `typer.Exit(code=exit_int)`. `testo_core/cli/app.py` `main()` returns that code to the shell.
+`qasight run` raises `typer.Exit(code=exit_int)`. `qasight/cli/app.py` `main()` returns that code to the shell.
 
 ---
 
@@ -369,7 +369,7 @@ These are **current code behaviors** worth knowing for CI design and future refa
 
 ### Exit classification reference
 
-`testo_core/engine/exit_codes.py`:
+`qasight/engine/exit_codes.py`:
 
 ```python
 # internal_failure → INTERNAL_ERROR (4)
@@ -384,7 +384,7 @@ Stage timeouts emit **124** after `_terminate()`; orchestrator sets `internal_fa
 
 ## Removed: the UQO headless / Docker path
 
-Until v1.1 a second stack ran beside the engine: `uqo run --config` and the API's `/api/v1/executions` called `HeadlessEngineService`, which ran each framework in a one-off Docker container via `testo_core/runners.py` and wrote history through `run_history.record_completed_run`. It duplicated trigger-less execution, persistence and exit-code logic, so behaviour drifted between surfaces. It was removed; what only it provided now lives on the engine path:
+Until v1.1 a second stack ran beside the engine: `uqo run --config` and the API's `/api/v1/executions` called `HeadlessEngineService`, which ran each framework in a one-off Docker container via `qasight/runners.py` and wrote history through `run_history.record_completed_run`. It duplicated trigger-less execution, persistence and exit-code logic, so behaviour drifted between surfaces. It was removed; what only it provided now lives on the engine path:
 
 | Former legacy-only feature | Now |
 |----------------------------|-----|
@@ -393,7 +393,7 @@ Until v1.1 a second stack ran beside the engine: `uqo run --config` and the API'
 | Failed cases / traceback / log tail for AI summaries | `persistence/failure_context.py` via `DbBackend` |
 | InfluxDB / Prometheus push | `integrations.push_run_metrics_if_configured()` after every cycle |
 
-The compose stack (Postgres only) is described in repo `ARCHITECTURE.md` and is not required for `testo run`.
+The compose stack (Postgres only) is described in repo `ARCHITECTURE.md` and is not required for `qasight run`.
 
 ### Official documentation
 

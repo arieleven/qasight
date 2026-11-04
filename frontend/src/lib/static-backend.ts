@@ -39,7 +39,7 @@ export const READ_ONLY_MESSAGE =
  * generates them only when it has an API key (scripts/export_static_site.py).
  */
 export const AI_SUMMARY_SNAPSHOT_MESSAGE =
-  "AI summaries are generated live when you run Testosterone locally; this snapshot was built without an API key.";
+  "AI summaries are generated live when you run QASight locally; this snapshot was built without an API key.";
 
 /** FNV-1a (32-bit) of `key` as 8 hex digits; must match `test_history.stable_id` in Python. */
 export function stableId(key: string): string {

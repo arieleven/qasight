@@ -10,7 +10,7 @@ name: Mirror to GitLab
 # workflow no-ops rather than failing on repositories that have no mirror.
 #
 # Required repository variable:
-#   GITLAB_MIRROR_URL   e.g. https://gitlab.com/<user>/testosterone.git
+#   GITLAB_MIRROR_URL   e.g. https://gitlab.com/<user>/qasight.git
 # Required repository secret:
 #   GITLAB_MIRROR_TOKEN GitLab project access token (or PAT) with write_repository
 #

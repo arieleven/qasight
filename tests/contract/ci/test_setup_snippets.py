@@ -1,4 +1,4 @@
-"""The Setup Snippets page and the CI files `testo init` writes come from the same templates."""
+"""The Setup Snippets page and the CI files `qasight init` writes come from the same templates."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from testo_core.services import ci_templates, project_setup
+from qasight.services import ci_templates, project_setup
 
 
 def _script():  # noqa: ANN202
@@ -39,13 +39,13 @@ def test_every_ci_file_parses_for_a_two_stack_project(tmp_path: Path) -> None:
     gitlab = yaml.safe_load(ci_templates.gitlab_ci(facts, cycle="shop"))
     assert set(gitlab) == {"stages", "pytest", "jest"}
     # Two jobs, two histories: each stack records its own cycle.
-    assert "testo ingest --cycle shop-jest" in gitlab["jest"]["after_script"]
+    assert "qasight ingest --cycle shop-jest" in gitlab["jest"]["after_script"]
     assert gitlab["jest"]["image"] == "node:22"
 
     circle = yaml.safe_load(ci_templates.circleci_config(facts, cycle="shop"))
     assert circle["workflows"]["tests"]["jobs"] == ["pytest", "jest"]
     record = circle["jobs"]["pytest"]["steps"][-3]["run"]
-    assert record["when"] == "always" and "testo ingest --cycle shop-pytest" in record["command"]
+    assert record["when"] == "always" and "qasight ingest --cycle shop-pytest" in record["command"]
 
     github = yaml.safe_load(ci_templates.zero_config_github_workflow(facts, cycle="shop"))
     steps = github["jobs"]["tests"]["steps"]
@@ -54,10 +54,10 @@ def test_every_ci_file_parses_for_a_two_stack_project(tmp_path: Path) -> None:
 
     jenkins = ci_templates.jenkinsfile(facts, cycle="shop")
     assert "stage('pytest')" in jenkins and "stage('Jest')" in jenkins
-    assert "testo ingest --cycle shop\n" in jenkins  # one build, one run
+    assert "qasight ingest --cycle shop\n" in jenkins  # one build, one run
 
 
-def test_test_commands_write_files_testosterone_reads(tmp_path: Path) -> None:
+def test_test_commands_write_files_qasight_reads(tmp_path: Path) -> None:
     commands = {
         key: ci_templates.ci_test_command(
             project_setup.detect_project(tmp_path, only=[key]).stacks[0]

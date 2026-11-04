@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Start the team server (deploy/server/docker-compose.yml: server image + Postgres),
-# upload JUnit XML to it with `testo ingest --server`, and check the run, the
-# token, the read protection and /login, and the UI. Needs Docker and a `testo` on PATH (this checkout, installed).
+# upload JUnit XML to it with `qasight ingest --server`, and check the run, the
+# token, the read protection and /login, and the UI. Needs Docker and a `qasight` on PATH (this checkout, installed).
 # Usage: scripts/team_server_smoke.sh   (TESTO_SERVER_PORT defaults to 8000;
-#        TESTO_SMOKE_NO_BUILD=1 uses an already built ghcr.io/taltal-beep/testo-server:1)
+#        TESTO_SMOKE_NO_BUILD=1 uses an already built ghcr.io/arieleven/qasight-server:1)
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,19 +35,19 @@ XML
 cd "$work"
 
 # A wrong token is refused (exit 3), and nothing is recorded.
-if testo ingest reports/unit.xml --cycle smoke --server "$base" --token wrong; then
+if qasight ingest reports/unit.xml --cycle smoke --server "$base" --token wrong; then
   echo "::error::upload with a wrong token was accepted"; exit 1
 else
   test $? -eq 3
 fi
 
-testo ingest reports/unit.xml --cycle smoke --server "$base"
+qasight ingest reports/unit.xml --cycle smoke --server "$base"
 set +e
-testo ingest 'reports/*.xml' --cycle smoke --server "$base" --ci > upload.ndjson
+qasight ingest 'reports/*.xml' --cycle smoke --server "$base" --ci > upload.ndjson
 code=$?
 set -e
 cat upload.ndjson
-test "$code" -eq 1  # a failed test makes the upload exit 1, like `testo run`
+test "$code" -eq 1  # a failed test makes the upload exit 1, like `qasight run`
 grep -q '"tests":2' upload.ndjson
 
 # Reads are protected (TESTO_PROTECT_READS=1 in the compose file): no token, no runs,

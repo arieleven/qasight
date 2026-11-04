@@ -1,4 +1,4 @@
-"""Contract for the API's optional bearer token and CORS defaults (``testo_api/security.py``)."""
+"""Contract for the API's optional bearer token and CORS defaults (``qasight_api/security.py``)."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app, run
-from testo_api.security import is_loopback_host
+from qasight_api.main import create_app, run
+from qasight_api.security import is_loopback_host
 
 _ADHOC = "/api/v1/adhoc-executions"
 
@@ -23,7 +23,7 @@ class _FakeManager:
 
 
 def _client(manager: _FakeManager | None = None) -> TestClient:
-    from testo_api.dependencies import get_cycle_execution_manager
+    from qasight_api.dependencies import get_cycle_execution_manager
 
     app = create_app()
     if manager is not None:

@@ -42,7 +42,7 @@ Two pull requests, both frontend-led, with the smallest API change that lets a p
 
 ### Cards that judge, cards that are empty (U8)
 
-- Test mix is shown only when at least two tiers hold tests. An ingested run has one tier (`testo ingest` takes one `--tier`), so there was nothing to judge. A failed pyramid request still shows its error.
+- Test mix is shown only when at least two tiers hold tests. An ingested run has one tier (`qasight ingest` takes one `--tier`), so there was nothing to judge. A failed pyramid request still shows its error.
 - An empty Reports card folds into the Details list as a "Reports" row. A recorded-only cycle's page drops the Stages card: its one stage has nothing to configure and the header already names it.
 
 ## Consequences
@@ -53,5 +53,5 @@ Two pull requests, both frontend-led, with the smallest API change that lets a p
 
 ## Pull requests
 
-- [#237](https://github.com/taltal-beep/testosterone/pull/237): U1 and U4.
-- [#243](https://github.com/taltal-beep/testosterone/pull/243): U2, U6 and U8, plus this note.
+- [#237](https://github.com/arieleven/qasight/pull/237): U1 and U4.
+- [#243](https://github.com/arieleven/qasight/pull/243): U2, U6 and U8, plus this note.

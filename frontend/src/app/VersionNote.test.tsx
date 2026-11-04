@@ -23,16 +23,16 @@ describe("VersionNote", () => {
 
   it("links to the release when a newer one is out", async () => {
     renderWith({ version: "1.5.0", latest: "1.6.0", update_available: true });
-    expect(await screen.findByText(/testo-core 1\.5\.0/)).toBeInTheDocument();
+    expect(await screen.findByText(/qasight 1\.5\.0/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "1.6.0 is out" })).toHaveAttribute(
       "href",
-      "https://github.com/taltal-beep/testosterone/releases"
+      "https://github.com/arieleven/qasight/releases"
     );
   });
 
   it("shows only the version when it is the newest or unknown", async () => {
     renderWith({ version: "1.6.0", latest: null, update_available: false });
-    expect(await screen.findByTestId("version-note")).toHaveTextContent("testo-core 1.6.0");
+    expect(await screen.findByTestId("version-note")).toHaveTextContent("qasight 1.6.0");
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

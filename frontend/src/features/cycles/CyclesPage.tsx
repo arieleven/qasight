@@ -26,9 +26,9 @@ export function CyclesPage() {
         title="Couldn't load cycles"
         message={
           <>
-            Check that the API is running and that testosterone.yaml is valid with{" "}
+            Check that the API is running and that qasight.yaml is valid with{" "}
             <code className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-xs text-brand-300">
-              testo config validate
+              qasight config validate
             </code>
             , then reload.
           </>
@@ -59,9 +59,9 @@ export function CyclesPage() {
             <>
               Record a run with{" "}
               <code className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-xs text-brand-300">
-                testo ingest &apos;reports/**/*.xml&apos; --cycle my-tests
+                qasight ingest &apos;reports/**/*.xml&apos; --cycle my-tests
               </code>{" "}
-              or add a cycle to testosterone.yaml.
+              or add a cycle to qasight.yaml.
             </>
           }
         />
@@ -84,7 +84,7 @@ export function CyclesPage() {
                   {IS_STATIC_BUILD && !recorded ? (
                     <p className="mt-2 text-xs text-ink-400">
                       Run locally with{" "}
-                      <code className="font-mono text-ink-200">testo run --cycle {cycle.name}</code>
+                      <code className="font-mono text-ink-200">qasight run --cycle {cycle.name}</code>
                     </p>
                   ) : null}
                 </div>
@@ -104,7 +104,7 @@ export function CyclesPage() {
                     <Badge>Recorded</Badge>
                   ) : IS_STATIC_BUILD ? (
                     // A disabled button gets no hover events, so the wrapper carries the tooltip.
-                    <span title={`Read-only demo. Run locally with: testo run --cycle ${cycle.name}`}>
+                    <span title={`Read-only demo. Run locally with: qasight run --cycle ${cycle.name}`}>
                       <Button size="sm" variant="secondary" disabled>
                         Run
                       </Button>

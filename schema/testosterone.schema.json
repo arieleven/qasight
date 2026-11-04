@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/taltal-beep/testosterone/main/schema/testosterone.schema.json",
-  "title": "testosterone.yaml",
-  "description": "Config for Testosterone (testo-core): cycles of test stages and reporters.",
+  "$id": "https://raw.githubusercontent.com/arieleven/qasight/main/schema/qasight.schema.json",
+  "title": "qasight.yaml",
+  "description": "Config for QASight (qasight): cycles of test stages and reporters.",
   "type": "object",
   "required": [
     "cycles"
@@ -77,7 +77,7 @@
     },
     "resources": {
       "type": "object",
-      "description": "Pools of keys parallel workers lease (`testo lease`).",
+      "description": "Pools of keys parallel workers lease (`qasight lease`).",
       "propertyNames": {
         "pattern": "^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$"
       },
@@ -87,7 +87,7 @@
     },
     "history": {
       "type": "object",
-      "description": "How long run history and report archives are kept. Without it nothing is deleted. Applied by `testo clean --history` and by the API server on a timer; TESTO_RETENTION_DAYS / TESTO_RETENTION_RUNS_PER_CYCLE override it.",
+      "description": "How long run history and report archives are kept. Without it nothing is deleted. Applied by `qasight clean --history` and by the API server on a timer; TESTO_RETENTION_DAYS / TESTO_RETENTION_RUNS_PER_CYCLE override it.",
       "properties": {
         "retention": {
           "type": "object",
@@ -116,7 +116,7 @@
     },
     "affected": {
       "type": "object",
-      "description": "How changed files map to tests, for `testo affected` and `pytest --testo-affected`. Anything not mapped runs every test.",
+      "description": "How changed files map to tests, for `qasight affected` and `pytest --qasight-affected`. Anything not mapped runs every test.",
       "properties": {
         "base": {
           "type": "string",
@@ -354,7 +354,7 @@
                     "stage"
                   ],
                   "default": "worker",
-                  "description": "Who leases a key: each test worker (pytest, or `testo lease run`), each test (pytest only), or the stage itself."
+                  "description": "Who leases a key: each test worker (pytest, or `qasight lease run`), each test (pytest only), or the stage itself."
                 },
                 "labels": {
                   "type": "array",
@@ -429,7 +429,7 @@
     },
     "cycle": {
       "type": "object",
-      "description": "A named list of stages, run with `testo run --cycle <name>`.",
+      "description": "A named list of stages, run with `qasight run --cycle <name>`.",
       "required": [
         "stages"
       ],
@@ -554,7 +554,7 @@
     },
     "resource_pool": {
       "type": "object",
-      "description": "Keys that parallel workers share (VMs, devices, accounts, seats). Testosterone hands each worker its own key; it never acts on the keys itself.",
+      "description": "Keys that parallel workers share (VMs, devices, accounts, seats). QASight hands each worker its own key; it never acts on the keys itself.",
       "oneOf": [
         {
           "required": [
@@ -656,7 +656,7 @@
         },
         "provider": {
           "type": "object",
-          "description": "Your own commands that look at the real keys. Only `testo pool`, typed by a person, runs them; Testosterone never creates or deletes keys.",
+          "description": "Your own commands that look at the real keys. Only `qasight pool`, typed by a person, runs them; QASight never creates or deletes keys.",
           "properties": {
             "list": {
               "type": "string",

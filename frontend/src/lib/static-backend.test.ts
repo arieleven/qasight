@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveStaticPath, stableId } from "./static-backend";
 
 function resolve(url: string): string | null {
-  const parsed = new URL(url, "https://example.gitlab.io/testosterone/");
+  const parsed = new URL(url, "https://example.gitlab.io/qasight/");
   return resolveStaticPath(parsed.pathname, parsed.searchParams);
 }
 
@@ -47,7 +47,7 @@ describe("resolveStaticPath", () => {
   });
 
   it("works when the API base URL puts the site subpath in front of /api/v1", () => {
-    expect(resolve("https://example.gitlab.io/testosterone/api/v1/runs")).toBe("runs.json");
+    expect(resolve("https://example.gitlab.io/qasight/api/v1/runs")).toBe("runs.json");
   });
 
   it("has nothing to serve for streams, writes and incomplete comparisons", () => {

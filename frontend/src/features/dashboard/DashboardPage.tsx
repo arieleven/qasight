@@ -134,9 +134,9 @@ function FirstRunGuide() {
           title="Set up your project"
           body={
             <>
-              In your repository, <code className="font-mono text-xs text-ink-100">testo init</code> finds your test
-              runners, writes testosterone.yaml and a CI workflow, and records a first run. Then{" "}
-              <code className="font-mono text-xs text-ink-100">testo run --cycle &lt;name&gt;</code> or Run on the{" "}
+              In your repository, <code className="font-mono text-xs text-ink-100">qasight init</code> finds your test
+              runners, writes qasight.yaml and a CI workflow, and records a first run. Then{" "}
+              <code className="font-mono text-xs text-ink-100">qasight run --cycle &lt;name&gt;</code> or Run on the{" "}
               <Link to="/cycles" className="text-brand-300 hover:underline">
                 Cycles
               </Link>{" "}
@@ -150,8 +150,8 @@ function FirstRunGuide() {
           body={
             <>
               After any runner that writes results (pytest, Jest, Playwright, Go…):{" "}
-              <code className="break-all font-mono text-xs text-ink-100">testo ingest</code> finds the files, or{" "}
-              <code className="font-mono text-xs text-ink-100">pytest --testo</code>
+              <code className="break-all font-mono text-xs text-ink-100">qasight ingest</code> finds the files, or{" "}
+              <code className="font-mono text-xs text-ink-100">pytest --qasight</code>
             </>
           }
         />

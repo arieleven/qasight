@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_core.repository.db_config import reset_engine_cache
+from qasight.repository.db_config import reset_engine_cache
+from qasight_api.main import create_app
 
 _TOKEN = "s3cret-token"
 _AUTH = {"Authorization": f"Bearer {_TOKEN}"}

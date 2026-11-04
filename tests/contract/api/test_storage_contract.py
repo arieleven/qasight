@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_api.routes.storage import forget_cached_storage
-from testo_core import paths
-from testo_core.history import storage
-from testo_core.history.storage import DiskSpace
-from testo_core.repository.db import get_repository
-from testo_core.repository.models import RunStatus
+from qasight import paths
+from qasight.history import storage
+from qasight.history.storage import DiskSpace
+from qasight.repository.db import get_repository
+from qasight.repository.models import RunStatus
+from qasight_api.main import create_app
+from qasight_api.routes.storage import forget_cached_storage
 
 pytestmark = pytest.mark.tier_fast
 

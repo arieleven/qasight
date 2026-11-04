@@ -5,7 +5,7 @@ variables:
   TESTO_CONFIG_PATH: ""
   TESTO_CYCLE: ""
   TESTO_PERSIST: "true"
-  TESTO_PACKAGE: "testo-core"  # e.g. "testo-core[bdd]" for Behave stages, "testo-core==1.2.0"
+  TESTO_PACKAGE: "qasight"  # e.g. "qasight[bdd]" for Behave stages, "qasight==1.2.0"
 
 testo_run:
   stage: quality
@@ -25,7 +25,7 @@ testo_run:
         TESTO_ARGS+=(--no-persist)
       fi
       set -o pipefail
-      testo "${TESTO_ARGS[@]}" | tee testo-output.ndjson
+      qasight "${TESTO_ARGS[@]}" | tee testo-output.ndjson
   after_script:
     - grep '"event":"plan_finished"' testo-output.ndjson | tail -n 1 > testo-summary.json || true
   artifacts:

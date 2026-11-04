@@ -12,7 +12,7 @@ import jwt
 from fastapi import Body, FastAPI, Header, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
-app = FastAPI(title="Testosterone Sandbox Mock API")
+app = FastAPI(title="QASight Sandbox Mock API")
 
 # 32+ bytes, the minimum PyJWT accepts for HS256 without a warning.
 JWT_SECRET = "testo-sandbox-secret-for-local-tests-only"

@@ -16,9 +16,9 @@ The second pass of the [product review](../product-review.md) scored the product
 
 ### Recorded cycles get a page (P10)
 
-`GET /api/v1/cycles` and `GET /api/v1/cycles/{cycle}` read `testosterone.yaml`, so a cycle created by `testo ingest`, the path the README leads with, was missing from Cycles and its page answered 404. Both routes now add the cycles that exist only in run history (`history.read_model.latest_run_per_cycle`, the newest run of each among the last 500), after the config's own, with `source: "history"`. Their detail page takes its stages from the latest run, and the UI hides the Run panel and the config-only stage fields (args, timeout, workers). A cycle that is in both stays a config cycle.
+`GET /api/v1/cycles` and `GET /api/v1/cycles/{cycle}` read `qasight.yaml`, so a cycle created by `qasight ingest`, the path the README leads with, was missing from Cycles and its page answered 404. Both routes now add the cycles that exist only in run history (`history.read_model.latest_run_per_cycle`, the newest run of each among the last 500), after the config's own, with `source: "history"`. Their detail page takes its stages from the latest run, and the UI hides the Run panel and the config-only stage fields (args, timeout, workers). A cycle that is in both stays a config cycle.
 
-With no config file at all, as with `testo ui` over ingested runs, the read routes list the recorded cycles instead of answering 503. A `config_path` the caller names must still exist, and an invalid config is still a 503.
+With no config file at all, as with `qasight ui` over ingested runs, the read routes list the recorded cycles instead of answering 503. A `config_path` the caller names must still exist, and an invalid config is still a 503.
 
 ### "New" means new against the baseline, and the run says what it tested (P11, P12)
 
@@ -38,7 +38,7 @@ A bare `/compare` opened with two empty pickers. It now shows the latest run aga
 - Targets reach 24 px (WCAG 2.2, 2.5.8): the demo notice's close button is 44 px, the "Read-only demo" badge is taller, and run links and "compare" links in lists get a padded hit area that doesn't change the row's layout.
 - Copy: "Generate AI summary"; dashboard trends read "Better than last run", "Worse than last run" or "No change"; the test pyramid says "Healthy pyramid", "Top-heavy", "Integration-heavy" or "Mixed tiers" with a plain sentence under it (the API's `message` changed with it); health percentages are whole numbers (`formatPercent`), keeping one decimal only when rounding would show 100% for a run with a failure or 0% for one with a pass.
 - The OpenAI default model is `gpt-4.1-mini` instead of `gpt-4o-mini`. A reasoning model (the `gpt-5` family) would need `max_completion_tokens` and no `temperature`, which the OpenAI provider doesn't send, so the default stays a non-reasoning model.
-- `testo config init --help` and `testo config-db --help` no longer show an RST-style double-backticked path, or lose `[tool.testosterone]` to Rich markup.
+- `qasight config init --help` and `qasight config-db --help` no longer show an RST-style double-backticked path, or lose `[tool.qasight]` to Rich markup.
 
 ### Text alternatives for charts, and a 200 % zoom pass
 
@@ -48,13 +48,13 @@ The per-test duration chart's label now reads its values ("Duration per run, old
 
 The dashboard opened on four KPI tiles for the latest run, whatever its cycle, then rollup chips ("0 unknown") and a "Quick links" card. It now leads with a "Needs attention" card from `GET /api/v1/dashboard/attention` (`services/attention.py`): for the latest run of each of the ten most recently run cycles, which are red, with their failing and new-failure counts and how many runs in a row they have been red (on the run's branch); tests the latest run made flaky (`flaky_service.newly_flaky_tests`); and the tests that got slower most (`test_history`'s "Got slower"). Each line links to the run or test page that explains it, and a quiet day reads "All 3 cycles passed their latest run. Nothing needs you." The KPI tiles stay, below it, without their decorative icons; the rollup and quick-links cards are gone (report links moved to the Recent runs card's header). The overview endpoint is unchanged.
 
-The no-runs page told people to press Run on a cycle, which a `pip install` user with no `testosterone.yaml` can't. It now offers the three ways in: `testo ingest` for existing JUnit output, `testo config init` and `testo run`, or the try-it page.
+The no-runs page told people to press Run on a cycle, which a `pip install` user with no `qasight.yaml` can't. It now offers the three ways in: `qasight ingest` for existing JUnit output, `qasight config init` and `qasight run`, or the try-it page.
 
-### `pytest --testo` records local runs (time to first value)
+### `pytest --qasight` records local runs (time to first value)
 
-The fastest way to a first run was `pytest --junitxml` plus `testo ingest`, two commands to remember. testo-core now ships a pytest plugin (`testo_core/pytest_plugin.py`, entry point `pytest11`) that does both: `--testo` (or `--testo-cycle NAME`, or `TESTO_RECORD=1`) points pytest's own `--junitxml` at a temporary file inside the rootdir and, after the session, records it with `execute_ingest_command`, the function behind `testo ingest`. So there is still one ingest path; the plugin only saves the typing. The report sits inside the rootdir so the run records the checkout's branch and commit, which "New since main" and the rerun command use.
+The fastest way to a first run was `pytest --junitxml` plus `qasight ingest`, two commands to remember. qasight now ships a pytest plugin (`qasight/pytest_plugin.py`, entry point `pytest11`) that does both: `--qasight` (or `--qasight-cycle NAME`, or `TESTO_RECORD=1`) points pytest's own `--junitxml` at a temporary file inside the rootdir and, after the session, records it with `execute_ingest_command`, the function behind `qasight ingest`. So there is still one ingest path; the plugin only saves the typing. The report sits inside the rootdir so the run records the checkout's branch and commit, which "New since main" and the rerun command use.
 
-The plugin is registered for every pytest run on a machine with testo-core installed, so it is inert without the flag, imports nothing from testo-core until it records, skips xdist workers, and turns any recording failure into one summary line instead of a different exit code.
+The plugin is registered for every pytest run on a machine with qasight installed, so it is inert without the flag, imports nothing from qasight until it records, skips xdist workers, and turns any recording failure into one summary line instead of a different exit code.
 
 ### Screenshots, videos and traces on the test page (feature depth)
 
@@ -74,7 +74,7 @@ The third review pass found one Medium: you couldn't see one cycle's runs over t
 
 ## Consequences
 
-- A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.
+- A team that only ingests JUnit gets the same cycle page as one that runs cycles through `qasight run`, apart from starting runs.
 - The attention card reads per-test history for up to ten cycles on each dashboard load. At this scale that's fine; caching it per latest run id is the next step if it gets slow.
 - A rerun command is a best guess from recorded names: it can miss a parametrized pytest id or a test whose module path the runner didn't record. It is shown only when every test in the group maps to a name.
 - `GET /api/v1/cycles` reads up to 500 recent runs on each call. Fine at this scale; a distinct-cycles query in the repository is the next step if it shows up.

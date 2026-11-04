@@ -17,7 +17,7 @@ The adapter used to get the Allure results by passing BehaveX's `--formatter=...
 ## Decision
 
 1. `BehaveXAdapter.build_argv` passes no formatter. BehaveX writes `report.html`, `report.json` and `outputs/logs/` to `behave_reports/` as it does on its own.
-2. After the stage, the executor calls `export_behavex_allure_results` (`testo_core/reporting/behavex_allure.py`). It copies the scenario logs into `allure-results/behavex/` and runs BehaveX's own `AllureBehaveXFormatter` on `report.json`, with BehaveX's `logs` setting pointed there. The output is the same set of files a `--formatter` run writes, with `scenario.log` attachments that resolve.
+2. After the stage, the executor calls `export_behavex_allure_results` (`qasight/reporting/behavex_allure.py`). It copies the scenario logs into `allure-results/behavex/` and runs BehaveX's own `AllureBehaveXFormatter` on `report.json`, with BehaveX's `logs` setting pointed there. The output is the same set of files a `--formatter` run writes, with `scenario.log` attachments that resolve.
 3. A `--formatter` in a stage's `args` is passed through. The export then sees existing results and does nothing, and `ensure_behavex_report_html` still renders `report.html` from `report.json`, as before.
 4. Both steps are best-effort: a failure goes to `run.log` and `StageResult.error`; the exit code still decides the stage.
 
@@ -31,4 +31,4 @@ The adapter used to get the Allure results by passing BehaveX's `--formatter=...
 
 - Allure results for a BehaveX stage appear when the stage ends, not while it runs. Reporters run after the whole cycle, so they still see every result.
 - Scenario logs are stored twice (in `behave_reports/outputs/logs/` and in `allure-results/behavex/`). They are small text files.
-- `tests/integration/testo_core/engine/test_behavex_reports.py` runs the real `behavex` binary and fails if either report is missing or the HTML is not BehaveX's own.
+- `tests/integration/qasight/engine/test_behavex_reports.py` runs the real `behavex` binary and fails if either report is missing or the HTML is not BehaveX's own.

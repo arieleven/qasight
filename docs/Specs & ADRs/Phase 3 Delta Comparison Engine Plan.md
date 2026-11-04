@@ -18,8 +18,8 @@ QA teams need side-by-side comparison of two runs (reliability + performance) wi
 | Layer | Detail |
 |-------|--------|
 | Metric semantics | [Delta Comparison Policy](Delta%20Comparison%20Policy.md) |
-| Core service | `testo_core/services/delta_service.py` |
-| CLI | [Command Reference § `testo diff` / `testo summary`](../CLI%20Commands/Command%20Reference.md#testo-diff--testo-summary) |
+| Core service | `qasight/services/delta_service.py` |
+| CLI | [Command Reference § `qasight diff` / `qasight summary`](../CLI%20Commands/Command%20Reference.md#qasight-diff--qasight-summary) |
 | API | `GET /api/v1/analytics/delta` |
 | React | `frontend/src/features/compare/` |
 

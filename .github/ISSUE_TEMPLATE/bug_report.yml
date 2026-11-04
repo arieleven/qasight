@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in testo / testo-core isn't working as expected
+description: Something in qasight / qasight isn't working as expected
 labels: ["bug"]
 body:
   - type: markdown
@@ -26,15 +26,15 @@ body:
       label: Reproduction
       description: Minimal commands to reproduce.
       render: bash
-      placeholder: testo run --cycle sample-pytests
+      placeholder: qasight run --cycle sample-pytests
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: testo version
-      description: Output of `testo --version`.
-      placeholder: testo 1.5.0
+      label: qasight version
+      description: Output of `qasight --version`.
+      placeholder: qasight 1.5.0
     validations:
       required: true
   - type: input
@@ -45,11 +45,11 @@ body:
   - type: textarea
     id: config
     attributes:
-      label: Relevant testosterone.yaml snippet
+      label: Relevant qasight.yaml snippet
       render: yaml
   - type: textarea
     id: logs
     attributes:
       label: Logs or NDJSON output
-      description: Relevant `testo run --ci` output or `artifacts/**/*.log` content.
+      description: Relevant `qasight run --ci` output or `artifacts/**/*.log` content.
       render: text

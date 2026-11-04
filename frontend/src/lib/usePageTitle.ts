@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 
-const APP = "Testosterone";
+const APP = "QASight";
 
 /**
  * Names the browser tab (and what a screen reader announces on navigation)
- * after the page: "Runs · Testosterone". Every route shared one title before.
+ * after the page: "Runs · QASight". Every route shared one title before.
  */
 export function usePageTitle(title: string | undefined) {
   useEffect(() => {

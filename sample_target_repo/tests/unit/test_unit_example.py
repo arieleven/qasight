@@ -3,7 +3,7 @@
 These tests exercise the in-process helpers of the sandbox API directly:
 ``Item``, ``_find_item``, ``_issue_token``, and ``_require_bearer``. They
 must not touch the FastAPI app or open any sockets so they stay in the
-fast ``unit`` lane of the testosterone plans.
+fast ``unit`` lane of the qasight plans.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 name: Move major version tag
 
 # Keeps the moving `v<major>` tag (e.g. `v1`) on the latest stable release, so
-# `uses: taltal-beep/testosterone@v1` (or its older path `.../integrations/github-action@v1`) and the GitLab
+# `uses: arieleven/qasight@v1` (or its older path `.../integrations/github-action@v1`) and the GitLab
 # include follow new releases. See docs "CI-CD Pipeline Setup § Versioning policy".
 
 on:

@@ -4,9 +4,9 @@ Documented in ``docs/Testing Workflows/QA Strategies.md`` (§Testing the
 orchestrator itself).  Import as ``from tests.fixtures.engine import ...`` —
 ``pythonpath = .`` in ``pytest.ini`` makes the repo root importable.
 
-The core trick: real ``testosterone.yaml`` configs declare stages with a
+The core trick: real ``qasight.yaml`` configs declare stages with a
 supported framework name (``pytest``), and tests monkeypatch
-``testo_core.engine.executor.get_adapter`` so every stage shells out to
+``qasight.engine.executor.get_adapter`` so every stage shells out to
 ``scripts/echo.py`` instead — a real subprocess whose output/exit code is
 scripted entirely by the stage ``args``.
 """
@@ -90,7 +90,7 @@ class HangAdapter:
 
 def use_adapter(monkeypatch: pytest.MonkeyPatch, adapter: Any) -> Any:
     """Route every framework name to ``adapter`` for the duration of the test."""
-    from testo_core.engine import executor
+    from qasight.engine import executor
 
     monkeypatch.setattr(executor, "get_adapter", lambda framework: adapter)
     return adapter
@@ -141,11 +141,11 @@ def read_artifact_events(artifacts_root: Path, plan_name: str) -> list[dict[str,
 
 
 # ---------------------------------------------------------------------------
-# testosterone.yaml builders
+# qasight.yaml builders
 # ---------------------------------------------------------------------------
 def write_config(root: Path, payload: Mapping[str, Any]) -> Path:
-    """Dump ``payload`` to ``<root>/testosterone.yaml`` and return the path."""
-    path = root / "testosterone.yaml"
+    """Dump ``payload`` to ``<root>/qasight.yaml`` and return the path."""
+    path = root / "qasight.yaml"
     path.write_text(yaml.safe_dump(dict(payload), sort_keys=False), encoding="utf-8")
     return path
 

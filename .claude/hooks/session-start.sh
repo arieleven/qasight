@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code on the web: install testo-core[dev] into a project venv.
+# Claude Code on the web: install qasight[dev] into a project venv.
 # The container's system pip (Debian-patched setuptools) can't build
 # csscompressor, a source-only dependency of behavex, so never install there.
 set -euo pipefail

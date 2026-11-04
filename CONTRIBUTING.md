@@ -1,10 +1,10 @@
-# Contributing to Testosterone
+# Contributing to QASight
 
 ## Setup
 
 ```bash
-git clone https://github.com/taltal-beep/testosterone.git
-cd testosterone
+git clone https://github.com/arieleven/qasight.git
+cd qasight
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -17,23 +17,23 @@ Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT
 
 ## Finding something to work on
 
-Issues labelled [`good first issue`](https://github.com/taltal-beep/testosterone/labels/good%20first%20issue) are small and self-contained, with the files to touch named in the issue. Comment on one to claim it. For anything bigger, open an issue or a discussion first so the approach can be agreed before you write the code.
+Issues labelled [`good first issue`](https://github.com/arieleven/qasight/labels/good%20first%20issue) are small and self-contained, with the files to touch named in the issue. Comment on one to claim it. For anything bigger, open an issue or a discussion first so the approach can be agreed before you write the code.
 
 ## Before opening a PR
 
 - **Tests**: `pytest -q -m "tier_fast and not quarantined" --no-cov` — the fast local path for the required check in CI (`ci.yml`'s `test` job). CI runs the same selection with coverage on and fails below 80% line + branch coverage (gate set in `pytest.ini`); drop `--no-cov` to check that locally (~15 s slower). Add `-n auto` to use every core, as CI does.
-- **Lint, format, types, layers**: `ruff check .`, `ruff format --check .`, `mypy testo_core testo_api` and `lint-imports` (the layer contracts in `pyproject.toml` under `[tool.importlinter]`, one per row of the layer table in `ARCHITECTURE.md`) — all four are blocking in CI (`ci.yml`'s `format` job). Run `ruff format .` to fix formatting.
+- **Lint, format, types, layers**: `ruff check .`, `ruff format --check .`, `mypy qasight qasight_api` and `lint-imports` (the layer contracts in `pyproject.toml` under `[tool.importlinter]`, one per row of the layer table in `ARCHITECTURE.md`) — all four are blocking in CI (`ci.yml`'s `format` job). Run `ruff format .` to fix formatting.
 - **Frontend**: `npm --prefix frontend run typecheck && npm --prefix frontend run lint && npm --prefix frontend test` — all blocking in CI (`ci.yml`'s `frontend` job).
-- **API contract**: the React app's request/response types are generated from FastAPI's OpenAPI schema. After changing a model in `testo_api/models.py` (or a route's `response_model`), run `python scripts/export_openapi.py && npm --prefix frontend run gen:api` and commit `frontend/openapi.json` and `frontend/src/lib/api-schema.ts`. CI fails if either is stale.
+- **API contract**: the React app's request/response types are generated from FastAPI's OpenAPI schema. After changing a model in `qasight_api/models.py` (or a route's `response_model`), run `python scripts/export_openapi.py && npm --prefix frontend run gen:api` and commit `frontend/openapi.json` and `frontend/src/lib/api-schema.ts`. CI fails if either is stale.
 - **Commit messages**: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `test:`, `chore:`, `docs:`, ...) — enforced by `commitlint` in CI against `commitlint.config.js`.
 - **Changelog**: add an entry under `## [Unreleased]` in `CHANGELOG.md` (Keep a Changelog format) for any non-doc change. CI's `changelog_required` job fails PRs that skip this — apply the `no-changelog` label if the change genuinely doesn't warrant an entry (pure test/CI/refactor with no user-facing effect).
 - **Behave features**: always target explicitly (`behave features/smoke.feature`), never rely on cwd auto-discovery — see [Command Reference](docs/CLI%20Commands/Command%20Reference.md).
 
 ## Docs
 
-If your change alters CLI arguments, exit codes, `testosterone.yaml` config parsing, or a workflow lifecycle, update the matching note under `docs/` (the Obsidian vault — start at [docs/Index.md](docs/Index.md)) in the same PR. Large or multi-step changes (migrations, refactors, new architecture) should also get an entry in `docs/Specs & ADRs/` or `docs/Testing Workflows/Technical Debt Tracker.md` as appropriate.
+If your change alters CLI arguments, exit codes, `qasight.yaml` config parsing, or a workflow lifecycle, update the matching note under `docs/` (the Obsidian vault — start at [docs/Index.md](docs/Index.md)) in the same PR. Large or multi-step changes (migrations, refactors, new architecture) should also get an entry in `docs/Specs & ADRs/` or `docs/Testing Workflows/Technical Debt Tracker.md` as appropriate.
 
-The notes are also built as the [docs site](https://taltal-beep.github.io/testosterone/docs/). To preview it, `pip install -e ".[docs]"` and run `mkdocs serve`; a new note needs a `nav` entry in `mkdocs.yml` to show in the menu. CI runs `mkdocs build --strict`, so a broken link fails the build.
+The notes are also built as the [docs site](https://arieleven.github.io/qasight/docs/). To preview it, `pip install -e ".[docs]"` and run `mkdocs serve`; a new note needs a `nav` entry in `mkdocs.yml` to show in the menu. CI runs `mkdocs build --strict`, so a broken link fails the build.
 
 ## Files for AI coding agents
 

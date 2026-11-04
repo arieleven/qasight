@@ -23,7 +23,7 @@ SCHEMA_PATH = REPO_ROOT / "frontend" / "openapi.json"
 
 
 def render_schema() -> str:
-    from testo_api.main import app
+    from qasight_api.main import app
 
     return json.dumps(app.openapi(), indent=2, sort_keys=True) + "\n"
 

@@ -14,8 +14,8 @@ The first external adopter, CarBiz (an Expo app with a Python/AWS backend), want
 
 ## Decision
 
-1. **New equipment `command`** (`testo_core/frameworks/command_adapter.py`). `args` is the complete argv, run verbatim in `target_repo`. Nothing is injected (these runners have no Allure flag). `TESTO_SHARED_ALLURE_RESULTS_DIR` is still exported for runners that can write Allure JSON themselves. `args` is required at load time. The default tier is `unit`; set `tier:` explicitly for e2e suites.
-2. **New stage key `junit_xml`** (string or list of globs, relative to `target_repo`, valid on every equipment). After the process exits, the executor converts each matching file into one Allure `*-result.json` per `<testcase>` (`testo_core/reporting/junit_import.py`):
+1. **New equipment `command`** (`qasight/frameworks/command_adapter.py`). `args` is the complete argv, run verbatim in `target_repo`. Nothing is injected (these runners have no Allure flag). `TESTO_SHARED_ALLURE_RESULTS_DIR` is still exported for runners that can write Allure JSON themselves. `args` is required at load time. The default tier is `unit`; set `tier:` explicitly for e2e suites.
+2. **New stage key `junit_xml`** (string or list of globs, relative to `target_repo`, valid on every equipment). After the process exits, the executor converts each matching file into one Allure `*-result.json` per `<testcase>` (`qasight/reporting/junit_import.py`):
    - Status: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed.
    - `statusDetails` carries the message and a trace capped at 20k characters.
    - `historyId` = sha256(stage name + full name), so trends line up across runs.
@@ -36,7 +36,7 @@ The first external adopter, CarBiz (an Expo app with a Python/AWS backend), want
 
 - `SUPPORTED_FRAMEWORKS` gains `command`, and `Stage` gains `junit_xml` (default `()`, so existing configs are unchanged).
 - Docs updated in the same change: [Architecture Overview](../Architecture/Architecture%20Overview.md) (adapter list), [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) (post-stage hook), [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) (config example), `CHANGELOG.md`.
-- Tests: `tests/unit/testo_core/test_command_adapter.py`, 14 cases covering config validation, the adapter, the status and label mapping, malformed, stale and escaping files, and real subprocess stages through `run_stage`.
+- Tests: `tests/unit/qasight/test_command_adapter.py`, 14 cases covering config validation, the adapter, the status and label mapping, malformed, stale and escaping files, and real subprocess stages through `run_stage`.
 
 ## Follow-ups
 

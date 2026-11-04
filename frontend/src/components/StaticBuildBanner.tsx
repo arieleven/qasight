@@ -86,10 +86,10 @@ export function StaticBuildBanner() {
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-semibold text-warn-400">Read-only demo</p>
           <p>
-            Real results from <code className="font-mono">testo run</code> in CI: Testosterone testing itself (
+            Real results from <code className="font-mono">qasight run</code> in CI: QASight testing itself (
             <code className="font-mono">self-test</code>) and{" "}
             <a
-              href="https://github.com/taltal-beep/fake-api"
+              href="https://github.com/arieleven/fake-api"
               target="_blank"
               rel="noreferrer"
               className="text-brand-300 hover:text-brand-400 hover:underline"

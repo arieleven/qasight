@@ -19,7 +19,7 @@ describe("TryPage", () => {
     expect(within(failing.parentElement ?? failing).getByText("Same cause")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Slowest tests" })).toBeInTheDocument();
     expect(screen.getByText(/nothing was uploaded/)).toBeInTheDocument();
-    expect(screen.getByTestId("try-setup")).toHaveTextContent("testo init");
+    expect(screen.getByTestId("try-setup")).toHaveTextContent("qasight init");
   });
 
   it("reads a chosen file in the browser", async () => {

@@ -19,7 +19,7 @@ def test_build_command_includes_expected_flags() -> None:
     module = _load_wrapper_module()
     cmd = module.build_command(config_path="config.yml", cycle="smoke", ci_mode=True, persist=False)
     assert cmd == [
-        "testo",
+        "qasight",
         "run",
         "--config",
         "config.yml",
@@ -33,7 +33,7 @@ def test_build_command_includes_expected_flags() -> None:
 def test_build_command_omits_empty_config_and_cycle() -> None:
     module = _load_wrapper_module()
     assert module.build_command(config_path="", cycle="", ci_mode=True, persist=True) == [
-        "testo",
+        "qasight",
         "run",
         "--ci",
     ]
@@ -80,7 +80,7 @@ def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> No
     monkeypatch.setattr(module.subprocess, "run", fake_run)
     monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
-    (tmp_path / "testosterone.yaml").write_text("version: 1\n", encoding="utf-8")
+    (tmp_path / "qasight.yaml").write_text("version: 1\n", encoding="utf-8")
     monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
 
     code = module.main(
@@ -98,7 +98,7 @@ def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> No
         ]
     )
     assert code == 1
-    assert captured_cmd == ["testo", "run", "--cycle", "smoke", "--ci"]
+    assert captured_cmd == ["qasight", "run", "--cycle", "smoke", "--ci"]
 
     kv = dict(
         line.split("=", 1)
@@ -146,7 +146,7 @@ def test_render_markdown_links_the_workflow_run(tmp_path: Path, monkeypatch) -> 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
     assert module.render_markdown(cycle="smoke", env=_github_env(tmp_path)) == "<!-- m -->\nhi\n"
     assert seen[0] == [
-        "testo",
+        "qasight",
         "report",
         "markdown",
         "--cycle",
@@ -234,7 +234,7 @@ def test_annotate_prints_the_error_lines(tmp_path: Path, monkeypatch, capsys) ->
     seen = _fake_testo(module, monkeypatch, stdout="::error title=t::boom\n")
     env = {**_github_env(tmp_path), "GITHUB_WORKSPACE": "/w"}
     module.annotate(cycle="smoke", config_path="", env=env)
-    assert seen[0] == ["testo", "report", "annotations", "--cycle", "smoke", "--workspace", "/w"]
+    assert seen[0] == ["qasight", "report", "annotations", "--cycle", "smoke", "--workspace", "/w"]
     assert capsys.readouterr().out == "::error title=t::boom\n"
 
 
@@ -247,7 +247,7 @@ def test_notify_sends_only_to_chats_with_a_webhook(tmp_path: Path, monkeypatch) 
     env = {**_github_env(tmp_path), "TESTO_TEAMS_WEBHOOK_URL": "https://teams.example/hook"}
     module.notify(cycle="smoke", when="change", env=env)
     assert seen[0] == [
-        "testo",
+        "qasight",
         "notify",
         "--cycle",
         "smoke",
@@ -288,7 +288,7 @@ def test_flaky_issues_skip_tests_that_already_have_an_open_issue(
     monkeypatch.setattr(module, "_github", fake_github)
     module.open_flaky_issues(cycle="smoke", token="t", env=_github_env(tmp_path))
 
-    assert seen[0] == ["testo", "flaky", "--cycle", "smoke", "--new", "--json"]
+    assert seen[0] == ["qasight", "flaky", "--cycle", "smoke", "--new", "--json"]
     posts = [c for c in calls if c[0] == "POST"]
     assert len(posts) == 1
     _, url, body = posts[0]
@@ -296,7 +296,7 @@ def test_flaky_issues_skip_tests_that_already_have_an_open_issue(
     assert isinstance(body, dict)
     assert body["title"] == "Flaky test: test_b (smoke)"
     assert body["labels"] == ["flaky-test"]
-    assert "testo flaky --cycle smoke" in body["body"]
+    assert "qasight flaky --cycle smoke" in body["body"]
 
 
 def test_error_event_without_exit_code_is_the_summary() -> None:
@@ -324,8 +324,8 @@ def test_a_run_that_did_not_finish_publishes_nothing(tmp_path: Path, monkeypatch
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "out.txt"))
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     assert module.main(["--cycle", "smoke"]) == 2
-    # Only `testo run`: no `testo report markdown` / annotations / notify of an older run.
-    assert calls == [["testo", "run", "--cycle", "smoke", "--ci"]]
+    # Only `qasight run`: no `qasight report markdown` / annotations / notify of an older run.
+    assert calls == [["qasight", "run", "--cycle", "smoke", "--ci"]]
 
 
 def test_coverage_input_becomes_one_flag_per_report() -> None:
@@ -351,7 +351,7 @@ def test_cycle_all_publishes_every_finished_cycle(tmp_path: Path, monkeypatch) -
 
     def fake_run(cmd, **_kwargs):  # noqa: ANN001
         calls.append(list(cmd))
-        out = run_out if cmd[:2] == ["testo", "run"] else "<!-- m -->\nhi\n"
+        out = run_out if cmd[:2] == ["qasight", "run"] else "<!-- m -->\nhi\n"
         return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=out, stderr="")
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
@@ -389,7 +389,7 @@ def test_package_input_installs_several_requirements(tmp_path: Path) -> None:
     import yaml
 
     action = yaml.safe_load(Path("action.yml").read_text(encoding="utf-8"))
-    step = next(s for s in action["runs"]["steps"] if s.get("name") == "Install testo")
+    step = next(s for s in action["runs"]["steps"] if s.get("name") == "Install qasight")
     pip = tmp_path / "python"
     pip.write_text('#!/bin/sh\necho "$@" >> "$LOG"\n', encoding="utf-8")
     pip.chmod(0o755)
@@ -397,11 +397,11 @@ def test_package_input_installs_several_requirements(tmp_path: Path) -> None:
     env = {
         "PATH": f"{tmp_path}:/usr/bin:/bin",
         "LOG": str(log),
-        "TESTO_INPUT_PACKAGE": 'testo-core pytest-xdist "$(touch pwned)"',
+        "TESTO_INPUT_PACKAGE": 'qasight pytest-xdist "$(touch pwned)"',
     }
     subprocess.run(["bash", "-c", step["run"]], check=True, env=env, cwd=tmp_path)
     lines = log.read_text(encoding="utf-8").splitlines()
-    assert lines[-1].split()[:4] == ["-m", "pip", "install", "testo-core"]
+    assert lines[-1].split()[:4] == ["-m", "pip", "install", "qasight"]
     assert "pytest-xdist" in lines[-1]
     assert not (tmp_path / "pwned").exists()
 
@@ -411,7 +411,9 @@ def _fake_run(calls: list[list[str]], *, plan: str = "my-repo"):  # noqa: ANN202
 
     def fake_run(cmd, **_kwargs):  # noqa: ANN001
         calls.append(list(cmd))
-        out = json.dumps(finished) + "\n" if cmd[1] in ("run", "ingest") else "<!-- testo -->\nok\n"
+        out = (
+            json.dumps(finished) + "\n" if cmd[1] in ("run", "ingest") else "<!-- qasight -->\nok\n"
+        )
         return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=out, stderr="")
 
     return fake_run
@@ -434,16 +436,16 @@ def test_without_a_config_it_records_results_and_comments(tmp_path: Path, monkey
     code = module.main(["--annotations", "false"])
 
     assert code == 0
-    assert calls[0] == ["testo", "ingest", "--ci"]  # results found by testo ingest itself
+    assert calls[0] == ["qasight", "ingest", "--ci"]  # results found by qasight ingest itself
     assert posted, "comment-on-pr defaults to on without a config"
-    assert any(c[:3] == ["testo", "report", "markdown"] and "my-repo" in c for c in calls)
+    assert any(c[:3] == ["qasight", "report", "markdown"] and "my-repo" in c for c in calls)
 
 
 def test_results_input_records_those_files_even_with_a_config(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
     module = _load_wrapper_module()
     calls: list[list[str]] = []
     monkeypatch.setattr(module.subprocess, "run", _fake_run(calls))
-    (tmp_path / "testosterone.yaml").write_text("version: 1\n", encoding="utf-8")
+    (tmp_path / "qasight.yaml").write_text("version: 1\n", encoding="utf-8")
     monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
@@ -454,7 +456,7 @@ def test_results_input_records_those_files_even_with_a_config(tmp_path: Path, mo
     )
 
     assert calls[0] == [
-        "testo",
+        "qasight",
         "ingest",
         "reports/*.xml",
         "web/jest.json",
@@ -472,14 +474,14 @@ def test_with_a_config_comment_stays_off_by_default(tmp_path: Path, monkeypatch)
     monkeypatch.setattr(module, "upsert_pr_comment", lambda **kw: posted.append("x") or "created")
     for key, value in _github_env(tmp_path).items():
         monkeypatch.setenv(key, value)
-    (tmp_path / "testosterone.yaml").write_text("version: 1\n", encoding="utf-8")
+    (tmp_path / "qasight.yaml").write_text("version: 1\n", encoding="utf-8")
     monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
 
     module.main(["--annotations", "false"])
 
-    assert calls[0][:2] == ["testo", "run"]
+    assert calls[0][:2] == ["qasight", "run"]
     assert posted == []
 
 
@@ -495,12 +497,12 @@ def test_prepare_history_caches_sqlite_unless_a_database_is_configured(
         "GITHUB_JOB": "unit",
         "GITHUB_RUN_ID": "5",
         "GITHUB_RUN_ATTEMPT": "2",
-        "GITHUB_ACTION": "testo",
+        "GITHUB_ACTION": "qasight",
     }
 
     out = module.prepare_history(history="auto", config_path="", env=env)
     assert out["cache"] == "true"
-    assert out["key"] == "testo-history-CI-tests-unit-5-2-testo"
+    assert out["key"] == "testo-history-CI-tests-unit-5-2-qasight"
     assert out["restore_prefix"] == "testo-history-CI-tests-unit-"
     assert (
         out["database_url"] == f"sqlite:///{(tmp_path / 'cache' / 'testo_history.db').as_posix()}"
@@ -511,7 +513,7 @@ def test_prepare_history_caches_sqlite_unless_a_database_is_configured(
     )
     assert mine["cache"] == "false" and mine["database_url"] == "postgresql://x"
 
-    (tmp_path / "testosterone.yaml").write_text(
+    (tmp_path / "qasight.yaml").write_text(
         "version: 1\ndatabase:\n  url: sqlite:///team.db\n", encoding="utf-8"
     )
     assert module.prepare_history(history="auto", config_path="", env=env)["cache"] == "false"
@@ -521,7 +523,7 @@ def test_prepare_history_caches_sqlite_unless_a_database_is_configured(
 def test_has_config_sees_pyproject_tables(tmp_path: Path) -> None:
     module = _load_wrapper_module()
     assert not module.has_config(tmp_path, "")
-    (tmp_path / "pyproject.toml").write_text("[tool.testosterone]\nversion = 1\n")
+    (tmp_path / "pyproject.toml").write_text("[tool.qasight]\nversion = 1\n")
     assert module.has_config(tmp_path, "")
     assert module.has_config(tmp_path / "nope", "ci/testo.yaml")
 
@@ -557,10 +559,10 @@ def test_server_url_uploads_the_recorded_results_after_the_local_run(
 
     assert module.main(["--annotations", "false", "--results", "junit.xml"]) == 0
 
-    assert calls[0][:3] == ["testo", "ingest", "junit.xml"]
+    assert calls[0][:3] == ["qasight", "ingest", "junit.xml"]
     assert "TESTO_SERVER_URL" not in envs[0]
     upload = calls[-1]
-    assert upload[:3] == ["testo", "ingest", "junit.xml"]
+    assert upload[:3] == ["qasight", "ingest", "junit.xml"]
     assert upload[upload.index("--server") + 1] == "https://testo.example.com"
     assert upload[upload.index("--cycle") + 1] == "my-repo"
     assert "s3cret" not in upload  # the token goes in the environment, not argv
@@ -572,7 +574,7 @@ def test_a_cycle_run_uploads_its_stage_results(tmp_path: Path, monkeypatch) -> N
     calls: list[list[str]] = []
     monkeypatch.setattr(module.subprocess, "run", _fake_run(calls, plan="unit"))
     _plain_env(tmp_path, monkeypatch)
-    (tmp_path / "testosterone.yaml").write_text(
+    (tmp_path / "qasight.yaml").write_text(
         "version: 1\ncycles:\n  unit:\n    stages:\n      - {name: api, equipment: pytest}\n",
         encoding="utf-8",
     )
@@ -583,7 +585,7 @@ def test_a_cycle_run_uploads_its_stage_results(tmp_path: Path, monkeypatch) -> N
     module.main(["--annotations", "false"])
 
     upload = calls[-1]
-    assert upload[:3] == ["testo", "ingest", str(stage_results)]
+    assert upload[:3] == ["qasight", "ingest", str(stage_results)]
     assert upload[upload.index("--stage") + 1] == "api"
 
 

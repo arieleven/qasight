@@ -96,7 +96,7 @@ function describeAiSummaryError(code: string | null | undefined, limitations: st
   return AI_SUMMARY_ERROR_MESSAGES[code ?? ""] ?? `No summary generated (${code ?? "not_available"}).`;
 }
 
-// The labels the summary prompt asks for (testo_core/services/failure_context_builder.py).
+// The labels the summary prompt asks for (qasight/services/failure_context_builder.py).
 const AI_SUMMARY_LABEL = /^(What failed|Likely cause|Next steps):\s*(.*)$/;
 
 function AiSummaryText({ text }: { text: string }) {

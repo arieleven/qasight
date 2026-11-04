@@ -60,8 +60,8 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement privately, through
-the repository's [private reporting form](https://github.com/taltal-beep/testosterone/security/advisories/new)
-or by contacting the maintainer, [@taltal-beep](https://github.com/taltal-beep).
+the repository's [private reporting form](https://github.com/arieleven/qasight/security/advisories/new)
+or by contacting the maintainer, [@arieleven](https://github.com/arieleven).
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

@@ -18,7 +18,7 @@ describe("CyclesPage in the read-only demo", () => {
         ok: true,
         json: async () => ({
           items: [{ name: "fake-api", description: "Demo app.", stage_count: 4, equipment: ["pytest"], source: "config" }],
-          config_path: "testosterone.yaml"
+          config_path: "qasight.yaml"
         })
       })
     );
@@ -34,7 +34,7 @@ describe("CyclesPage in the read-only demo", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "fake-api" })).toBeInTheDocument());
     const run = screen.getByRole("button", { name: "Run" });
     expect(run).toBeDisabled();
-    expect(run.parentElement).toHaveAttribute("title", expect.stringContaining("testo run --cycle fake-api"));
-    expect(screen.getByText("testo run --cycle fake-api")).toBeInTheDocument();
+    expect(run.parentElement).toHaveAttribute("title", expect.stringContaining("qasight run --cycle fake-api"));
+    expect(screen.getByText("qasight run --cycle fake-api")).toBeInTheDocument();
   });
 });

@@ -98,7 +98,7 @@ export function AskPage() {
     <section className="space-y-6">
       <PageHeader
         title="Ask about your tests"
-        subtitle="Questions in plain words, answered from the runs Testosterone recorded."
+        subtitle="Questions in plain words, answered from the runs QASight recorded."
         actions={<CyclePicker cycle={cycle} onChange={(next) => setSearchParams(next ? { cycle: next } : {})} />}
       />
 
@@ -110,7 +110,7 @@ export function AskPage() {
 
         {IS_STATIC_BUILD ? (
           <p className="mt-3 rounded-xl border border-white/10 bg-ink-800/60 px-3 py-2 text-sm text-ink-200" data-testid="ask-demo-note">
-            This demo is read-only, so it can't ask your AI provider. Try it on your own project with <code className="font-mono text-xs">testo ui</code> and an AI
+            This demo is read-only, so it can't ask your AI provider. Try it on your own project with <code className="font-mono text-xs">qasight ui</code> and an AI
             provider (a free Gemini key works).
           </p>
         ) : aiStatus.data && !aiReady ? (

@@ -7,26 +7,26 @@ updated: 2026-10-22
 
 # System Diagram
 
-The picture of Testosterone, with what each box does. For module-level detail see [Architecture Overview](Architecture%20Overview.md); for the run lifecycle step by step see [Deep Dive - Execution Logic](Deep%20Dive%20-%20Execution%20Logic.md).
+The picture of QASight, with what each box does. For module-level detail see [Architecture Overview](Architecture%20Overview.md); for the run lifecycle step by step see [Deep Dive - Execution Logic](Deep%20Dive%20-%20Execution%20Logic.md).
 
-![Detailed architecture: the REST API and testo CLI both call CycleRunService, which runs config, the engine and reporting; the engine drives framework adapters against the target repo and saves results through persistence and the repository; insight services read run history through the same repository](../assets/testosterone-architecture-detailed-dark.png)
+![Detailed architecture: the REST API and qasight CLI both call CycleRunService, which runs config, the engine and reporting; the engine drives framework adapters against the target repo and saves results through persistence and the repository; insight services read run history through the same repository](../assets/qasight-architecture-detailed-dark.png)
 
-A light copy is [testosterone-architecture-detailed-light.png](../assets/testosterone-architecture-detailed-light.png); the README picks between the two by colour scheme. Both are drawn by `scripts/render_architecture_diagram.js`: change the diagram there and re-run it, never edit the PNGs by hand.
+A light copy is [qasight-architecture-detailed-light.png](../assets/qasight-architecture-detailed-light.png); the README picks between the two by colour scheme. Both are drawn by `scripts/render_architecture_diagram.js`: change the diagram there and re-run it, never edit the PNGs by hand.
 
 ### Simplified view
 
 The first, six-box version from 2026-10-06. It predates `CycleRunService` and the `history/` read side, so use it only when you need the shortest possible picture.
 
-![Simplified architecture: React dashboard, CI and terminal drive the REST API and testo CLI, which call testo_core (config, engine, framework adapters, reporting, insight services, persistence)](../assets/testosterone-architecture-light.png)
+![Simplified architecture: React dashboard, CI and terminal drive the REST API and qasight CLI, which call qasight (config, engine, framework adapters, reporting, insight services, persistence)](../assets/qasight-architecture-light.png)
 
 ## All diagrams in the vault
 
 | Diagram | Shows | Where |
 |---------|-------|-------|
-| Detailed diagram (image above) | Who uses it, interfaces, `CycleRunService`, every `testo_core` package, outside systems | This note |
+| Detailed diagram (image above) | Who uses it, interfaces, `CycleRunService`, every `qasight` package, outside systems | This note |
 | Simplified diagram | The same at six boxes, without `CycleRunService` or `history/` | [This note § Simplified view](#simplified-view) |
 | Component flowchart (Mermaid) | Entry points, `CycleRunService`, engine, persistence, history read side | [Architecture Overview § High-level shape](Architecture%20Overview.md#high-level-shape) |
-| Run sequence (Mermaid) | One `testo run` call from CLI to executor and back | [Deep Dive - Execution Logic](Deep%20Dive%20-%20Execution%20Logic.md) |
+| Run sequence (Mermaid) | One `qasight run` call from CLI to executor and back | [Deep Dive - Execution Logic](Deep%20Dive%20-%20Execution%20Logic.md) |
 | Cycle flow (Mermaid) | Load, trigger gate, stages, reporters, archive | [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) |
 | Demo pipeline (text) | Pages demo: run on itself and fake-api, export to JSON, build, publish | [GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md) |
 
@@ -39,25 +39,25 @@ Mermaid blocks render on GitHub, in the GitHub wiki and in Obsidian without plug
 | Part | Role |
 |------|------|
 | React dashboard | Starts cycles, watches them live, browses past runs, compares two runs |
-| CI pipeline | Runs `testo run --ci`: NDJSON events on stdout, pass or fail through the exit code |
+| CI pipeline | Runs `qasight run --ci`: NDJSON events on stdout, pass or fail through the exit code |
 | Developer terminal | Runs cycles locally with Rich output, opens reports, diffs runs |
 
 ### Interfaces
 
 | Part | Role |
 |------|------|
-| REST API | FastAPI under `/api/v1` (`testo_api/`). Starts cycle and ad-hoc executions in the background, streams progress over SSE, serves dashboard, history, compare and AI summary data |
-| testo CLI | Typer app (`testo_core/cli/`). Commands load lazily so `testo --help` stays fast. Exit codes `0`–`4` are a fixed contract ([Command Reference § Exit codes](../CLI%20Commands/Command%20Reference.md#exit-codes)) |
+| REST API | FastAPI under `/api/v1` (`qasight_api/`). Starts cycle and ad-hoc executions in the background, streams progress over SSE, serves dashboard, history, compare and AI summary data |
+| qasight CLI | Typer app (`qasight/cli/`). Commands load lazily so `qasight --help` stays fast. Exit codes `0`–`4` are a fixed contract ([Command Reference § Exit codes](../CLI%20Commands/Command%20Reference.md#exit-codes)) |
 
-Both interfaces start runs the same way: through `CycleRunService` (`testo_core/services/cycle_run.py`), which applies the trigger gate, calls the engine, then runs reporters, metrics push and the report archive. It is the highlighted box in the detailed diagram; the simplified view folds it into the arrow into `testo_core`.
+Both interfaces start runs the same way: through `CycleRunService` (`qasight/services/cycle_run.py`), which applies the trigger gate, calls the engine, then runs reporters, metrics push and the report archive. It is the highlighted box in the detailed diagram; the simplified view folds it into the arrow into `qasight`.
 
-### Core library (`testo_core`)
+### Core library (`qasight`)
 
 | Part | Package | Role |
 |------|---------|------|
-| Config | `config/` | Finds and validates `testosterone.yaml`, fills defaults and `${env:…}`, resolves a cycle into ordered stages |
+| Config | `config/` | Finds and validates `qasight.yaml`, fills defaults and `${env:…}`, resolves a cycle into ordered stages |
 | Engine | `engine/` | `run_plan()` runs stages in order; `run_stage()` runs each as a subprocess with a timeout and a tee'd log; every step is a typed event |
-| Framework adapters | `frameworks/` | Turn a stage into argv for pytest, behave, behavex, Playwright or `command` (any runner with JUnit XML); `junit` records existing JUnit XML without running anything (`testo ingest`) |
+| Framework adapters | `frameworks/` | Turn a stage into argv for pytest, behave, behavex, Playwright or `command` (any runner with JUnit XML); `junit` records existing JUnit XML without running anything (`qasight ingest`) |
 | Reporting | `reporting/` | Collects Allure results and builds Allure, Extent, ReportPortal or TestBeats output; run KPIs and their push |
 | CycleRunService | `services/cycle_run.py` | The one run use case: trigger gate, engine, reporters, metrics push, report archive |
 | Persistence | `persistence/` | Writes `plan_result.json` (JSON backend) and a `RunRecord` row (DB backend) after each run |

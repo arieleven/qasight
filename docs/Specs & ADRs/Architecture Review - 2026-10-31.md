@@ -30,13 +30,13 @@ Consequences today:
 - The API must share a disk with every run it shows. The team server does (ingest writes locally), so it works, but the design can never put the API behind a load balancer or move artifacts to object storage without rewriting every analytics module.
 - Every per-test request is O(runs × tests) file reads; the per-test page, Compare and `/health` re-parse the same JSON on every call. There is no cache.
 - A cycle with more than 500 runs silently loses history: `_SCAN_LIMIT = 500` is a hard ceiling in five modules.
-- Disk grows without bound. `static/history/` has no retention; `testo clean` removes `artifacts/`, not history.
+- Disk grows without bound. `static/history/` has no retention; `qasight clean` removes `artifacts/`, not history.
 
 ### R2. One table, one JSON column (High)
 
 `RunRecord` has `id`, `status`, `start_time`, `end_time` and `metadata` (JSON). The cycle name, health, exit code, branch, commit, stages and the snapshot pointer are all inside the blob. There is no index on `start_time`, no `cycle` column, and the repository protocol has one list method (`list_recent_runs`) and one status filter. Every "runs of cycle X" and every dashboard rollup is a full scan of the newest N rows plus JSON decoding in Python.
 
-This also makes the data model unqueryable from outside Testosterone (SQL dashboards, Grafana), which teams running Postgres will ask for.
+This also makes the data model unqueryable from outside QASight (SQL dashboards, Grafana), which teams running Postgres will ask for.
 
 ### R3. No migrations (Medium, becomes High at the next schema change)
 
@@ -44,15 +44,15 @@ Schema is `SQLModel.metadata.create_all()` on startup (`repository/db_config.py`
 
 ### R4. `services/` is the catch-all (Medium)
 
-`testo_core/services/` is 32 modules and about 7,000 lines, the largest package in the repo. It holds the use case (`cycle_run`), analytics (delta, flaky, dashboard, test history), write paths (`junit_ingest`, `triage`, `report_archive`), exporters (`otel_export`, `run_summary_markdown`, `badge`), the AI subsystem, and two review features (`project_health`, `project_review`). `ARCHITECTURE.md` describes it as "Analytics". New code has nowhere else obvious to go, so it goes here.
+`qasight/services/` is 32 modules and about 7,000 lines, the largest package in the repo. It holds the use case (`cycle_run`), analytics (delta, flaky, dashboard, test history), write paths (`junit_ingest`, `triage`, `report_archive`), exporters (`otel_export`, `run_summary_markdown`, `badge`), the AI subsystem, and two review features (`project_health`, `project_review`). `ARCHITECTURE.md` describes it as "Analytics". New code has nowhere else obvious to go, so it goes here.
 
 ### R5. The session boundary moved and nobody told the docs (Medium)
 
-`ARCHITECTURE.md` says `testo_core/repository/` is "the only code that opens a database session". Four other modules now open `Session(engine)` directly: `accounts.py`, `services/triage.py`, `resources/store.py` and `testo_api/run_queue.py`. Each is tidy on its own, but there are now five places that must agree on dialect quirks, retries and testing doubles, and the rule that made the storage layer explainable in one sentence is gone. Either the rule is reinstated or the docs should say "one engine factory, several stores".
+`ARCHITECTURE.md` says `qasight/repository/` is "the only code that opens a database session". Four other modules now open `Session(engine)` directly: `accounts.py`, `services/triage.py`, `resources/store.py` and `qasight_api/run_queue.py`. Each is tidy on its own, but there are now five places that must agree on dialect quirks, retries and testing doubles, and the rule that made the storage layer explainable in one sentence is gone. Either the rule is reinstated or the docs should say "one engine factory, several stores".
 
 ### R6. Nothing enforces layering (Medium)
 
-The dependency direction is mostly right (nothing in `services/`, `engine/` or `reporting/` imports `cli/`; `testo_core` imports `testo_api` only in `cli/commands/ui_cmd.py`, which is the deliberate `testo ui` entry). But there are small inversions that will multiply without a check:
+The dependency direction is mostly right (nothing in `services/`, `engine/` or `reporting/` imports `cli/`; `qasight` imports `qasight_api` only in `cli/commands/ui_cmd.py`, which is the deliberate `qasight ui` entry). But there are small inversions that will multiply without a check:
 
 - `engine/` and `config/` import `reporting.paths` for `safe_child_path` and `plan_artifacts_dir`, which are path helpers, not reporting.
 - `config/` imports `resources.pools` (three modules) and `reporting`; the configuration layer now depends on two feature packages.
@@ -66,7 +66,7 @@ None of this is wrong in isolation, but the layer table in `ARCHITECTURE.md` is 
 
 ### R8. Plugin API has no version (Low)
 
-`FrameworkAdapter` and `BaseReporter` are the public extension points, loaded by entry points. Neither carries an API version, and `testo plugins` cannot tell a plugin built for 1.3 from one built for 1.5. Adding a method to `FrameworkAdapter` (as `native_report` already was) breaks third-party adapters at call time, not load time.
+`FrameworkAdapter` and `BaseReporter` are the public extension points, loaded by entry points. Neither carries an API version, and `qasight plugins` cannot tell a plugin built for 1.3 from one built for 1.5. Adding a method to `FrameworkAdapter` (as `native_report` already was) breaks third-party adapters at call time, not load time.
 
 ### R9. Concurrency model for parallel stages is per-process (Low)
 
@@ -78,10 +78,10 @@ Besides R5: the layer table still says `run_plan()` runs stages "in order" (para
 
 ## What is good and should not change
 
-- **One engine, one use case.** `CycleRunService` is still the only caller of `run_plan()`; the CLI, the API, ingest, `pytest --testo` and the Action all go through it.
+- **One engine, one use case.** `CycleRunService` is still the only caller of `run_plan()`; the CLI, the API, ingest, `pytest --qasight` and the Action all go through it.
 - **Events as the seam.** Typed events, NDJSON on disk, renderers decide presentation. The container runner backend slotted in under the executor without touching the engine's contract, which is the proof the seam is in the right place.
 - **Backends behind a protocol** (`engine/backends/`, `StageProcess`), so the host and container runners are interchangeable and the API never sees a Docker socket.
-- **Generated frontend types** with a CI gate on drift. 85 Pydantic models in one `testo_api/models.py` is big but it is one place, and that is the point.
+- **Generated frontend types** with a CI gate on drift. 85 Pydantic models in one `qasight_api/models.py` is big but it is one place, and that is the point.
 - **Switchable team features** default off (`TESTO_AUTH`, `TESTO_RUN_QUEUE`, `TESTO_RUNNER`, `TESTO_REPORTS_ORIGIN`): a solo user's install stays simple.
 - **Exit codes single-sourced** and locked by contract tests.
 
@@ -91,7 +91,7 @@ Ordered by value for effort. The first three are one decision in three steps; th
 
 ### 1. Add migrations before anything else touches the schema
 
-**Decision:** introduce Alembic with a baseline revision equal to today's `create_all()` schema; `testo-api` and `testo config-db` run `upgrade head` on startup, SQLite included. Keep `create_all()` only for the in-memory test database.
+**Decision:** introduce Alembic with a baseline revision equal to today's `create_all()` schema; `qasight-api` and `qasight config-db` run `upgrade head` on startup, SQLite included. Keep `create_all()` only for the in-memory test database.
 
 | Option | Complexity | Risk | Notes |
 |--------|-----------|------|-------|
@@ -127,19 +127,19 @@ Ordered by value for effort. The first three are one decision in three steps; th
 
 ### 4. Enforce the layer table with `import-linter`
 
-Add an `importlinter` config to `pyproject.toml` with three contracts: `testo_core` must not import `testo_api` except `cli/commands/ui_cmd.py`; `engine`, `config`, `frameworks`, `paths` must not import `services`, `reporting`, `cli`, `resources`; `persistence` and `history` may import `repository` but not each other. Run it in the `format` CI job. Move `safe_child_path` and `plan_artifacts_dir` from `reporting/paths.py` into `testo_core/paths.py` to make the first contract pass. Half a day, and it stops R6 from growing.
+Add an `importlinter` config to `pyproject.toml` with three contracts: `qasight` must not import `qasight_api` except `cli/commands/ui_cmd.py`; `engine`, `config`, `frameworks`, `paths` must not import `services`, `reporting`, `cli`, `resources`; `persistence` and `history` may import `repository` but not each other. Run it in the `format` CI job. Move `safe_child_path` and `plan_artifacts_dir` from `reporting/paths.py` into `qasight/paths.py` to make the first contract pass. Half a day, and it stops R6 from growing.
 
 ### 5. Split `services/` by role
 
-Not a rewrite: three moves and a docstring. `services/cycle_run.py` is the use case and stays. Analytics (`delta_*`, `flaky_service`, `test_history`, `dashboard_service`, `attention`, `run_failures`, `run_snapshot_diff`, `project_health`) become `testo_core/analytics/`. Exporters (`otel_export`, `run_summary_markdown`, `badge`, `report_archive*`) join `reporting/`. Write paths (`junit_ingest`, `triage`, `run_annotations`, `test_ownership`) stay in `services/`. `services/ai/` stays. Then the layer table in `ARCHITECTURE.md` can name each package in one line. One mechanical PR per move; `import-linter` from 4 keeps them apart afterwards.
+Not a rewrite: three moves and a docstring. `services/cycle_run.py` is the use case and stays. Analytics (`delta_*`, `flaky_service`, `test_history`, `dashboard_service`, `attention`, `run_failures`, `run_snapshot_diff`, `project_health`) become `qasight/analytics/`. Exporters (`otel_export`, `run_summary_markdown`, `badge`, `report_archive*`) join `reporting/`. Write paths (`junit_ingest`, `triage`, `run_annotations`, `test_ownership`) stay in `services/`. `services/ai/` stays. Then the layer table in `ARCHITECTURE.md` can name each package in one line. One mechanical PR per move; `import-linter` from 4 keeps them apart afterwards.
 
 ### 6. Retention for `static/history/`
 
-A `history.retention` config key (days and/or runs per cycle) and a `testo clean --history` command that deletes the oldest rows and their `static/history/<run_id>/` directories together, run by the API on a timer when set. Without it the team server's disk is the real `_SCAN_LIMIT`. Small, independent of 1 to 3.
+A `history.retention` config key (days and/or runs per cycle) and a `qasight clean --history` command that deletes the oldest rows and their `static/history/<run_id>/` directories together, run by the API on a timer when set. Without it the team server's disk is the real `_SCAN_LIMIT`. Small, independent of 1 to 3.
 
 ### 7. Version the plugin API
 
-Add `TESTO_PLUGIN_API = 1` in `testo_core/plugins.py`, let an adapter or reporter class declare `plugin_api = 1`, and have `testo plugins` and `load_framework()` warn on a mismatch. Document in [Plugin API](Plugin%20API%20-%202026-10-19.md) which protocol methods are optional. One small PR; it makes `native_report`-style additions safe.
+Add `TESTO_PLUGIN_API = 1` in `qasight/plugins.py`, let an adapter or reporter class declare `plugin_api = 1`, and have `qasight plugins` and `load_framework()` warn on a mismatch. Document in [Plugin API](Plugin%20API%20-%202026-10-19.md) which protocol methods are optional. One small PR; it makes `native_report`-style additions safe.
 
 ### 8. Add `seq` to engine events
 
@@ -162,7 +162,7 @@ An integer sequence per run in `engine/events.py`, written to `events.ndjson` an
 3. `test_result` table and switching analytics onto it (rec. 3), then the `services/` split (rec. 5) once the analytics modules have shrunk.
 4. Plugin API version (rec. 7) in the release after, so plugin authors get one notice.
 
-Nothing above changes `testosterone.yaml`, the CLI contract or exit codes. Recommendations 2 and 3 change the database schema and need 1 first.
+Nothing above changes `qasight.yaml`, the CLI contract or exit codes. Recommendations 2 and 3 change the database schema and need 1 first.
 
 ## Related
 

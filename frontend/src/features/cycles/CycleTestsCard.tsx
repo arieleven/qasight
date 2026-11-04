@@ -10,7 +10,7 @@ import { TestLabels } from "../labels/TestLabels";
 
 const LIST_LIMIT = 5;
 const SEARCH_LIMIT = 25;
-// A link carries the names; past this, run the cycle (or `testo run --test`).
+// A link carries the names; past this, run the cycle (or `qasight run --test`).
 const RUN_LIMIT = 50;
 
 function runTestsQuery(tests: TestSummaryItem[]): string {

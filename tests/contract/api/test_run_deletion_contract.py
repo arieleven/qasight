@@ -9,13 +9,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.dependencies import get_cycle_execution_manager
-from testo_api.login_throttle import login_throttle
-from testo_api.main import create_app
-from testo_api.security import account_store
-from testo_core.repository.db import get_repository, get_test_result_store, reset_repository_cache
-from testo_core.repository.db_config import reset_engine_cache
-from testo_core.repository.models import RunStatus
+from qasight.repository.db import get_repository, get_test_result_store, reset_repository_cache
+from qasight.repository.db_config import reset_engine_cache
+from qasight.repository.models import RunStatus
+from qasight_api.dependencies import get_cycle_execution_manager
+from qasight_api.login_throttle import login_throttle
+from qasight_api.main import create_app
+from qasight_api.security import account_store
 
 pytestmark = pytest.mark.tier_fast
 
@@ -30,9 +30,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     monkeypatch.setenv("TESTO_API_TOKEN", _TOKEN)
     for name in ("TESTO_AUTH", "TESTO_PROTECT_READS", "TESTO_CORS_ORIGINS", "TESTO_UI_DIR"):
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr("testo_core.paths.ORCHESTRATOR_ROOT", tmp_path)
-    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", tmp_path / "static" / "history")
-    monkeypatch.chdir(tmp_path)  # no testosterone.yaml here
+    monkeypatch.setattr("qasight.paths.ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr("qasight.paths.STATIC_HISTORY_ROOT", tmp_path / "static" / "history")
+    monkeypatch.chdir(tmp_path)  # no qasight.yaml here
     reset_engine_cache()
     reset_repository_cache()
     yield TestClient(create_app())
@@ -86,8 +86,8 @@ def test_run_settings_without_a_config(client: TestClient) -> None:
     }
 
 
-def test_run_settings_read_testosterone_yaml(client: TestClient, tmp_path: Path) -> None:
-    (tmp_path / "testosterone.yaml").write_text(
+def test_run_settings_read_qasight_yaml(client: TestClient, tmp_path: Path) -> None:
+    (tmp_path / "qasight.yaml").write_text(
         "version: 1\n"
         "defaults:\n  timeout_s: 900\n"
         "history:\n  retention:\n    days: 30\n    runs_per_cycle: 50\n"
@@ -111,7 +111,7 @@ def test_cancel_an_unknown_execution_is_404(client: TestClient) -> None:
 def test_cancel_a_queued_execution(client: TestClient) -> None:
     import threading
 
-    from testo_api.run_queue import RunRequest
+    from qasight_api.run_queue import RunRequest
 
     manager = get_cycle_execution_manager()
     release = threading.Event()

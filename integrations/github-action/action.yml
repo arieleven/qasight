@@ -1,11 +1,11 @@
-name: Testosterone Test History
+name: QASight Test History
 description: Run your tests or read JUnit XML, keep their history, and show what broke, what's flaky and what got slower.
 branding:
   icon: activity
   color: blue
 inputs:
   results:
-    description: "Result files to record instead of running a cycle (globs, space or newline separated). Empty with no testosterone.yaml in the workspace = find them (JUnit XML, Jest/Vitest/Playwright JSON, .trx, go test -json, ...)."
+    description: "Result files to record instead of running a cycle (globs, space or newline separated). Empty with no qasight.yaml in the workspace = find them (JUnit XML, Jest/Vitest/Playwright JSON, .trx, go test -json, ...)."
     required: false
     default: ""
   history:
@@ -13,11 +13,11 @@ inputs:
     required: false
     default: auto
   history-artifact:
-    description: "With the cached history: also upload it (the SQLite file) as a `testo-history-...` artifact kept 7 days, so `testo ui --from-github` can open the CI history on your machine. `false` skips the upload."
+    description: "With the cached history: also upload it (the SQLite file) as a `testo-history-...` artifact kept 7 days, so `qasight ui --from-github` can open the CI history on your machine. `false` skips the upload."
     required: false
     default: "true"
   config-path:
-    description: Path to testosterone.yaml (empty = discovery from the workspace root).
+    description: Path to qasight.yaml (empty = discovery from the workspace root).
     required: false
     default: ""
   cycle:
@@ -25,7 +25,7 @@ inputs:
     required: false
     default: ""
   ci-mode:
-    description: Emit NDJSON events on stdout (`testo run --ci`).
+    description: Emit NDJSON events on stdout (`qasight run --ci`).
     required: false
     default: "true"
   persist:
@@ -37,15 +37,15 @@ inputs:
     required: false
     default: "3.11"
   package:
-    description: What to pip install for testo, e.g. `testo-core==1.2.0`, `.` for a checkout of this repository, or several requirements separated by spaces (`testo-core pytest-xdist`).
+    description: What to pip install for qasight, e.g. `qasight==1.2.0`, `.` for a checkout of this repository, or several requirements separated by spaces (`qasight pytest-xdist`).
     required: false
-    default: testo-core
+    default: qasight
   job-summary:
     description: Write the run (results, failing tests, changes since the last run) to the job summary.
     required: false
     default: "true"
   comment-on-pr:
-    description: "On pull_request events, keep one comment per cycle on the pull request with the same summary. Needs `permissions: pull-requests: write`. `auto` = on when there is no testosterone.yaml (recording results), off when running a cycle."
+    description: "On pull_request events, keep one comment per cycle on the pull request with the same summary. Needs `permissions: pull-requests: write`. `auto` = on when there is no qasight.yaml (recording results), off when running a cycle."
     required: false
     default: auto
   annotations:
@@ -85,7 +85,7 @@ inputs:
     required: false
     default: "false"
   comment-artifact:
-    description: "Fork-safe comments: on pull_request events, upload the comment as a `testo-comment` artifact instead of posting it, for a `workflow_run` workflow that runs this action with `post-comments-from` (a fork's pull request gets a read-only token). `testo init --forks` writes both workflows."
+    description: "Fork-safe comments: on pull_request events, upload the comment as a `testo-comment` artifact instead of posting it, for a `workflow_run` workflow that runs this action with `post-comments-from` (a fork's pull request gets a read-only token). `qasight init --forks` writes both workflows."
     required: false
     default: "false"
   post-comments-from:
@@ -93,7 +93,7 @@ inputs:
     required: false
     default: ""
   server-url:
-    description: "Also upload each recorded run to this Testosterone team server (e.g. https://testo.example.com), as `testo ingest --server` does. The job summary and comment still come from the Actions-cache history."
+    description: "Also upload each recorded run to this QASight team server (e.g. https://testo.example.com), as `qasight ingest --server` does. The job summary and comment still come from the Actions-cache history."
     required: false
     default: ""
   server-token:
@@ -106,7 +106,7 @@ inputs:
     default: ${{ github.token }}
 outputs:
   exit_code:
-    description: testo process exit code.
+    description: qasight process exit code.
     value: ${{ steps.run_testo.outputs.exit_code }}
   summary_json:
     description: Final `plan_finished` (or `error`) NDJSON event as a JSON string.
@@ -124,7 +124,7 @@ runs:
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Install testo
+    - name: Install qasight
       if: inputs.post-comments-from == ''
       shell: bash
       env:
@@ -133,7 +133,7 @@ runs:
         TESTO_INPUT_PACKAGE: ${{ inputs.package }}
       run: |
         python -m pip install --upgrade pip
-        # One or more requirements, space separated: "testo-core pytest-xdist".
+        # One or more requirements, space separated: "qasight pytest-xdist".
         read -r -a packages <<< "$TESTO_INPUT_PACKAGE"
         python -m pip install "${packages[@]}"
     - name: Prepare run history
@@ -155,7 +155,7 @@ runs:
         path: ${{ steps.history.outputs.dir }}
         key: ${{ steps.history.outputs.key }}
         restore-keys: ${{ steps.history.outputs.restore_prefix }}
-    - name: Run testo
+    - name: Run qasight
       id: run_testo
       if: inputs.post-comments-from == ''
       shell: bash
@@ -203,7 +203,7 @@ runs:
         path: ${{ steps.history.outputs.dir }}
         key: ${{ steps.history.outputs.key }}
     - name: Upload the run history
-      # For `testo ui --from-github`. A name taken twice (a matrix job) must not fail the job.
+      # For `qasight ui --from-github`. A name taken twice (a matrix job) must not fail the job.
       if: always() && steps.history.outputs.cache == 'true' && inputs.history-artifact == 'true'
       continue-on-error: true
       uses: actions/upload-artifact@v4

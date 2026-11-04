@@ -52,10 +52,10 @@ def test_action_contract_has_required_inputs_outputs() -> None:
 def test_wrapper_uses_testo_run_ci_command_shape() -> None:
     module = _load_wrapper_module()
     cmd = module.build_command(config_path="config.yml", cycle="", ci_mode=True, persist=True)
-    assert cmd[:2] == ["testo", "run"]
+    assert cmd[:2] == ["qasight", "run"]
     assert "--ci" in cmd
 
 
 def test_github_fixture_is_one_line_consumer() -> None:
     workflow = Path("tests/fixtures/ci/github_workflow_minimal.yml").read_text(encoding="utf-8")
-    assert "uses: taltal-beep/testosterone@v1" in workflow
+    assert "uses: arieleven/qasight@v1" in workflow

@@ -44,7 +44,7 @@ export function QuickRunPage() {
         subtitle={
           <>
             Run one framework directly, without a cycle. For repeatable runs define a cycle in{" "}
-            <code className="font-mono">testosterone.yaml</code> and use{" "}
+            <code className="font-mono">qasight.yaml</code> and use{" "}
             <Link to="/cycles" className="text-brand-300 hover:underline">
               Cycles
             </Link>

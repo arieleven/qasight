@@ -112,7 +112,7 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
     queryKey: ["run-failures", runId],
     queryFn: () => apiClient.getRunFailures(runId)
   });
-  // Only a cycle defined in testosterone.yaml can be run again from here (not one only recorded).
+  // Only a cycle defined in qasight.yaml can be run again from here (not one only recorded).
   const cycleQuery = useQuery({
     queryKey: ["cycle", cycle],
     queryFn: () => apiClient.getCycle(cycle as string),

@@ -88,7 +88,7 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
                   entry={item.quarantine_entry ?? null}
                   why={
                     item.quarantined && !item.quarantine_entry
-                      ? "Matched by a glob or a testosterone.yaml rule: change it there to release this test."
+                      ? "Matched by a glob or a qasight.yaml rule: change it there to release this test."
                       : undefined
                   }
                 />

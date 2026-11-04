@@ -5,10 +5,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
-from testo_api.routes import cycles as cycles_routes
-from testo_core.history.views import CompletedRunView
-from testo_core.repository.models import RunStatus
+from qasight.history.views import CompletedRunView
+from qasight.repository.models import RunStatus
+from qasight_api.main import create_app
+from qasight_api.routes import cycles as cycles_routes
 
 CONFIG_YAML = """\
 version: 1
@@ -38,7 +38,7 @@ cycles:
 
 @pytest.fixture()
 def config_path(tmp_path: Path) -> Path:
-    path = tmp_path / "testosterone.yaml"
+    path = tmp_path / "qasight.yaml"
     path.write_text(CONFIG_YAML, encoding="utf-8")
     return path
 
@@ -123,7 +123,7 @@ def test_get_unknown_cycle_is_404_with_available_names(
 
 
 def test_missing_config_is_503(client: TestClient, tmp_path: Path) -> None:
-    resp = client.get("/api/v1/cycles", params={"config_path": str(tmp_path / "testosterone.yaml")})
+    resp = client.get("/api/v1/cycles", params={"config_path": str(tmp_path / "qasight.yaml")})
     assert resp.status_code == 503
     error = resp.json()["error"]
     assert error["code"] == "infra_failure"
@@ -194,7 +194,7 @@ def test_no_config_still_lists_recorded_cycles(
     monkeypatch: pytest.MonkeyPatch,
     recorded: dict[str, CompletedRunView],
 ) -> None:
-    # `testo ui` over ingested runs, in a directory with no testosterone.yaml.
+    # `qasight ui` over ingested runs, in a directory with no qasight.yaml.
     monkeypatch.chdir(tmp_path)
     recorded["web"] = _recorded_run("web")
 

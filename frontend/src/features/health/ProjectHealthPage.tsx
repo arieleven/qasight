@@ -162,7 +162,7 @@ export function ProjectHealthPage() {
     <section className="space-y-6">
       <PageHeader
         title="Project health"
-        subtitle="How healthy the tests of the project you test are, scored from the runs Testosterone recorded."
+        subtitle="How healthy the tests of the project you test are, scored from the runs QASight recorded."
         actions={<CyclePicker cycle={cycle} onChange={setCycle} />}
       />
 

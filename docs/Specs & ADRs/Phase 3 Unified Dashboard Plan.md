@@ -17,7 +17,7 @@ Consolidate scattered Allure and framework report links into one health-first ov
 
 | Layer | Detail |
 |-------|--------|
-| Aggregation | `testo_core/services/dashboard_service.py` |
+| Aggregation | `qasight/services/dashboard_service.py` |
 | API | `GET /api/v1/dashboard/overview` |
 | UI | `frontend/src/features/dashboard/DashboardPage.tsx` — primary `/` route |
 | Delta semantics | Reuses [Delta Comparison Policy](Delta%20Comparison%20Policy.md) classifications in rollups |

@@ -1,5 +1,5 @@
 /**
- * Decorative line art fixed behind every page: the testosterone molecule and a
+ * Decorative line art fixed behind every page: the qasight molecule and a
  * pair of vials with a syringe, drawn in the brand blue at low opacity so they
  * read as texture under the glass cards and never compete with content.
  */

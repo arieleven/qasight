@@ -7,7 +7,7 @@
 # Only the `runner` service can reach Docker; the API (`server`) never gets the
 # socket. Each stage container gets the repos and artifacts volumes, the stage's
 # own variables (never the server's token or database URL), no capabilities and
-# a process limit. Uploads from CI (`testo ingest`) don't use it at all.
+# a process limit. Uploads from CI (`qasight ingest`) don't use it at all.
 # Guide: docs/Processes & Guides/Team Server.md#runs-in-throwaway-containers
 services:
   server:
@@ -24,16 +24,16 @@ services:
         condition: service_healthy
 
   runner:
-    image: ghcr.io/taltal-beep/testo-runner-service:${TESTO_SERVER_TAG:-1}
+    image: ghcr.io/arieleven/qasight-runner-service:${TESTO_SERVER_TAG:-1}
     build:
       context: ../..
-      dockerfile: Dockerfile.testo-runner-service
+      dockerfile: Dockerfile.qasight-runner-service
     environment:
       TESTO_RUNNER_TOKEN: ${TESTO_RUNNER_TOKEN:?set TESTO_RUNNER_TOKEN (e.g. openssl rand -hex 32)}
       # Volume names as the Docker daemon knows them (fixed with `name:` below).
       TESTO_RUNNER_MOUNTS: testo_repos:/repos,testo_artifacts:/data/artifacts
-      # The image stages run in: the testo-runner image, or your own built FROM it.
-      TESTO_RUNNER_IMAGE: ${TESTO_RUNNER_IMAGE:-ghcr.io/taltal-beep/testo-runner:1}
+      # The image stages run in: the qasight-runner image, or your own built FROM it.
+      TESTO_RUNNER_IMAGE: ${TESTO_RUNNER_IMAGE:-ghcr.io/arieleven/qasight-runner:1}
       TESTO_RUNNER_MEMORY: ${TESTO_RUNNER_MEMORY:-}
       TESTO_RUNNER_CPUS: ${TESTO_RUNNER_CPUS:-}
       # `none` cuts stages off the network entirely.

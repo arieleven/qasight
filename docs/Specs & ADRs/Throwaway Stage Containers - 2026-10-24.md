@@ -23,19 +23,19 @@ A switch, `TESTO_RUNNER=host|container`, default `host`.
 
 ### Where the code lives
 
-- `testo_core/engine/backends/__init__.py`: `launch()` picks the backend. Both return something the executor treats like a `Popen`: a `stdout` to drain, `wait(timeout)`, `send_signal`/`kill`. So the log buffer, the timeout contract (rc `124`), the post-stage JUnit import and quarantine are the same code for both.
+- `qasight/engine/backends/__init__.py`: `launch()` picks the backend. Both return something the executor treats like a `Popen`: a `stdout` to drain, `wait(timeout)`, `send_signal`/`kill`. So the log buffer, the timeout contract (rc `124`), the post-stage JUnit import and quarantine are the same code for both.
 - `backends/container.py`: `RemoteStageProcess`, the client. It rewrites the tool to its name (`/usr/local/bin/python` becomes `python`) so the image's own `PATH` finds it.
-- `backends/runner_service.py`: the service. Standard library only, so its image is a slim Python with the Docker client and this one file (`Dockerfile.testo-runner-service`). Also installed as `testo-runner-service`.
+- `backends/runner_service.py`: the service. Standard library only, so its image is a slim Python with the Docker client and this one file (`Dockerfile.qasight-runner-service`). Also installed as `qasight-runner-service`.
 
 ### What the container gets
 
 The service decides, not the request:
 
-- **Image**: `TESTO_RUNNER_IMAGE` (default the `testo-runner` image). One image per service; teams that need Playwright or other tools build theirs `FROM` it.
+- **Image**: `TESTO_RUNNER_IMAGE` (default the `qasight-runner` image). One image per service; teams that need Playwright or other tools build theirs `FROM` it.
 - **Mounts**: `TESTO_RUNNER_MOUNTS`, at the same paths the API uses, so results land where the API reads them. The stage's directory must be inside one of them.
 - **Commands**: `TESTO_RUNNER_ALLOWED_COMMANDS`, by name (default `python`, `pytest`, `behave`, `behavex`, `node`, `npm`, `npx`; `*` allows any, still inside the container).
-- **Limits**: `--cap-drop ALL`, `no-new-privileges`, `--pids-limit` (512), `--init`, a fixed user (`10001:10001`, the images' `testo`), and optional `TESTO_RUNNER_MEMORY`, `TESTO_RUNNER_CPUS`, `TESTO_RUNNER_NETWORK` (`none` cuts the stage off the network). At most `TESTO_RUNNER_MAX_RUNS` (4) at once.
-- **Environment**: only the stage's own variables: its `env:` block and what Testosterone and the adapter set (`TESTO_SHARED_ALLURE_RESULTS_DIR` and so on). The executor tracks which keys those are, so the server's own environment never leaves it. Values go to `docker run` as `-e NAME` through the client's environment, not on its command line, and variables that would steer the Docker client itself (`DOCKER_*`, `PATH`, `HOME`) are dropped.
+- **Limits**: `--cap-drop ALL`, `no-new-privileges`, `--pids-limit` (512), `--init`, a fixed user (`10001:10001`, the images' `qasight`), and optional `TESTO_RUNNER_MEMORY`, `TESTO_RUNNER_CPUS`, `TESTO_RUNNER_NETWORK` (`none` cuts the stage off the network). At most `TESTO_RUNNER_MAX_RUNS` (4) at once.
+- **Environment**: only the stage's own variables: its `env:` block and what QASight and the adapter set (`TESTO_SHARED_ALLURE_RESULTS_DIR` and so on). The executor tracks which keys those are, so the server's own environment never leaves it. Values go to `docker run` as `-e NAME` through the client's environment, not on its command line, and variables that would steer the Docker client itself (`DOCKER_*`, `PATH`, `HOME`) are dropped.
 
 ### Wire format and lifetime
 
@@ -51,9 +51,9 @@ The service decides, not the request:
 
 ## Consequences
 
-- Default `host`: nothing changes for `testo run`, the local API or a server that only takes uploads (`testo ingest` never starts a process).
+- Default `host`: nothing changes for `qasight run`, the local API or a server that only takes uploads (`qasight ingest` never starts a process).
 - The runner service holds the Docker socket, which is root on the host. It has no published port, takes requests only with its own token, and can only start the configured image with the configured mounts. Rootless Docker or Podman (`DOCKER_HOST`) narrows this further.
 - Stages see the repos and artifacts volumes and nothing else of the server: not its token, database, history or other volumes. They can still write to the shared artifacts volume, so one run's stage could disturb another run's artifacts; separate volumes per run would need Docker's volume subpaths and are left for later.
 - The stage image must carry the tools the stages use. The default one has Python, pytest, Behave and BehaveX.
-- A new image, `ghcr.io/taltal-beep/testo-runner-service`, is built by `docker-publish.yml` with the others; like each new package it starts private on GitHub until the owner makes it public.
-- Tests: `tests/unit/testo_core/engine/test_container_runner.py` runs the real service with a stand-in `docker` (stream, exit code, env boundary, timeout, a vanished API, refusals), and `tests/contract/api/test_container_runner_contract.py` checks the API refuses to start half configured. It was also checked by hand against a real Docker daemon: no capabilities in the container, no server token, the stage's variables present, results written to the shared volume, timeout and disconnect both removing the container.
+- A new image, `ghcr.io/arieleven/qasight-runner-service`, is built by `docker-publish.yml` with the others; like each new package it starts private on GitHub until the owner makes it public.
+- Tests: `tests/unit/qasight/engine/test_container_runner.py` runs the real service with a stand-in `docker` (stream, exit code, env boundary, timeout, a vanished API, refusals), and `tests/contract/api/test_container_runner_contract.py` checks the API refuses to start half configured. It was also checked by hand against a real Docker daemon: no capabilities in the container, no server token, the stage's variables present, results written to the shared volume, timeout and disconnect both removing the container.

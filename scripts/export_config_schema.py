@@ -1,8 +1,10 @@
-"""Write the ``testosterone.yaml`` JSON Schema to ``schema/testosterone.schema.json``.
+"""Write the ``qasight.yaml`` JSON Schema to ``schema/qasight.schema.json``.
+
+A copy goes to ``schema/testosterone.schema.json``, the name before 1.6.
 
 Editors load the committed file (by URL or a relative ``$schema`` modeline) to
 autocomplete and validate configs. It is generated from
-:mod:`testo_core.config.json_schema`; CI re-runs this script and fails if the
+:mod:`qasight.config.json_schema`; CI re-runs this script and fails if the
 committed file is stale.
 
 Usage::
@@ -19,17 +21,21 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = REPO_ROOT / "schema" / "testosterone.schema.json"
+SCHEMA_PATH = REPO_ROOT / "schema" / "qasight.schema.json"
+# The same schema under its name from before the rename to QASight (1.6), so configs
+# whose modeline still points at it keep validating.
+LEGACY_SCHEMA_PATH = REPO_ROOT / "schema" / "testosterone.schema.json"
+SCHEMA_PATHS = (SCHEMA_PATH, LEGACY_SCHEMA_PATH)
 
 
 def render_schema() -> str:
-    from testo_core.config.json_schema import build_json_schema
+    from qasight.config.json_schema import build_json_schema
 
     return json.dumps(build_json_schema(), indent=2) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Export the testosterone.yaml JSON Schema.")
+    parser = argparse.ArgumentParser(description="Export the qasight.yaml JSON Schema.")
     parser.add_argument(
         "--check", action="store_true", help="fail if the committed schema is stale"
     )
@@ -37,18 +43,21 @@ def main(argv: list[str] | None = None) -> int:
 
     rendered = render_schema()
     if args.check:
-        current = SCHEMA_PATH.read_text(encoding="utf-8") if SCHEMA_PATH.exists() else ""
-        if current != rendered:
-            print(
-                f"{SCHEMA_PATH.relative_to(REPO_ROOT)} is out of date. Run "
-                "`python scripts/export_config_schema.py` and commit the result.",
-                file=sys.stderr,
-            )
-            return 1
-        return 0
+        stale = 0
+        for path in SCHEMA_PATHS:
+            current = path.read_text(encoding="utf-8") if path.exists() else ""
+            if current != rendered:
+                print(
+                    f"{path.relative_to(REPO_ROOT)} is out of date. Run "
+                    "`python scripts/export_config_schema.py` and commit the result.",
+                    file=sys.stderr,
+                )
+                stale = 1
+        return stale
 
-    SCHEMA_PATH.write_text(rendered, encoding="utf-8")
-    print(f"wrote {SCHEMA_PATH.relative_to(REPO_ROOT)}")
+    for path in SCHEMA_PATHS:
+        path.write_text(rendered, encoding="utf-8")
+        print(f"wrote {path.relative_to(REPO_ROOT)}")
     return 0
 
 

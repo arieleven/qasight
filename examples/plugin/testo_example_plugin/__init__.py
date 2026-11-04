@@ -1,8 +1,8 @@
-"""Example Testosterone plugin.
+"""Example QASight plugin.
 
 - ``UnittestAdapter`` (``equipment: unittest``) runs the standard library's
   unittest and writes one Allure result file per test, so the run shows up in
-  ``testo summary``, ``testo flaky`` and the UI like any built-in runner.
+  ``qasight summary``, ``qasight flaky`` and the UI like any built-in runner.
 - ``JsonSummaryReporter`` (``reporters: [{type: json-summary, out_dir: ...}]``)
   writes the cycle's pass/fail counts to ``<out_dir>/summary.json`` after
   every run (``out_dir`` is resolved against the config file's folder).
@@ -14,9 +14,9 @@ import json
 import sys
 from pathlib import Path
 
-from testo_core.frameworks.base import NativeReport
-from testo_core.reporting.allure_results import parse_collected_results
-from testo_core.reporting.reporters.base import BaseReporter, ReporterResult
+from qasight.frameworks.base import NativeReport
+from qasight.reporting.allure_results import parse_collected_results
+from qasight.reporting.reporters.base import BaseReporter, ReporterResult
 
 
 class UnittestAdapter:

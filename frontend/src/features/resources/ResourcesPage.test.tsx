@@ -103,7 +103,7 @@ describe("ResourcesPage", () => {
     renderPage({ pools: [] });
 
     await waitFor(() => expect(screen.getByText("No resource pools yet")).toBeInTheDocument());
-    expect(screen.getByText(/testo lease run POOL -- your-command/)).toBeInTheDocument();
-    expect(screen.getByText("testo lease demo")).toBeInTheDocument();
+    expect(screen.getByText(/qasight lease run POOL -- your-command/)).toBeInTheDocument();
+    expect(screen.getByText("qasight lease demo")).toBeInTheDocument();
   });
 });

@@ -9,7 +9,7 @@ const labelClass = "grid gap-1 text-xs font-medium text-ink-300";
 
 type Provider = UpdateAiConfigRequest["provider"] & string;
 
-// Mirrors the API's defaults (testo_core/services/ai/config.py).
+// Mirrors the API's defaults (qasight/services/ai/config.py).
 const PROVIDER_DEFAULTS: Record<Provider, { model: string; envVar: string; timeoutS: number; maxOutputTokens: number }> = {
   openai: { model: "gpt-4.1-mini", envVar: "OPENAI_API_KEY", timeoutS: 8, maxOutputTokens: 300 },
   anthropic: { model: "claude-haiku-4-5", envVar: "ANTHROPIC_API_KEY", timeoutS: 8, maxOutputTokens: 300 },
@@ -217,7 +217,7 @@ export function AIIntegrationSettingsPage() {
           <p className="text-xs text-ink-400">
             Runs <code>claude -p</code> on the machine where the API runs, with no tools, so it only reads what it is
             given: the failure text, plus the failing tests' source if you allow it below. Meant for local use
-            (<code>testo ui</code>). Model can be an alias such as sonnet or haiku, or empty for Claude Code's default.
+            (<code>qasight ui</code>). Model can be an alias such as sonnet or haiku, or empty for Claude Code's default.
           </p>
         ) : null}
         {effectiveForm.provider === "openai_compatible" ? (

@@ -17,7 +17,7 @@ installStaticBackend();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: shouldRetry } } });
 
-// `testo export` bakes a report into the page: render just that document.
+// `qasight export` bakes a report into the page: render just that document.
 const embedded = embeddedReport();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

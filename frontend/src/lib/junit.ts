@@ -1,7 +1,7 @@
 /**
  * JUnit XML read in the browser, for the try-it page: nothing is uploaded.
  *
- * Covers the shapes the CLI's `testo ingest` reads (testo_core/reporting/junit_import.py):
+ * Covers the shapes the CLI's `qasight ingest` reads (qasight/reporting/junit_import.py):
  * a <testsuites> root or a bare <testsuite>, nested suites, and per-case
  * <failure>, <error> and <skipped>. Times are seconds, as JUnit writes them; a
  * thousands comma ("1,234.5", as some Maven locales write it) is dropped.
@@ -83,7 +83,7 @@ export function parseJunit(xml: string): JunitReport {
   return summarise(cases);
 }
 
-/** Merge several files into one report, as `testo ingest 'reports/*.xml'` would. */
+/** Merge several files into one report, as `qasight ingest 'reports/*.xml'` would. */
 export function summarise(cases: JunitCase[]): JunitReport {
   const totals = { passed: 0, failed: 0, broken: 0, skipped: 0, total: cases.length, durationMs: 0 };
   const bySignature = new Map<string, JunitGroup>();

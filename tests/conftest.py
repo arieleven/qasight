@@ -18,9 +18,9 @@ import pytest
 # Tests must not read or overwrite a developer's saved AI settings (artifacts/ai_settings.json).
 os.environ.setdefault("TESTO_AI_SETTINGS_PATH", "")
 # Starlette's TestClient sends ``Host: testserver``; a token-less API only answers
-# loopback names and TESTO_ALLOWED_HOSTS (``testo_api.security.guard_host``).
+# loopback names and TESTO_ALLOWED_HOSTS (``qasight_api.security.guard_host``).
 os.environ.setdefault("TESTO_ALLOWED_HOSTS", "testserver,testo.test")
-# Tests never ask PyPI for a newer version (testo doctor, GET /api/v1/version).
+# Tests never ask PyPI for a newer version (qasight doctor, GET /api/v1/version).
 os.environ.setdefault("TESTO_NO_UPDATE_CHECK", "1")
 
 # Project root is parent of ``tests/``; ``pythonpath = .`` in pytest.ini also applies.
@@ -426,10 +426,10 @@ def no_bundled_ui(
 ) -> None:
     """Tests see the API without a UI unless they set one up.
 
-    A checkout where ``scripts/build_ui_bundle.sh`` ran has ``testo_api/ui_dist/``,
-    which ``testo_core.ui_bundle.ui_dir()`` would otherwise serve at ``/`` in every app.
+    A checkout where ``scripts/build_ui_bundle.sh`` ran has ``qasight_api/ui_dist/``,
+    which ``qasight.ui_bundle.ui_dir()`` would otherwise serve at ``/`` in every app.
     """
-    from testo_core import ui_bundle
+    from qasight import ui_bundle
 
     missing = tmp_path_factory.getbasetemp() / "no-ui-bundle"
     monkeypatch.setattr(ui_bundle, "bundled_ui_dir", lambda: missing)
@@ -439,10 +439,10 @@ def no_bundled_ui(
 def isolated_history_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Every test gets its own empty run-history database unless it sets ``DATABASE_URL``.
 
-    Without this the default URL comes from ``testosterone.yaml`` and tests share one
+    Without this the default URL comes from ``qasight.yaml`` and tests share one
     file, so rows stored by one test (``test_result``, runs) leak into the next.
     """
-    from testo_core.repository import db, db_config
+    from qasight.repository import db, db_config
 
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'testo-history.db'}")
     db_config.reset_engine_cache()

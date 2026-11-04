@@ -1,31 +1,31 @@
-# Testosterone team server: one place every CI job records into.
+# QASight team server: one place every CI job records into.
 #
 #   export TESTO_API_TOKEN="$(openssl rand -hex 32)"   # keep it; CI needs it too
 #   docker compose up -d                                # from a clone: add --build
 #
 # Then open http://localhost:8000, sign in with the token and, in each CI job after the tests:
 #
-#   pip install testo-core
-#   testo ingest 'reports/**/*.xml' --cycle web-unit \
+#   pip install qasight
+#   qasight ingest 'reports/**/*.xml' --cycle web-unit \
 #     --server https://testo.example.com --token "$TESTO_API_TOKEN"
 #
 # Put it behind HTTPS (a reverse proxy) before exposing it beyond your network.
 # Guide: docs/Processes & Guides/Team Server.md
 services:
   server:
-    image: ghcr.io/taltal-beep/testo-server:${TESTO_SERVER_TAG:-1}
+    image: ghcr.io/arieleven/qasight-server:${TESTO_SERVER_TAG:-1}
     build:
       context: ../..
-      dockerfile: Dockerfile.testo-server
+      dockerfile: Dockerfile.qasight-server
     environment:
       # Required: every write (uploads, starting runs, AI settings) needs it.
       TESTO_API_TOKEN: ${TESTO_API_TOKEN:?set TESTO_API_TOKEN (e.g. openssl rand -hex 32)}
       # Reads (runs, logs, reports) need the token too; browsers sign in at /login.
       # Set to 0 only on a network you already trust.
       TESTO_PROTECT_READS: ${TESTO_PROTECT_READS:-1}
-      # accounts: people sign in with their own username and password (`testo users add`).
+      # accounts: people sign in with their own username and password (`qasight users add`).
       TESTO_AUTH: ${TESTO_AUTH:-token}
-      # With accounts and none yet: this admin is created at start (`testo server init` sets them).
+      # With accounts and none yet: this admin is created at start (`qasight server init` sets them).
       TESTO_ADMIN_USER: ${TESTO_ADMIN_USER:-}
       TESTO_ADMIN_PASSWORD: ${TESTO_ADMIN_PASSWORD:-}
       # During a token rotation: the old token, still accepted until CI secrets are moved.
@@ -51,16 +51,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # A copy of the whole history (`testo backup`) once a day, the newest 7 kept, in their
+  # A copy of the whole history (`qasight backup`) once a day, the newest 7 kept, in their
   # own testo_backups volume (not the data volume, so backups never fill the disk the
   # server writes to; put that volume on another disk if you can). Copy them off the machine:
   #   docker compose cp backup:/backups ./testo-backups
   # Restore: docs/Processes & Guides/Team Server.md#backups
   backup:
-    image: ghcr.io/taltal-beep/testo-server:${TESTO_SERVER_TAG:-1}
+    image: ghcr.io/arieleven/qasight-server:${TESTO_SERVER_TAG:-1}
     build:
       context: ../..
-      dockerfile: Dockerfile.testo-server
+      dockerfile: Dockerfile.qasight-server
     entrypoint: ["sh", "-c"]
     command:
       - |
@@ -68,7 +68,7 @@ services:
         while true; do
           # A backup cut short (full disk, restart) leaves a .partial file: never keep those.
           rm -f /backups/*.partial
-          testo backup --out "/backups/testo-$$(date -u +%Y%m%d-%H%M%S).tar.gz" &&
+          qasight backup --out "/backups/testo-$$(date -u +%Y%m%d-%H%M%S).tar.gz" &&
             ls -1t /backups/testo-*.tar.gz | tail -n +$$((TESTO_BACKUP_KEEP + 1)) | xargs -r rm -f --
           sleep "$$TESTO_BACKUP_EVERY_S"
         done

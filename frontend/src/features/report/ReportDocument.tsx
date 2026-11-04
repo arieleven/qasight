@@ -121,10 +121,10 @@ function TestList({ items, empty }: { items: ManagerReport["still_failing"]; emp
 
 /**
  * The manager report as a printable page: white paper, dark text, charts in
- * fixed colours. The same component is what `testo export` renders to PDF,
+ * fixed colours. The same component is what `qasight export` renders to PDF,
  * PNG and HTML, so the screen, the printout and the files match.
  */
-export function ReportDocument({ report, brand = "Testosterone", copy = true }: { report: ManagerReport; brand?: string; copy?: boolean }) {
+export function ReportDocument({ report, brand = "QASight", copy = true }: { report: ManagerReport; brand?: string; copy?: boolean }) {
   const k = report.kpis;
   const rate = delta(k.pass_rate, k.prev_pass_rate);
   const cov = delta(k.coverage_pct, k.prev_coverage_pct);

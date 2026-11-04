@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.cycle_execution_manager import CycleExecutionManager
-from testo_api.main import create_app
+from qasight_api.cycle_execution_manager import CycleExecutionManager
+from qasight_api.main import create_app
 from tests.fixtures.engine import use_echo_adapter, write_minimal_config
 
 
 def _client(manager: CycleExecutionManager) -> TestClient:
-    from testo_api.dependencies import get_cycle_execution_manager
+    from qasight_api.dependencies import get_cycle_execution_manager
 
     app = create_app()
     app.dependency_overrides[get_cycle_execution_manager] = lambda: manager
@@ -100,7 +100,7 @@ def test_events_stream_stops_at_its_own_run_in_the_shared_cycle_file(
 def test_rerun_failed_of_a_run_without_failures_is_400(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from testo_core.services import run_failures
+    from qasight.services import run_failures
 
     monkeypatch.setattr(run_failures, "load_run_failures", lambda run_id: None)
     client = _client(CycleExecutionManager())
@@ -110,7 +110,7 @@ def test_rerun_failed_of_a_run_without_failures_is_400(
 
 
 def test_chosen_tests_reach_the_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from testo_core.services import cycle_run
+    from qasight.services import cycle_run
 
     seen: dict[str, object] = {}
     real_run = cycle_run.CycleRunService.run

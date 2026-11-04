@@ -8,7 +8,7 @@ import { CycleDetailPage } from "./CycleDetailPage";
 const responses: Record<string, unknown> = {
   "/api/v1/cycles/web": {
     name: "web",
-    description: "Recorded runs only: this cycle isn't in testosterone.yaml, so it can't be run from here.",
+    description: "Recorded runs only: this cycle isn't in qasight.yaml, so it can't be run from here.",
     stages: [{ name: "junit", equipment: "junit", target_repo: "", args: [], timeout_s: null, workers: null }],
     trigger: null,
     source: "history"

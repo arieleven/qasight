@@ -47,7 +47,7 @@ function stubApis(source: FakeEventSource) {
             { name: "sample-pytests", description: null, stage_count: 1, equipment: ["pytest"], source: "config" },
             { name: "sample-behave", description: null, stage_count: 1, equipment: ["behave"], source: "config" }
           ],
-          config_path: "/repo/testosterone.yaml"
+          config_path: "/repo/qasight.yaml"
         })
       });
     }

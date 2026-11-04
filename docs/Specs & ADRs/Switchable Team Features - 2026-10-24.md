@@ -10,7 +10,7 @@ related: "Team Server, Scale Runs and Stages, Project Review"
 
 ## Context
 
-The fourth [Project Review](../project-review.md) pass left two things between the project and a 10: queued runs live only in memory, so a server restart drops them, and the team server has one shared token, so there are no per-person accounts, roles or audit trail. Both are what a bigger team wants. Neither should cost anything for one developer running `testo` on a laptop or a small team sharing one token, which is most users today.
+The fourth [Project Review](../project-review.md) pass left two things between the project and a 10: queued runs live only in memory, so a server restart drops them, and the team server has one shared token, so there are no per-person accounts, roles or audit trail. Both are what a bigger team wants. Neither should cost anything for one developer running `qasight` on a laptop or a small team sharing one token, which is most users today.
 
 ## Decision
 
@@ -19,7 +19,7 @@ Each feature is a switch with today's behaviour as the default. Turning a switch
 ### Run queue: `TESTO_RUN_QUEUE=memory|db` (default `memory`)
 
 - `memory`: unchanged. Queued runs are in the in-process FIFO only.
-- `db`: `CycleExecutionManager` also writes each queued run as a row of `queued_run` in the run-history database (SQLite or Postgres, whatever `DATABASE_URL` points at). The row holds a `RunRequest` (`testo_api/run_queue.py`): the cycle or ad-hoc stage and its options, as JSON.
+- `db`: `CycleExecutionManager` also writes each queued run as a row of `queued_run` in the run-history database (SQLite or Postgres, whatever `DATABASE_URL` points at). The row holds a `RunRequest` (`qasight_api/run_queue.py`): the cycle or ad-hoc stage and its options, as JSON.
 - **Lifetime.** A worker deletes the row as it starts the run (`claim`). So the table only holds runs that have not started, and a run that was running when the process died is not repeated (the orphaned-run cleanup already marks it failed in the history). Repeating half-finished test runs automatically was judged worse than failing them visibly.
 - **Restart.** The API's startup hook calls `recover_queued()`, which queues every row again under its old execution id, oldest first, so a client that was polling that id carries on.
 - **Two processes.** `claim` is an atomic `DELETE`; if two processes both re-queued a row, only the one whose delete removed it runs it. One server process is still the supported setup: the one-run-per-cycle guard and `TESTO_MAX_CONCURRENT_RUNS` are per process.
@@ -28,7 +28,7 @@ Each feature is a switch with today's behaviour as the default. Turning a switch
 ### Accounts: `TESTO_AUTH=token|accounts` (default `token`)
 
 - `token`: unchanged. One `TESTO_API_TOKEN`, and `/login` trades it for a session cookie.
-- `accounts`: people sign in at `/login` with a username and password. Accounts live in the run-history database (`user_account`): password hashed with `scrypt` (stdlib, salted), a role, and a session version that signs that user out everywhere when bumped. Managed with `testo users add|list|set-role|remove|reset-password`, which talk to the database directly, so there is no sign-up page to attack.
+- `accounts`: people sign in at `/login` with a username and password. Accounts live in the run-history database (`user_account`): password hashed with `scrypt` (stdlib, salted), a role, and a session version that signs that user out everywhere when bumped. Managed with `qasight users add|list|set-role|remove|reset-password`, which talk to the database directly, so there is no sign-up page to attack.
 - **Roles.** `viewer` reads; `runner` also starts runs and uploads results; `admin` also changes AI settings. The bearer `TESTO_API_TOKEN` keeps working as an admin for CI and scripts, and is the secret the session cookies are signed with.
 - **Audit log.** Every write by a signed-in user (or the token) is recorded in `audit_event` (time, user, method, path, status) and readable by admins at `GET /api/v1/audit`.
 - `GET /api/v1/auth/me` tells the UI who is signed in and with what role.

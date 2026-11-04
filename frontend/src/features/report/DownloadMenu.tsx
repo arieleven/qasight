@@ -16,7 +16,7 @@ const FORMATS: { format: ReportFormat; label: string; note: string }[] = [
 
 /**
  * Download the report as a file the server renders (`GET /api/v1/report/export`,
- * the same as `testo export`). Not in the static demo, which has no server.
+ * the same as `qasight export`). Not in the static demo, which has no server.
  */
 export function DownloadMenu({ period, cycle }: { period: ReportPeriod; cycle: string }) {
   const [open, setOpen] = useState(false);

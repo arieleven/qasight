@@ -40,7 +40,7 @@ This document defines deterministic semantics for Phase 3 delta analytics.
 
 ## Timing noise (added 2026-10-25)
 
-Two identical runs never take exactly the same time, so a duration metric (`unit: ms`) is only a regression or an improvement when the change is at least **5 %** of the baseline **and** at least the metric's floor: **100 ms** for `wall_duration_ms` and `metrics_duration_ms`, **5 ms** for `avg_case_ms`. A smaller change is `neutral` with reason `within_noise`; its `absolute_delta` and `relative_delta_pct` are still reported, and Compare shows it as "Within noise". The dashboard's duration trend uses the same rule (`delta_service.within_noise`, 100 ms floor) and reads "flat". Test counts and health have no noise floor: one more failed test is always a regression. The constants are `NOISE_RELATIVE_PCT` and `_MetricPolicy.noise_floor_ms` in `testo_core/services/delta_service.py`.
+Two identical runs never take exactly the same time, so a duration metric (`unit: ms`) is only a regression or an improvement when the change is at least **5 %** of the baseline **and** at least the metric's floor: **100 ms** for `wall_duration_ms` and `metrics_duration_ms`, **5 ms** for `avg_case_ms`. A smaller change is `neutral` with reason `within_noise`; its `absolute_delta` and `relative_delta_pct` are still reported, and Compare shows it as "Within noise". The dashboard's duration trend uses the same rule (`delta_service.within_noise`, 100 ms floor) and reads "flat". Test counts and health have no noise floor: one more failed test is always a regression. The constants are `NOISE_RELATIVE_PCT` and `_MetricPolicy.noise_floor_ms` in `qasight/services/delta_service.py`.
 
 ## Unknown/null reason codes
 
@@ -56,7 +56,7 @@ Two identical runs never take exactly the same time, so a duration metric (`unit
 
 ## Per-test deltas (added 2026-07-23)
 
-`GET /api/v1/analytics/delta/cases` returns the full per-test breakdown — the API/UI equivalent of `testo diff`'s non-`--metrics-only` output. Each test case is matched across the two runs by `historyId` → `fullName` → `uuid` (first present, in that order) and classified as:
+`GET /api/v1/analytics/delta/cases` returns the full per-test breakdown — the API/UI equivalent of `qasight diff`'s non-`--metrics-only` output. Each test case is matched across the two runs by `historyId` → `fullName` → `uuid` (first present, in that order) and classified as:
 
 - `added`: present in current, not in baseline.
 - `removed`: present in baseline, not in current.
@@ -65,7 +65,7 @@ Two identical runs never take exactly the same time, so a duration metric (`unit
 - `status_change`: any other status transition.
 - (`unchanged` cases are computed but dropped from the response — only actual changes are returned.)
 
-**Same suite, recorded two ways (added 2026-11-01).** The key comes from the source: Allure's `historyId` for `testo run`, a hash of tool and name for `testo ingest` and `pytest --testo`. So one suite recorded by `testo run` and then by `testo ingest` would read as every test removed and added again. Before classifying, a key found on only one side is paired with a key on the other side whose name matches once `#`, `::`, `/` and ` > ` are folded to `.` (`align_case_keys()` in `testo_core/services/report_archive_diff.py`), when exactly one test on each side has that name; ambiguous names (parametrized cases without their ids) stay unpaired. The pull request comment and `testo try` also say when the stages changed since the compared run, since durations and flaky history stay per stage.
+**Same suite, recorded two ways (added 2026-11-01).** The key comes from the source: Allure's `historyId` for `qasight run`, a hash of tool and name for `qasight ingest` and `pytest --qasight`. So one suite recorded by `qasight run` and then by `qasight ingest` would read as every test removed and added again. Before classifying, a key found on only one side is paired with a key on the other side whose name matches once `#`, `::`, `/` and ` > ` are folded to `.` (`align_case_keys()` in `qasight/services/report_archive_diff.py`), when exactly one test on each side has that name; ambiguous names (parametrized cases without their ids) stay unpaired. The pull request comment and `qasight try` also say when the stages changed since the compared run, since durations and flaky history stay per stage.
 
-Unlike the run/stage-level deltas, this is **computed on demand from each run's live artifact snapshot every request, with no caching** — see [CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23](../Archive/CLI-UI%20Parity%20-%20Pyramid,%20Graphs,%20Deep%20Diff%20-%202026-07-23.md) for why (archives aren't large enough yet to justify the cache-invalidation work) and for why this reads from each run's snapshot directory rather than the separate `ReportArchive` table (`testo report list`/`diff`'s id space, which has no link to run-history run ids).
+Unlike the run/stage-level deltas, this is **computed on demand from each run's live artifact snapshot every request, with no caching** — see [CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23](../Archive/CLI-UI%20Parity%20-%20Pyramid,%20Graphs,%20Deep%20Diff%20-%202026-07-23.md) for why (archives aren't large enough yet to justify the cache-invalidation work) and for why this reads from each run's snapshot directory rather than the separate `ReportArchive` table (`qasight report list`/`diff`'s id space, which has no link to run-history run ids).
 

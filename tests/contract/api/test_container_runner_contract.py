@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from testo_api.main import run
+from qasight_api.main import run
 
 pytestmark = [pytest.mark.contract, pytest.mark.tier_fast]
 

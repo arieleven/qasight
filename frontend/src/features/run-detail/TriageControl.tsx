@@ -6,7 +6,7 @@ import { Badge, Button } from "../../components/ui";
 import { formatRunTime, shortRunId } from "../../lib/format";
 import { IS_STATIC_BUILD } from "../../lib/static-backend";
 
-// Same order and wording as testo_core/services/triage.py CAUSES.
+// Same order and wording as qasight/services/triage.py CAUSES.
 export const CAUSE_LABELS: Record<TriageCause, string> = {
   product_bug: "Bug in the product",
   test_bug: "Bug in the test",
