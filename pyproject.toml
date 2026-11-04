@@ -87,6 +87,8 @@ api = [
     "uvicorn[standard]>=0.30.0",
     "python-multipart>=0.0.9",
     "pyjwt>=2.9.0",
+    # `qasight export-site` calls the API in-process through starlette's TestClient.
+    "httpx>=0.27.0",
 ]
 db = [
     "psycopg[binary]>=3.2.0",
@@ -227,11 +229,14 @@ root_packages = ["qasight", "qasight_api"]
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
-name = "qasight does not import qasight_api (the CLI's `qasight ui` starts the server lazily)"
+name = "qasight does not import qasight_api (the CLI's `qasight ui` and `qasight export-site` load it lazily)"
 type = "forbidden"
 source_modules = ["qasight"]
 forbidden_modules = ["qasight_api"]
-ignore_imports = ["qasight.cli.commands.ui_cmd -> qasight_api.*"]
+ignore_imports = [
+    "qasight.cli.commands.ui_cmd -> qasight_api.*",
+    "qasight.cli.commands.export_site -> qasight_api.*",
+]
 
 [[tool.importlinter.contracts]]
 name = "qasight_api does not import the CLI"

@@ -69,6 +69,11 @@ steps:
 - `history-artifact` (optional, default `true`): with the cached history (`history: auto`), also
   upload the SQLite file as a `testo-history-<workflow>-<job>-...` artifact kept 7 days, so
   `qasight ui --from-github` opens the CI history on your machine. `false` skips it
+- `static-site` (optional, default `false`): after the run, write the history as a read-only
+  site (`qasight export-site`) and upload it for GitHub Pages, see
+  [Results on GitHub Pages](#results-on-github-pages)
+- `static-site-base-path` (optional, default: `/<repo>/`, or `/` for `<owner>.github.io`): the
+  path the site is served under; `/` for a custom domain
 - `ai-summary` (optional, default `false`): add an AI summary of the failures to a failed run's
   summary and comment (`qasight report markdown --ai`). Set the provider in the step's `env`:
   `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`), `TESTO_AI_MODEL`,
@@ -114,6 +119,45 @@ jobs:
 
 with `permissions: { contents: read, pull-requests: write }` on the job for the comment
 (add `issues: write` for `flaky-issues`).
+
+## Results on GitHub Pages
+
+`static-site: "true"` publishes the run history as a read-only copy of the web UI: the
+dashboard, runs, tests, flaky tests and comparisons, at `https://<owner>.github.io/<repo>/`.
+Turn on Settings → Pages → Source: **GitHub Actions**, then:
+
+```yaml
+on:
+  push:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - run: pytest --junitxml=reports/junit.xml || true
+      - uses: taltal-beep/testosterone@v1
+        with:
+          results: reports/*.xml
+          static-site: "true"
+  pages:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
+```
+
+Publish from the default branch only: the site shows everything in the cached history. The
+same folder comes from `qasight export-site` anywhere else (GitLab Pages, a bucket).
 
 ## Pull requests from forks
 

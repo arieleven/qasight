@@ -16,6 +16,14 @@ inputs:
     description: "With the cached history: also upload it (the SQLite file) as a `testo-history-...` artifact kept 7 days, so `qasight ui --from-github` can open the CI history on your machine. `false` skips the upload."
     required: false
     default: "true"
+  static-site:
+    description: "`true`: after the run, write the history as a read-only site (`qasight export-site`) and upload it with actions/upload-pages-artifact, for an `actions/deploy-pages` job to publish. Needs the UI a released qasight ships."
+    required: false
+    default: "false"
+  static-site-base-path:
+    description: Path the site is served under (empty = GitHub Pages' path for this repository, `/<repo>/`, or `/` for `<owner>.github.io`; set `/` for a custom domain).
+    required: false
+    default: ""
   config-path:
     description: Path to qasight.yaml (empty = discovery from the workspace root).
     required: false
@@ -117,6 +125,9 @@ outputs:
   status:
     description: Normalized status string from exit code.
     value: ${{ steps.run_testo.outputs.status }}
+  site_dir:
+    description: With `static-site`, the folder the read-only site was written to (empty if it wasn't).
+    value: ${{ steps.site.outputs.site_dir }}
 runs:
   using: composite
   steps:
@@ -212,6 +223,21 @@ runs:
         path: ${{ steps.history.outputs.dir }}/testo_history.db
         retention-days: 7
         if-no-files-found: ignore
+    - name: Export the static site
+      id: site
+      if: always() && inputs.static-site == 'true' && steps.run_testo.outcome != 'skipped'
+      shell: bash
+      env:
+        DATABASE_URL: ${{ steps.history.outputs.database_url }}
+        TESTO_INPUT_STATIC_SITE_BASE_PATH: ${{ inputs.static-site-base-path }}
+      run: |
+        python "$GITHUB_ACTION_PATH/run_testo_action.py" export-site \
+          --out "$RUNNER_TEMP/testo-site" --base-path "$TESTO_INPUT_STATIC_SITE_BASE_PATH"
+    - name: Upload the static site for GitHub Pages
+      if: always() && steps.site.outputs.site_dir != ''
+      uses: actions/upload-pages-artifact@v5
+      with:
+        path: ${{ steps.site.outputs.site_dir }}
     - name: Upload the pull request comment
       if: always() && steps.run_testo.outputs.comment_dir != ''
       uses: actions/upload-artifact@v4

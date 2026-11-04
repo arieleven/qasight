@@ -7,7 +7,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 npm --prefix "$root/frontend" ci --no-audit --no-fund
-VITE_API_BASE_URL="" npm --prefix "$root/frontend" run build
+# A relative base (VITE_BASE=./) lets `qasight export-site` publish the same build under any subpath.
+VITE_API_BASE_URL="" VITE_BASE=./ npm --prefix "$root/frontend" run build
 rm -rf "$root/qasight_api/ui_dist"
 cp -r "$root/frontend/dist" "$root/qasight_api/ui_dist"
 test -f "$root/qasight_api/ui_dist/index.html"

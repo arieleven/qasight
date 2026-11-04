@@ -1,6 +1,7 @@
 """The demo pipeline and the static UI build share a layout; keep them in step.
 
-``scripts/export_static_site.py`` writes JSON at paths that
+``qasight_api/static_site.py`` (behind ``scripts/export_static_site.py`` and
+``qasight export-site``) writes JSON at paths that
 ``frontend/src/lib/static-backend.ts`` reads back. Nothing at runtime couples
 them, so these tests pin the few names both sides agree on, plus the pipeline
 wiring that makes the published site work (Pages base, SPA fallback, cycles).
@@ -14,7 +15,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PIPELINE = REPO_ROOT / ".gitlab-ci.yml"
-EXPORTER = REPO_ROOT / "scripts" / "export_static_site.py"
+EXPORTER = REPO_ROOT / "qasight_api" / "static_site.py"
 STATIC_BACKEND = REPO_ROOT / "frontend" / "src" / "lib" / "static-backend.ts"
 
 

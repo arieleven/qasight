@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClient, type CycleExecutionRequest } from "../../lib/api-client";
 import { Button, Card, Spinner } from "../../components/ui";
-import { IS_STATIC_BUILD } from "../../lib/static-backend";
+import { IS_STATIC_BUILD, STATIC_LABEL } from "../../lib/static-backend";
 import { ExecutionProgress } from "../execution/ExecutionProgress";
 import { useCycleExecution } from "../execution/useCycleExecution";
 
@@ -212,7 +212,7 @@ export function RunPanel({ initialCycle, lockCycle = false, selection, onClearSe
             </Button>
             {IS_STATIC_BUILD && cycle ? (
               <span className="text-xs text-ink-400">
-                Read-only demo. Run locally with{" "}
+                {STATIC_LABEL}. Run locally with{" "}
                 <code className="font-mono text-ink-200">qasight run --cycle {cycle}</code>
               </span>
             ) : null}

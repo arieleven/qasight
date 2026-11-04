@@ -45,8 +45,16 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "history-artifact",
         "server-url",
         "server-token",
+        "static-site",
+        "static-site-base-path",
     }
-    assert set(payload["outputs"].keys()) == {"exit_code", "summary_json", "summary_path", "status"}
+    assert set(payload["outputs"].keys()) == {
+        "exit_code",
+        "summary_json",
+        "summary_path",
+        "status",
+        "site_dir",
+    }
 
 
 def test_wrapper_uses_testo_run_ci_command_shape() -> None:

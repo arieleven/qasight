@@ -30,6 +30,7 @@ One pull request per few proposals, each on the existing paths: setup stays in `
 - **Update notice**: one PyPI JSON request a day at most, the result (failures too) cached in `~/.cache/qasight/`, off in CI and with `TESTO_NO_UPDATE_CHECK=1`. The UI reads it from `GET /api/v1/version`, which sits behind read protection (not under `/health/`) so the version isn't public.
 - **Missing extras**: the hint comes from the installed package's own metadata, so it can't drift from `pyproject.toml`; a module qasight doesn't need keeps its traceback.
 - **`qasight server init`**: the packaged compose file is the repository's (a test keeps them equal); secrets go only to a `.env` created with mode 600. The first admin is created at start only while no account exists, so `.env` can never reset a password.
+- **Static report on Pages** (`qasight export-site`, the Action's `static-site`): the export the Pages demo already used moved into `qasight_api/static_site.py`, so there is one exporter. Instead of a second UI build, the wheel's UI is built with a relative base and a `<base href="/">`; the export copies it, rewrites that tag to the site's subpath and adds a meta tag that switches on the read-only fetch shim. `qasight ui` serves the same files unchanged. The Action only uploads the site (`upload-pages-artifact`); deploying stays a job in the user's workflow, since a composite action can't hold the `pages: write` permission or the `github-pages` environment.
 - **`qasight plugins new`**: templates ship in the package as `.tmpl` files; the output is `examples/plugin` under the new name, and a test runs the written runner.
 
 ## Consequences
@@ -37,4 +38,5 @@ One pull request per few proposals, each on the existing paths: setup stays in `
 - Every new switch is documented on the note that owns it ([Command Reference](../CLI%20Commands/Command%20Reference.md), [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md), [Team Server](../Processes%20&%20Guides/Team%20Server.md)) and in `CHANGELOG.md`.
 - Fork comments need a second workflow file; `qasight init --forks` writes it, the zero-config path doesn't.
 - Automatic quarantine can hide a real regression that happens to flip; it is off by default, and the comment names every test it adds.
+- A static site publishes everything in the history it was exported from, including branches' runs; the README says to publish from the default branch. The `[api]` extra gained `httpx`, which the in-process export needs.
 - Backups live on the same volume as the data until someone copies them off; the Team Server note says so.

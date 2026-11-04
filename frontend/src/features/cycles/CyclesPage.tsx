@@ -5,7 +5,7 @@ import { apiClient, type CycleSummary } from "../../lib/api-client";
 import { Badge, Button, Card, EmptyState, HealthBar, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { formatPercent, formatProvenance, formatRelativeTime } from "../../lib/format";
 import { MuscleShrug } from "../../components/mascot";
-import { IS_STATIC_BUILD } from "../../lib/static-backend";
+import { IS_STATIC_BUILD, STATIC_LABEL } from "../../lib/static-backend";
 
 export function CyclesPage() {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export function CyclesPage() {
         title="Cycles"
         subtitle={
           IS_STATIC_BUILD
-            ? "The cycles that ran for this demo snapshot."
+            ? "The cycles that ran for this snapshot."
             : query.data?.config_path
               ? `Defined in ${query.data.config_path}, plus cycles that only have recorded runs.`
               : "Cycles with recorded runs."
@@ -104,7 +104,7 @@ export function CyclesPage() {
                     <Badge>Recorded</Badge>
                   ) : IS_STATIC_BUILD ? (
                     // A disabled button gets no hover events, so the wrapper carries the tooltip.
-                    <span title={`Read-only demo. Run locally with: qasight run --cycle ${cycle.name}`}>
+                    <span title={`${STATIC_LABEL}. Run locally with: qasight run --cycle ${cycle.name}`}>
                       <Button size="sm" variant="secondary" disabled>
                         Run
                       </Button>

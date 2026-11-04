@@ -85,6 +85,11 @@ export function AppShell() {
       <nav aria-label="Skip links" className="print:hidden">
         <a
           href="#main"
+          // With a <base href> in the page, "#main" would resolve against the base and leave this route.
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById("main")?.focus();
+          }}
           className="sr-only z-50 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
         >
           Skip to content

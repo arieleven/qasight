@@ -572,8 +572,64 @@ def upload_to_server(
         print(f"Uploaded the {cycle or 'results'} run to {server}")
 
 
+def pages_base_path(repository: str) -> str:
+    """Where GitHub Pages serves ``owner/name``: ``/`` for ``owner.github.io``, else ``/name/``.
+
+    Same rule as ``qasight_api.static_site.github_pages_base_path``; this script
+    must run before testo's api extra is installed, so it can't import it.
+    """
+    owner, _, name = repository.partition("/")
+    if name.lower() == f"{owner}.github.io".lower():
+        return "/"
+    return f"/{name}/"
+
+
+def api_requirements() -> list[str]:
+    """The installed qasight's ``api`` extra, so its pins match the installed version."""
+    from importlib import metadata
+
+    reqs: list[str] = []
+    for req in metadata.requires("qasight") or []:
+        name, _, marker = req.partition(";")
+        if 'extra == "api"' in marker.replace("'", '"'):
+            reqs.append(name.strip())
+    return reqs
+
+
+def export_static_site(*, out: Path, base_path: str, env: dict[str, str]) -> int:
+    """Install the api extra's packages, then ``qasight export-site`` into ``out``.
+
+    Writes the ``site_dir`` output for the Pages upload step. A failure is a
+    warning, not a red job: the tests already ran and were recorded.
+    """
+    base = base_path.strip() or pages_base_path(env.get("GITHUB_REPOSITORY", ""))
+    reqs = api_requirements()
+    if reqs:
+        subprocess.run(  # noqa: S603 — this interpreter's pip, requirements from metadata
+            [sys.executable, "-m", "pip", "install", "--quiet", *reqs], check=False
+        )
+    proc = subprocess.run(  # noqa: S603 — fixed argv
+        ["qasight", "export-site", "--out", str(out), "--base-path", base], check=False, env=env
+    )
+    if proc.returncode != 0:
+        _warn(f"qasight export-site failed (exit {proc.returncode}); no static site this run")
+        return 0
+    github_output = env.get("GITHUB_OUTPUT")
+    if github_output:
+        _write_github_outputs(Path(github_output), values={"site_dir": str(out)})
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["export-site"]:
+        exporting = argparse.ArgumentParser(description="Export the run history as a site.")
+        exporting.add_argument("--out", required=True)
+        exporting.add_argument("--base-path", default="")
+        parsed = exporting.parse_args(argv[1:])
+        return export_static_site(
+            out=Path(parsed.out), base_path=parsed.base_path, env=dict(os.environ)
+        )
     if argv[:1] == ["prepare-history"]:
         return _prepare_history_main(argv[1:])
     if argv[:1] == ["post-comments"]:

@@ -44,11 +44,14 @@ Publishing the UI therefore needs run data frozen into files.
 
 What it does *not* do is reimplement the UI against fixtures. Instead:
 
-1. `scripts/export_static_site.py` calls every read-only endpoint the UI uses —
+1. `scripts/export_static_site.py` (a thin entry point over
+   `qasight_api/static_site.py`, which [`qasight export-site`](../CLI%20Commands/Command%20Reference.md#qasight-export-site)
+   also uses) calls every read-only endpoint the UI uses —
    in-process, through `TestClient` against the same `create_app()` the real
    server runs — and writes each response body to a JSON file.
 2. `frontend/src/lib/static-backend.ts` installs a `fetch` shim in builds made
-   with `VITE_STATIC_DATA_BASE`, mapping each API request onto the file the
+   with `VITE_STATIC_DATA_BASE` (or, for `qasight export-site`, in the bundled UI
+   when its index.html carries the `testo-static-data` meta tag), mapping each API request onto the file the
    export wrote for it.
 
 The pages, the API client and the query layer are unchanged, so the published
@@ -235,7 +238,7 @@ mirror token in step 2, if you choose that route, and the optional AI key
   results under `static/history/<run_id>/artifacts/` (PR #68). That folder is
   in the history cache, and the prune step trims it with the reports.
 - Adding a UI page that calls a new endpoint means exporting it in
-  `scripts/export_static_site.py` *and* mapping it in `static-backend.ts`,
+  `qasight_api/static_site.py` *and* mapping it in `static-backend.ts`,
   otherwise the demo shows that panel's error state.
 - The export scrubs checkout-absolute paths out of the payloads before they are
   published.

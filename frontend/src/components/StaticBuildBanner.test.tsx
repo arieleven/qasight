@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../lib/static-backend", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../lib/static-backend")>()),
   IS_STATIC_BUILD: true,
+  IS_DEMO_BUILD: true,
+  STATIC_LABEL: "Read-only demo",
   loadManifest: async () => null
 }));
 

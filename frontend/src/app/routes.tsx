@@ -96,8 +96,16 @@ export const routes = [
   }
 ];
 
+/** The path the app is mounted under: Vite's base, or the `<base href>` when the build is relative. */
+export function appBasename(): string {
+  const base = import.meta.env.BASE_URL;
+  if (base.startsWith("/")) return base;
+  return new URL(document.baseURI).pathname;
+}
+
 export const router = createBrowserRouter(routes, {
-  // The static demo is served from a project subpath on GitLab Pages, so the
-  // router has to resolve routes against Vite's base instead of "/".
-  basename: import.meta.env.BASE_URL
+  // The static demo is served from a project subpath on Pages, so the router
+  // resolves routes against Vite's base, or the page's <base href> for a build
+  // made with a relative base (the bundled UI, see vite.config.ts).
+  basename: appBasename()
 });

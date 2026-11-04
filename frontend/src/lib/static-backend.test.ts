@@ -112,3 +112,37 @@ describe("installStaticBackend", () => {
     expect(resolve("/api/v1/analytics/test-history?cycle=smoke")).toBeNull();
   });
 });
+
+describe("runtime static mode (qasight export-site)", () => {
+  afterEach(() => {
+    document.head.querySelectorAll('meta[name="testo-static-data"], base').forEach((el) => el.remove());
+    vi.resetModules();
+  });
+
+  it("stays live without the meta tag", async () => {
+    vi.resetModules();
+    const backend = await import("./static-backend");
+    expect(backend.IS_STATIC_BUILD).toBe(false);
+  });
+
+  it("switches on from the meta tag, resolved against the page's base, as a snapshot not the demo", async () => {
+    const base = document.createElement("base");
+    base.href = "/my-repo/";
+    const meta = document.createElement("meta");
+    meta.name = "testo-static-data";
+    meta.content = "data/";
+    document.head.append(base, meta);
+    vi.resetModules();
+    const backend = await import("./static-backend");
+    expect(backend.IS_STATIC_BUILD).toBe(true);
+    expect(backend.IS_DEMO_BUILD).toBe(false);
+    expect(backend.STATIC_LABEL).toBe("Read-only snapshot");
+
+    const realFetch = vi.fn(async (url: string) => new Response(JSON.stringify({ url }), { status: 200 }));
+    vi.stubGlobal("fetch", realFetch);
+    backend.installStaticBackend();
+    const body = await (await window.fetch("/api/v1/runs")).json();
+    expect(body.url).toBe("/my-repo/data/runs.json");
+    vi.unstubAllGlobals();
+  });
+});

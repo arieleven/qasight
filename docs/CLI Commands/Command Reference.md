@@ -311,6 +311,30 @@ Without the `[api]` extra, in a terminal it offers to install it into the runnin
 
 ---
 
+## `qasight export-site`
+
+Write the UI and the recent runs as a read-only static site, for GitHub Pages, GitLab Pages or any file host. The pages are the ones `qasight ui` shows; starting runs and saving settings are switched off and a notice says it is a snapshot.
+
+```bash
+pip install 'qasight[api]'
+qasight export-site --out public --base-path /my-repo/   # GitHub Pages of owner/my-repo
+qasight export-site --from-github --out public           # from the history the Action keeps
+python -m http.server -d public 8080                   # preview (with --base-path /)
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--out`, `-o` | `qasight-site` | Folder to write (replaced) |
+| `--base-path` | path of `--site-url`, else `/` | Path the site is served under: `/<repo>/` for a project's GitHub Pages, `/` for `<owner>.github.io` or a custom domain |
+| `--site-url` | none | Public URL of the site; its path is the default base path |
+| `--runs` | `10` | Recent runs to include |
+| `--compare-pairs` | `20` | Run comparisons to include (each run against the previous run of its cycle) |
+| `--from-github` / `--repo` | off | Export CI's history (see [`qasight ui`](#qasight-ui)) instead of this machine's |
+
+The folder holds the UI bundled in the wheel with its `<base href>` set to the base path and a `testo-static-data` meta tag that makes it answer API calls from `data/` (one JSON file per read-only endpoint, written in-process by `qasight_api/static_site.py`), the runs' HTML reports under `history/`, a copy of `index.html` as `404.html` so deep links survive a refresh on GitHub Pages, and `.nojekyll`. Failed runs get a frozen AI summary when `ANTHROPIC_API_KEY` is set. The [GitHub Action](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#github-action)'s `static-site` input runs it and uploads the folder for Pages. Exit `2` without the `[api]` extra, without a bundled UI (a source checkout needs `scripts/build_ui_bundle.sh`), or with no recorded run.
+
+---
+
 ## `qasight mcp`
 
 Serve the run history to a coding agent (Claude Code, Claude Desktop, Cursor, any MCP client) over the [Model Context Protocol](https://modelcontextprotocol.io), so it can ask what failed, what's flaky and what changed instead of reading logs. Same history as the CLI: `DATABASE_URL`, else `database.url` in the config, else the SQLite file next to the project. Design: [MCP Server - 2026-11-01](../Specs%20&%20ADRs/MCP%20Server%20-%202026-11-01.md).

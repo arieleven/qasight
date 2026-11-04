@@ -13,10 +13,34 @@
  * instead of hanging.
  */
 
-const DATA_BASE = (import.meta.env.VITE_STATIC_DATA_BASE ?? "").replace(/\/$/, "");
+const BUILD_DATA_BASE = (import.meta.env.VITE_STATIC_DATA_BASE ?? "").replace(/\/$/, "");
+
+/**
+ * Where the exported JSON lives. The demo build bakes it in with
+ * `VITE_STATIC_DATA_BASE`; `qasight export-site` instead copies the ordinary
+ * bundled UI and adds `<meta name="testo-static-data" content="data/">` to its
+ * index.html, resolved here against the page's `<base href>`, so one build
+ * serves both `qasight ui` and a static site under any subpath.
+ */
+function resolveDataBase(): string {
+  if (BUILD_DATA_BASE) return BUILD_DATA_BASE;
+  if (typeof document === "undefined") return "";
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="testo-static-data"]');
+  const content = meta?.getAttribute("content")?.trim();
+  if (!content) return "";
+  return new URL(content, document.baseURI).pathname.replace(/\/$/, "");
+}
+
+const DATA_BASE = resolveDataBase();
 
 /** True when this build reads frozen run data instead of a live API. */
 export const IS_STATIC_BUILD = DATA_BASE !== "";
+
+/** True for this repository's own Pages demo (fake-api fails on purpose), not a user's exported site. */
+export const IS_DEMO_BUILD = BUILD_DATA_BASE !== "";
+
+/** What the static build calls itself in notices and hints. */
+export const STATIC_LABEL = IS_DEMO_BUILD ? "Read-only demo" : "Read-only snapshot";
 
 export interface StaticManifest {
   mode: "static";
@@ -29,10 +53,12 @@ export interface StaticManifest {
   commit_ref: string | null;
   pipeline_url: string | null;
   project_url: string | null;
+  /** False for a site written by `qasight export-site`; absent in older exports. */
+  demo?: boolean;
 }
 
 export const READ_ONLY_MESSAGE =
-  "This is a read-only demo snapshot: it shows the results of cycles CI already ran, so starting runs and saving settings are disabled.";
+  "This is a read-only snapshot: it shows the results of cycles CI already ran, so starting runs and saving settings are disabled.";
 
 /**
  * Shown for a failed run that has no AI summary in the snapshot. The export

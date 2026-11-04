@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { IS_STATIC_BUILD, loadManifest, type StaticManifest } from "../lib/static-backend";
+import { IS_DEMO_BUILD, IS_STATIC_BUILD, loadManifest, STATIC_LABEL, type StaticManifest } from "../lib/static-backend";
 
 /** localStorage key remembering that the visitor closed the demo notice. */
 export const DEMO_NOTICE_DISMISSED_KEY = "testo.demoNotice.dismissed";
@@ -64,6 +64,7 @@ export function StaticBuildBanner() {
 
   if (!IS_STATIC_BUILD || isDismissed) return null;
 
+  const isDemo = manifest?.demo ?? IS_DEMO_BUILD;
   const generated = manifest ? new Date(manifest.generated_at * 1000).toUTCString() : null;
   const commit = manifest?.commit ? manifest.commit.slice(0, 8) : null;
 
@@ -72,7 +73,7 @@ export function StaticBuildBanner() {
       <div
         id="demo-notice"
         role="region"
-        aria-label="Read-only demo"
+        aria-label={STATIC_LABEL}
         className="relative mx-auto flex max-w-6xl gap-3 rounded-2xl border border-warn-400/40 border-l-4 border-l-warn-400 bg-ink-950/70 py-3 pl-3 pr-12 text-xs text-ink-200 shadow-lg backdrop-blur-xl"
       >
         <svg
@@ -84,7 +85,8 @@ export function StaticBuildBanner() {
           <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3.25a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8ZM9 12H7V7.5h2V12Z" />
         </svg>
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-semibold text-warn-400">Read-only demo</p>
+          <p className="text-sm font-semibold text-warn-400">{STATIC_LABEL}</p>
+          {isDemo ? (
           <p>
             Real results from <code className="font-mono">qasight run</code> in CI: QASight testing itself (
             <code className="font-mono">self-test</code>) and{" "}
@@ -99,6 +101,13 @@ export function StaticBuildBanner() {
             , an app whose flaky, broken and slow routes fail on purpose, so red there is expected. Starting runs and
             saving settings are disabled.
           </p>
+          ) : (
+            <p>
+              Results QASight recorded in CI, exported with <code className="font-mono">qasight export-site</code>.
+              Starting runs and saving settings are disabled; run <code className="font-mono">qasight ui</code> for the
+              live version.
+            </p>
+          )}
           <p className="flex flex-wrap gap-x-3 gap-y-1 text-ink-400">
             {generated ? <span>Exported {generated}</span> : null}
             {commit ? (
@@ -114,7 +123,7 @@ export function StaticBuildBanner() {
                 rel="noreferrer"
                 className="text-brand-300 hover:text-brand-400 hover:underline"
               >
-                View the pipeline
+                {manifest.pipeline_url.includes("/actions/runs/") ? "View the workflow run" : "View the pipeline"}
               </a>
             ) : null}
           </p>
@@ -123,7 +132,7 @@ export function StaticBuildBanner() {
           type="button"
           onClick={() => setDismissed(true)}
           className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-800 hover:text-white"
-          aria-label="Dismiss read-only demo notice"
+          aria-label={`Dismiss ${STATIC_LABEL.toLowerCase()} notice`}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
             <path d="M3 3l8 8M11 3l-8 8" />
@@ -152,9 +161,9 @@ export function DemoBadge() {
       className="whitespace-nowrap rounded-full border border-warn-400/40 bg-warn-400/10 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-warn-400 transition-colors hover:bg-warn-400/20"
       aria-controls="demo-notice"
       aria-expanded={!isDismissed}
-      title={isDismissed ? "Show the read-only demo notice" : "Hide the read-only demo notice"}
+      title={`${isDismissed ? "Show" : "Hide"} the ${STATIC_LABEL.toLowerCase()} notice`}
     >
-      Read-only demo
+      {STATIC_LABEL}
     </button>
   );
 }

@@ -5,7 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid, buttonClasses } from "../../components/ui";
 import { countLabel, describeExitCode, formatDuration, formatPercent, formatRunLabel } from "../../lib/format";
-import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
+import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD, STATIC_LABEL } from "../../lib/static-backend";
 import { CopySummaryButton } from "./CopySummaryButton";
 import { CrashBadge } from "./CrashBadge";
 import { FailingTestsCard } from "./FailingTestsCard";
@@ -250,7 +250,7 @@ export function RunDetailPage() {
             className="mt-3"
             // A snapshot has nothing to generate with; the export already did it, or explains why not above.
             disabled={IS_STATIC_BUILD}
-            title={IS_STATIC_BUILD ? "Read-only demo: summaries are generated when the snapshot is built." : undefined}
+            title={IS_STATIC_BUILD ? `${STATIC_LABEL}: summaries are generated when the snapshot is built.` : undefined}
             onClick={async () => {
               setAiError(null);
               try {
