@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-05-02
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 # Delta Comparison Policy

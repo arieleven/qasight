@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-30
-updated: 2026-10-30
+updated: 2026-11-04
 ---
 
 # Affected Test Selection - 2026-10-30

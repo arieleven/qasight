@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-11-04
 related: "Product Review, Product Roadmap, Delta Comparison Policy"
 ---
 

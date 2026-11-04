@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-11-04
 ---
 
 # Open Source Features - 2026-10-19

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-26
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 # Shared Resource Pools

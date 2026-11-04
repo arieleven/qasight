@@ -263,17 +263,19 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install pytest
-      # The local copy of the action (the root one, as listed on the Marketplace);
-      # it installs qasight from PyPI, so this checks the guide against the
-      # published release.
+      # The local copy of the action (the root one, as listed on the Marketplace).
+      # It normally installs qasight from PyPI, checking the guide against the
+      # published release; until 1.6.0 puts the qasight name on PyPI it installs
+      # this checkout instead. Drop `package: .` once 1.6.0 is released.
       - id: qasight
         uses: ./
         with:
+          package: .
           config-path: examples/getting-started/qasight.yaml
           cycle: unit
           python-version: "3.11"
       - name: Check the action's outputs
-        run: test "${{ steps.testo.outputs.status }}" = success
+        run: test "${{ steps.qasight.outputs.status }}" = success
 
   github_action:
     name: github action (this checkout, PR comment)
@@ -303,7 +305,7 @@ jobs:
           cycle: unit
           comment-on-pr: "true"
       - name: Check the action's outputs
-        run: test "${{ steps.testo.outputs.status }}" = success
+        run: test "${{ steps.qasight.outputs.status }}" = success
       # Recording results instead of running a cycle (what a repo with no
       # qasight.yaml gets): the tests write JUnit XML, the action ingests it.
       - run: python -m pytest -q --junitxml=test-results/example.xml

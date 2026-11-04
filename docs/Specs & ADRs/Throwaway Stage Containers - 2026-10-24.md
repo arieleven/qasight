@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-11-04
 related: "Team Server, Switchable Team Features, Project Review"
 ---
 

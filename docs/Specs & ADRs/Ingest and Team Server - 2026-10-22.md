@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-11-04
 related: "Command Adapter and JUnit Import, Architecture Consolidation, Team Server"
 ---
 

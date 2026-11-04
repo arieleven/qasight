@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # CI Integrations

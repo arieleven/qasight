@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-22
-updated: 2026-11-01
+updated: 2026-11-04
 related: "Deep Dive - Execution Logic, QA Strategies, Command Reference"
 ---
 

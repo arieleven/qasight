@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # Run Deletion and Stop - 2026-11-02

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-09-05
-updated: 2026-10-07
+updated: 2026-11-04
 ---
 
 # Publishing to JFrog Artifactory

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-30
-updated: 2026-10-30
+updated: 2026-11-04
 related: "Shared Resource Pools, Resource Pools and Leases, Resource Lifecycle Hooks"
 ---
 

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-08
-updated: 2026-10-08
+updated: 2026-11-04
 ---
 
 # Docs Vault and Wiki Sync - 2026-10-07

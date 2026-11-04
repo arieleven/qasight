@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-26
-updated: 2026-10-31
+updated: 2026-11-04
 ---
 
 # Runner Coverage - 2026-10-26

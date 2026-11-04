@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-04
 related: "New User Journey Audit - 2026-11-01, Easy Setup - 2026-11-01, Quarantine From the UI - 2026-11-01, MCP Server - 2026-11-01"
 ---
 

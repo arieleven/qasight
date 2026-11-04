@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-10-24
-updated: 2026-10-25
+updated: 2026-11-04
 ---
 
 # Product review: scorecard and roadmap

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-04
 related: "UI Design Review - 2026-10-31, UI Restyle - 2026-10-19, Product Review"
 ---
 

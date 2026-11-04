@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-04
 related: "Command Reference, Flaky Test Quarantine - 2026-10-22, Feature Gaps and Quick Wins - 2026-10-31"
 ---
 

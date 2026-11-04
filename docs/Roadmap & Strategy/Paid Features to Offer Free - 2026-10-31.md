@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-10-31
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 # Paid features to offer free (2026-10-31)

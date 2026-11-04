@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # Test Labels, Environments and Releases - 2026-11-02

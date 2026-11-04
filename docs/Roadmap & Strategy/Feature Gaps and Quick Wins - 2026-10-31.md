@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-10-31
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 # Feature gaps and quick wins (2026-10-31)

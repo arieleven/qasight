@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-04
 related: "Product Review, UI Restyle - 2026-10-19, Project Health - 2026-10-26"
 ---
 

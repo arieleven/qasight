@@ -50,7 +50,7 @@ flowchart TB
 
 | Topic | Note |
 |-------|------|
-| CLI flags & `testo report` | [Command Reference § `testo report`](../CLI%20Commands/Command%20Reference.md#testo-report) |
+| CLI flags & `testo report` | [Command Reference § `testo report`](../CLI%20Commands/Command%20Reference.md#qasight-report) |
 | Exit codes & Allure missing | [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md) |
 | Post-run reporters | [QA Strategies § Post-run reporters](../Testing%20Workflows/QA%20Strategies.md#reporters-after-run) |
 | UQO compose stack (today) | `ARCHITECTURE.md`, `docker-compose.yml` |

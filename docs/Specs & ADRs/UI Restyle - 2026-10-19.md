@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-19
-updated: 2026-10-20
+updated: 2026-11-04
 ---
 
 # UI Restyle - 2026-10-19

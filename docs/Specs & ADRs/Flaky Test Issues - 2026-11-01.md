@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-04
 related: "Command Reference, CI-CD Pipeline Setup, Flaky Test Quarantine - 2026-10-22, Alerts Where Developers Look - 2026-10-22"
 ---
 

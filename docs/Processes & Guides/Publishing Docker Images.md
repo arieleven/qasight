@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-07-01
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 # Publishing Docker Images
