@@ -2,7 +2,7 @@
 # official image (the old 3.11.9 pin failed the CRITICAL Trivy scan). Dependabot
 # (docker ecosystem) proposes newer Python tags; move every Dockerfile together.
 
-FROM python:3.15-slim-trixie AS builder
+FROM python:3.14-slim-trixie AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -15,7 +15,7 @@ COPY qasight ./qasight
 RUN python -m pip install --upgrade pip build && \
     python -m build --wheel --outdir /dist
 
-FROM python:3.15-slim-trixie AS runtime
+FROM python:3.14-slim-trixie AS runtime
 
 ARG TESTO_VERSION=dev
 ARG TESTO_COMMIT_SHA=unknown

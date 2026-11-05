@@ -64,6 +64,11 @@ updates:
     groups:
       base-images:
         patterns: ["*"]
+    # Python 3.15 has no wheels yet for minify-html (behavex needs it), so the
+    # runner image can't install the bdd extra on it. Lift once it has them.
+    ignore:
+      - dependency-name: python
+        versions: [">=3.15"]
   # Postgres in both compose files. A Postgres major needs a dump and restore
   # of existing data, so majors are moved by hand, in both files at once.
   - package-ecosystem: docker-compose

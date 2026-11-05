@@ -10,7 +10,7 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN VITE_API_BASE_URL="" npm run build
 
-FROM python:3.15-slim-trixie AS builder
+FROM python:3.14-slim-trixie AS builder
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1
@@ -21,7 +21,7 @@ COPY qasight_api ./qasight_api
 RUN python -m pip install --upgrade pip build && \
     python -m build --wheel --outdir /dist
 
-FROM python:3.15-slim-trixie AS runtime
+FROM python:3.14-slim-trixie AS runtime
 
 ARG TESTO_VERSION=dev
 ARG TESTO_COMMIT_SHA=unknown
