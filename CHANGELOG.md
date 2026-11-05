@@ -8,12 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Fixed
-- The web UI's sidebar, the first-run dashboard, report titles and Slack/Teams message headers still said "Testo"; they now say QASight
-- `qasight plugins new NAME` writes `qasight-NAME-plugin` (was `testo-NAME-plugin`); the example plugin, example server domains (`qasight.example.com`) and example VM names in the docs use the new name too
-- Web UI: the molecule, vials and syringe line art behind every page is gone; the background is plain
-
-## [1.6.0] - 2026-11-04
+## [1.6.0] - 2026-11-05
 
 ### Renamed
 - Testosterone is now **QASight**. The package is `qasight` (`pip install qasight`), the command is `qasight`, the Python modules are `qasight` and `qasight_api`, the config file is `qasight.yaml`, the pytest flags are `--qasight...`, plugin entry points are `qasight.frameworks` / `qasight.reporters`, and the Docker images are `qasight-runner`, `qasight-server` and `qasight-runner-service`. Everything from before keeps working: the `testo` command, `testosterone.yaml` / `testosterone.yml` and `[tool.testosterone]`, `pytest --testo...`, the `testo.*` entry point groups, and every `TESTO_*` setting (which `QASIGHT_*` can now also set). `testo-core` is still released at the same version: it installs `qasight` and keeps `import testo_core` / `import testo_api` working with a deprecation warning, so `pip install -U testo-core` upgrades too. Files the tool writes keep their names (`.testo/`, `testo_history.db`, `testo-summary.md`), and the team server's Postgres user and database stay `testo`. See [Rename to QASight](docs/Specs%20&%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md)
@@ -105,6 +100,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
 
 ### Fixed
+- The web UI's sidebar, the first-run dashboard, report titles and Slack/Teams message headers still said "Testo"; they now say QASight
+- `qasight plugins new NAME` writes `qasight-NAME-plugin` (was `testo-NAME-plugin`); the example plugin, example server domains (`qasight.example.com`) and example VM names in the docs use the new name too
+- Web UI: the molecule, vials and syringe line art behind every page is gone; the background is plain
 - Contributors: the Pages demo export (`scripts/export_static_site.py`) reads each run's test results once instead of once per test page, so it no longer runs past the 30-minute job limit (about 7x faster on a 5-run history, and it stops growing with the number of runs). It also prints progress as it goes
 - AI settings: with Claude Code (or any provider) found but "Enable AI failure summaries" unticked, the Ask page and the AI review said "AI is not set up yet ... add a provider". They now say AI is switched off and how to turn it on, and picking a provider in AI settings ticks Enable for you
 - The docs link `qasight init` writes at the top of `qasight.yaml` pointed at a page that doesn't exist (`docs/CLI%20Commands/...`); it now goes to the Command Reference, and a test checks every docs link that generated files carry
