@@ -45,10 +45,10 @@ const wordmark = (ink, outline) =>
 const social = page(
   `<div id="c"><div class="row"><svg viewBox="0 0 100 60" width="230" height="138">${mark()}</svg><span>QASight</span></div>
    <h1>See what broke, what's flaky and what got slower on every test run.</h1>
-   <p><b>Open source.</b> Run, track and compare your tests.<br>Get deeper insight with AI, using your own key.</p><code>pip install qasight</code></div>`,
+   <p>Run, track and compare your tests.<br>Get deeper insight with AI, using your own model.</p><code>pip install qasight</code></div>`,
   `#c{width:1280px;height:640px;background:radial-gradient(ellipse at 50% 0%,#1a2352 0%,#0b1437 45%,#060b26 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;color:#f0f3fa;text-align:center}
    .row{display:flex;align-items:center;gap:34px} .row span{font-size:112px;font-weight:700;letter-spacing:-2px;line-height:1}
-   h1{font-size:40px;font-weight:700;max-width:1000px;line-height:1.25} p{font-size:28px;font-weight:500;color:#a0aec0;margin-top:-10px;line-height:1.5} p b{color:#f0f3fa;font-weight:700} code{font:600 22px ui-monospace,Menlo,monospace;color:#4a9bff;background:#111a45;border:1px solid #252f66;border-radius:10px;padding:8px 16px}`,
+   h1{font-size:40px;font-weight:700;max-width:1000px;line-height:1.25} p{font-size:28px;font-weight:500;color:#a0aec0;margin-top:-10px;line-height:1.5} code{font:600 22px ui-monospace,Menlo,monospace;color:#4a9bff;background:#111a45;border:1px solid #252f66;border-radius:10px;padding:8px 16px}`,
 );
 
 const favicon = page(
