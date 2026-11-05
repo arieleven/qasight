@@ -7,7 +7,7 @@
 
 _Formerly Testosterone (`testo-core`). Old commands, imports and config files keep working; see [the rename notes](docs/Specs%20%26%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md)._
 
-**See what broke, what's flaky and what got slower on every run.** Test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest, `go test` or any runner that writes JUnit XML: on your laptop, in CI, or on one shared server for the whole team.
+**See what broke, what's flaky and what got slower on every run.** Run your tests, keep their history and see what changed, with any framework. On your laptop, in CI, or on one shared server for the whole team.
 
 [![CI](https://github.com/arieleven/qasight/actions/workflows/ci.yml/badge.svg)](https://github.com/arieleven/qasight/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/qasight)](https://pypi.org/project/qasight/)

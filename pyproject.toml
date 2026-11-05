@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "qasight"
 version = "1.6.0"
-description = "See what broke, what's flaky and what got slower on every run: test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest or any JUnit-writing runner."
+description = "See what broke, what's flaky and what got slower on every run. Run your tests, keep their history and see what changed, with any framework."
 dynamic = ["readme"]
 requires-python = ">=3.11"
 license = "MIT"
