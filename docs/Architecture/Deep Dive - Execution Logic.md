@@ -9,7 +9,7 @@ updated: 2026-11-04
 
 [Architecture Overview](Architecture%20Overview.md)
 
-This note maps how **Testo** (`qasight run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [Architecture Overview](Architecture%20Overview.md) and [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
+This note maps how **QASight** (`qasight run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [Architecture Overview](Architecture%20Overview.md) and [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
 Every run uses **host subprocesses** — no Docker. The Docker-based execution stack (the project's original "UQO" design) that existed until v1.1 is summarized at the end.
 

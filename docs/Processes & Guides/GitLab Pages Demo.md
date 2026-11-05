@@ -9,7 +9,7 @@ tags: [ci, gitlab, pages, frontend, demo]
 
 # GitLab Pages Demo
 
-A public, link-shareable demo of Testo: a CI pipeline runs **real** `qasight run`
+A public, link-shareable demo of QASight: a CI pipeline runs **real** `qasight run`
 cycles, then publishes the React UI to a static Pages site showing the results of
 those runs. The same pipeline exists twice:
 
@@ -34,7 +34,7 @@ of them traces back to a line of app code.
 
 > Live site: `https://<namespace>.gitlab.io/<project>/` (see [What you have to do on GitLab](#what-you-have-to-do-on-gitlab)).
 
-Related: [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md) (the reusable template for running Testo in
+Related: [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md) (the reusable template for running QASight in
 *your* pipeline), [Architecture Overview](../Architecture/Architecture%20Overview.md).
 
 ## Why it is built this way

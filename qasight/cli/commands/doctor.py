@@ -122,7 +122,7 @@ def doctor(
         table.add_row(
             "Legacy Allure 2 CLI",
             "[dim]INFO[/]",
-            f"Java `allure` at {legacy_java} — Testo uses Allure Report 3 (Node.js) instead",
+            f"Java `allure` at {legacy_java} — QASight uses Allure Report 3 (Node.js) instead",
         )
 
     if cfg is not None:

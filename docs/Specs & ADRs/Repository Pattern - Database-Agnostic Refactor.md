@@ -11,7 +11,7 @@ updated: 2026-11-04
 
 ## Decision (WHY)
 
-Teams should adopt Testo without migrating to a mandated database. Run history and archives must work against SQLite (zero-config local), PostgreSQL (compose/default), or MySQL (enterprise) via a single connection string.
+Teams should adopt QASight without migrating to a mandated database. Run history and archives must work against SQLite (zero-config local), PostgreSQL (compose/default), or MySQL (enterprise) via a single connection string.
 
 ## Current implementation (HOW — codebase)
 

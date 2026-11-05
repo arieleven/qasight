@@ -1,7 +1,7 @@
 {
   "name": "testo-allure-reporting",
   "private": true,
-  "description": "Allure Report 3 CLI for Testo HTML report generation",
+  "description": "Allure Report 3 CLI for QASight HTML report generation",
   "devDependencies": {
     "allure": "^3.0.0",
     "@commitlint/cli": "^21.2.0",

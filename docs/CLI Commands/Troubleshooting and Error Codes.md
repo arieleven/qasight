@@ -385,7 +385,7 @@ ls node_modules/.bin/allure   # after npm install in repo root
 
 **Fix**
 
-- Install **Node.js 18+**, then in the Testo repo root: `npm install` (installs the `allure` npm package pinned in `package.json`)
+- Install **Node.js 18+**, then in the QASight repo root: `npm install` (installs the `allure` npm package pinned in `package.json`)
 - Or set `TESTO_ALLURE_BIN` to a custom Allure 3 executable
 - Or use `qasight report --format json` which does not need the Node CLI
 

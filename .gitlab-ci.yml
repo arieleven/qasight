@@ -1,4 +1,4 @@
-# GitLab pipeline for the public Testo demo.
+# GitLab pipeline for the public QASight demo.
 #
 # It does two things:
 #   1. runs real `qasight run` cycles, the same way a user would locally:
@@ -17,7 +17,7 @@
 # Run history is cached between pipelines, so each pipeline adds to the trend
 # and Compare can put this run next to the previous one.
 #
-# Reusable CI template for running Testo in *your own* project lives in
+# Reusable CI template for running QASight in *your own* project lives in
 # ci/gitlab/testo.gitlab-ci.yml — this file is the demo of this repository.
 #
 # See docs/Processes & Guides/GitLab Pages Demo.md.

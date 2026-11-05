@@ -1,4 +1,4 @@
-"""Testo pixel mascot animations.
+"""QASight pixel mascot animations.
 
 Every animation is a list of frames; a frame is a list of equal-length
 strings where each character indexes PALETTE and "." is transparent.

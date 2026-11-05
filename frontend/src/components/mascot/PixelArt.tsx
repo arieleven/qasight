@@ -1,4 +1,4 @@
-// Shared pixel-grid renderer for the Testo mascot family.
+// Shared pixel-grid renderer for the QASight mascot family.
 // Each mascot declares a character grid; every char maps to a palette color,
 // "." is transparent. shape-rendering keeps edges crisp at any size.
 
@@ -27,7 +27,7 @@ export function PixelArt({ grid, palette = MASCOT_PALETTE, size = 64, className,
       height={height}
       shapeRendering="crispEdges"
       role="img"
-      aria-label={title ?? "Testo mascot"}
+      aria-label={title ?? "QASight mascot"}
       className={className}
     >
       {title ? <title>{title}</title> : null}

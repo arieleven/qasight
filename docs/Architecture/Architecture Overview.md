@@ -7,7 +7,7 @@ updated: 2026-11-04
 
 # Architecture Overview
 
-Testo is a **config-driven test orchestration CLI** built around a small, sequential **engine** and **framework adapters**. Heavy dependencies (database, API) are optional extras; every run executes frameworks as **host subprocesses**, whether it starts from the CLI, the API or a CI wrapper.
+QASight is a **config-driven test orchestration CLI** built around a small, sequential **engine** and **framework adapters**. Heavy dependencies (database, API) are optional extras; every run executes frameworks as **host subprocesses**, whether it starts from the CLI, the API or a CI wrapper.
 
 See also: [Index](../Index.md), [Command Reference](../CLI%20Commands/Command%20Reference.md), [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 

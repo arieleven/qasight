@@ -12,7 +12,7 @@ related: "Deep Dive - Execution Logic, Architecture Overview"
 
 A BehaveX stage should leave two things: BehaveX's own HTML report (the stage's native report, `behave_reports/report.html`) and Allure results (`allure-results/behavex/`) for summaries, health and every reporter.
 
-The adapter used to get the Allure results by passing BehaveX's `--formatter=...:AllureBehaveXFormatter`. BehaveX skips `report.html` whenever a formatter is set (`behavex.utils.generate_reports`), so BehaveX never wrote it. A post-stage hook re-rendered it from `report.json` inside Testo's process, but with the formatter on, BehaveX put scenario logs in the Allure folder, so the re-rendered report had no scenario logs.
+The adapter used to get the Allure results by passing BehaveX's `--formatter=...:AllureBehaveXFormatter`. BehaveX skips `report.html` whenever a formatter is set (`behavex.utils.generate_reports`), so BehaveX never wrote it. A post-stage hook re-rendered it from `report.json` inside QASight's process, but with the formatter on, BehaveX put scenario logs in the Allure folder, so the re-rendered report had no scenario logs.
 
 ## Decision
 
@@ -23,7 +23,7 @@ The adapter used to get the Allure results by passing BehaveX's `--formatter=...
 
 ## Options considered
 
-- **Keep the formatter and only re-render the HTML afterwards** (the old behaviour). Rejected: the HTML loses scenario logs and the native report depends on Testo rebuilding it from BehaveX internals.
+- **Keep the formatter and only re-render the HTML afterwards** (the old behaviour). Rejected: the HTML loses scenario logs and the native report depends on QASight rebuilding it from BehaveX internals.
 - **Run the formatter as a subprocess** (`python -m behavex.outputs.formatters.allure_behavex_formatter`). Rejected: its command line has no output directory option, so it writes to `./output/allure-results`.
 - **Write our own `report.json` → Allure converter.** Rejected: BehaveX already ships one, and reusing it keeps attachments, labels and categories identical to a `--formatter` run.
 

@@ -22,7 +22,7 @@ const STREAKS = Array.from({ length: 16 }, (_, i) => {
   return { x1: 50 + cos * 11.5, y1: 30 + sin * 11.5, x2: 50 + cos * 16.5, y2: 30 + sin * 16.5 };
 });
 
-export function EyeLogo({ size = 26, irisColor = EYE_BRAND_BLUE, spinning = false, className, title = "Testo" }: EyeLogoProps) {
+export function EyeLogo({ size = 26, irisColor = EYE_BRAND_BLUE, spinning = false, className, title = "QASight" }: EyeLogoProps) {
   return (
     <svg
       viewBox="0 0 100 60"

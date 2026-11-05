@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- The web UI's sidebar, the first-run dashboard, report titles and Slack/Teams message headers still said "Testo"; they now say QASight
+
 ## [1.6.0] - 2026-11-04
 
 ### Renamed

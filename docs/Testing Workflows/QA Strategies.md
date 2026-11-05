@@ -7,7 +7,7 @@ updated: 2026-11-04
 
 # QA Strategies
 
-How Testo **triggers**, **executes**, and **logs** test suites today — from YAML cycles through artifacts, reporters, and optional database archives.
+How QASight **triggers**, **executes**, and **logs** test suites today — from YAML cycles through artifacts, reporters, and optional database archives.
 
 Related: [Architecture Overview](../Architecture/Architecture%20Overview.md), [Command Reference](../CLI%20Commands/Command%20Reference.md), [Index](../Index.md).
 

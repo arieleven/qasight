@@ -123,7 +123,7 @@ export function DashboardPage() {
 function FirstRunGuide() {
   return (
     <section className="space-y-6">
-      <PageHeader title="Welcome to Testo" subtitle="Record a run and this page shows what broke, what's flaky and what got slower." />
+      <PageHeader title="Welcome to QASight" subtitle="Record a run and this page shows what broke, what's flaky and what got slower." />
       <div className="flex flex-col items-center gap-2 py-4">
         <MuscleShrug size={112} />
         <p className="text-sm text-ink-300">No runs yet. Any of these gets you one.</p>

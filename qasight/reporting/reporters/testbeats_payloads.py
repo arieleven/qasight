@@ -30,7 +30,7 @@ def build_slack_payload(
 ) -> dict:
     """Build Slack incoming-webhook payload with Block Kit + attachment color bar."""
     run_title = title or context.plan_name or context.run_id or "testo-run"
-    header = f"{overall_emoji(aggregate)} Testo — {run_title}"
+    header = f"{overall_emoji(aggregate)} QASight — {run_title}"
     if channel:
         header = f"[{channel}] {header}"
 

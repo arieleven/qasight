@@ -70,7 +70,7 @@ def test_behavex_stage_writes_native_html_and_allure_results(tmp_path: Path) -> 
     stage_dir = tmp_path / "artifacts" / "demo" / "flows"
     run_log = (stage_dir / "run.log").read_text(encoding="utf-8")
     # BehaveX itself rendered the report (it prints this line only without a formatter),
-    # so it links each scenario's log; Testo's fallback renderer cannot.
+    # so it links each scenario's log; QASight's fallback renderer cannot.
     assert "HTML output report is located at" in run_log
     html = (stage_dir / "behave_reports" / "report.html").read_text(encoding="utf-8")
     assert html.count("scenario.log") >= 2

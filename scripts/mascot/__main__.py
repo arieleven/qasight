@@ -12,7 +12,7 @@ from .render import frame_to_ansi, play
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Play a Testo mascot animation.")
+    parser = argparse.ArgumentParser(description="Play a QASight mascot animation.")
     parser.add_argument("name", nargs="?", default="flex", choices=sorted(ANIMATIONS))
     parser.add_argument("--fps", type=float, default=6.0)
     parser.add_argument("--loops", type=int, default=3)

@@ -10,7 +10,7 @@ related: "Architecture Overview, Deep Dive - Execution Logic, QA Strategies"
 
 ## Context
 
-The first external adopter, CarBiz (an Expo app with a Python/AWS backend), wants one orchestrated run across pytest suites, **Jest**, **Playwright** and, later, **Maestro**. Before this change Testo only ran pytest, Behave and BehaveX. Any other runner could not be a stage, and even a wrapper script would produce no Allure results, so it counted as an empty stage in summaries and health %.
+The first external adopter, CarBiz (an Expo app with a Python/AWS backend), wants one orchestrated run across pytest suites, **Jest**, **Playwright** and, later, **Maestro**. Before this change QASight only ran pytest, Behave and BehaveX. Any other runner could not be a stage, and even a wrapper script would produce no Allure results, so it counted as an empty stage in summaries and health %.
 
 ## Decision
 
