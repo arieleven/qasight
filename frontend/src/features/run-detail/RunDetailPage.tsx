@@ -5,7 +5,8 @@ import { Link, useParams } from "react-router-dom";
 import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid, buttonClasses } from "../../components/ui";
 import { countLabel, describeExitCode, formatDuration, formatPercent, formatRunLabel } from "../../lib/format";
-import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD, STATIC_LABEL } from "../../lib/static-backend";
+import { AI_SUMMARY_SNAPSHOT_MESSAGE, DEMO_EXAMPLE_PROVIDER, IS_STATIC_BUILD, STATIC_LABEL } from "../../lib/static-backend";
+import { DemoExampleNote } from "../../components/DemoExampleNote";
 import { CopySummaryButton } from "./CopySummaryButton";
 import { CrashBadge } from "./CrashBadge";
 import { FailingTestsCard } from "./FailingTestsCard";
@@ -135,7 +136,6 @@ function runVerdict(run: { returncode: number | null; total_tests?: number | nul
 export function RunDetailPage() {
   const params = useParams();
   const runId = params.runId ?? "";
-  const [artifactsExpanded, setArtifactsExpanded] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const runQuery = useQuery({
     queryKey: ["run", runId],
@@ -218,13 +218,19 @@ export function RunDetailPage() {
             <p className="text-sm text-danger-400">Couldn't load the AI summary.</p>
           ) : aiSummaryQuery.data.status === "available" ? (
             <article className="space-y-1">
+              {aiSummaryQuery.data.provider === DEMO_EXAMPLE_PROVIDER ? (
+                <DemoExampleNote
+                  className="mb-2"
+                  what="This demo has no AI key, so this summary was written from the run's failing tests by a template. With your own AI provider, QASight writes a real one here."
+                />
+              ) : null}
               <AiSummaryText text={aiSummaryQuery.data.summary_text ?? ""} />
               <p className="text-xs text-ink-400">
                 Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
                 {aiSummaryQuery.data.context_stats?.source_files
                   ? ` | Read the source of ${aiSummaryQuery.data.context_stats.source_files} test file${aiSummaryQuery.data.context_stats.source_files === 1 ? "" : "s"}`
                   : ""}
-                {IS_STATIC_BUILD ? " | Generated when this snapshot was built" : ""}
+                {IS_STATIC_BUILD && aiSummaryQuery.data.provider !== DEMO_EXAMPLE_PROVIDER ? " | Generated when this snapshot was built" : ""}
               </p>
             </article>
           ) : IS_STATIC_BUILD ? (
@@ -333,12 +339,12 @@ export function RunDetailPage() {
           <p className="text-sm text-danger-400">Couldn't load the test mix.</p>
         </Card>
       ) : pyramidQuery.data && tierCount(pyramidQuery.data) >= 2 ? (
-        <Card title="Test mix">
+        <Card title="Test mix" collapsible defaultOpen={false}>
           <TestPyramid {...pyramidQuery.data} />
         </Card>
       ) : null}
 
-      <Card title="Details">
+      <Card title="Details" collapsible defaultOpen={false} collapsedSummary={`Exit code ${run.returncode ?? "n/a"} · ${formatDuration(run.wall_duration_ms)}`}>
         <KeyValue
           items={[
             { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
@@ -363,41 +369,31 @@ export function RunDetailPage() {
       </Card>
 
       <Card
-        title={
-          <button
-            type="button"
-            aria-expanded={artifactsExpanded}
-            onClick={() => setArtifactsExpanded((expanded) => !expanded)}
-            className="flex items-center gap-2 text-sm font-semibold text-ink-100"
-          >
-            <span className={`transition-transform ${artifactsExpanded ? "rotate-90" : ""}`}>
-              &#9656;
-            </span>
-            Artifacts
-          </button>
-        }
+        title="Artifacts"
+        collapsible
+        defaultOpen={false}
+        collapsedSummary={countLabel(reports.artifact_links.length, "file")}
       >
-        {artifactsExpanded &&
-          (reports.artifact_links.length === 0 ? (
-            <p className="text-sm text-ink-400">No artifacts recorded.</p>
-          ) : (
-            <ul className="space-y-1 text-sm text-ink-300">
-              {reports.artifact_links.map((artifact) => {
-                const href = artifactHref(artifact);
-                return (
-                  <li key={artifact} className="font-mono text-xs">
-                    {href ? (
-                      <a href={href} target="_blank" rel="noreferrer" className="break-all text-brand-300 hover:underline">
-                        {artifact}
-                      </a>
-                    ) : (
-                      <span className="break-all">{artifact}</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          ))}
+        {reports.artifact_links.length === 0 ? (
+          <p className="text-sm text-ink-400">No artifacts recorded.</p>
+        ) : (
+          <ul className="space-y-1 text-sm text-ink-300">
+            {reports.artifact_links.map((artifact) => {
+              const href = artifactHref(artifact);
+              return (
+                <li key={artifact} className="font-mono text-xs">
+                  {href ? (
+                    <a href={href} target="_blank" rel="noreferrer" className="break-all text-brand-300 hover:underline">
+                      {artifact}
+                    </a>
+                  ) : (
+                    <span className="break-all">{artifact}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
 
     </section>

@@ -7,8 +7,9 @@ import {
   type ReleaseSummaryItem,
   type ReleaseTestItem
 } from "../../lib/api-client";
-import { Badge, Card, EmptyState, PageHeader, Spinner } from "../../components/ui";
+import { Badge, Card, EmptyState, PageHeader, ShowMoreButton, Spinner, useShowMore } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { DemoExampleNote, useIsDemoExample } from "../../components/DemoExampleNote";
 import { countLabel, cyclePath, formatPercent, formatRunTime, testPath } from "../../lib/format";
 
 export function releasePath(release: string): string {
@@ -18,9 +19,9 @@ export function releasePath(release: string): string {
 function HowTo() {
   return (
     <>
-      Record the release a run tests with <code>qasight run --release 2.3</code> (or <code>qasight ingest --release</code>, the{" "}
-      <code>TESTO_RELEASE</code> variable, or the GitHub Action&apos;s <code>release</code> input). Each release then gets a page
-      with its pass rate, failing and flaky tests, and what changed from the release before.
+        Record the release a run tests with <code>qasight run --release 2.3</code> (or <code>qasight ingest --release</code>, the{" "}
+        <code>TESTO_RELEASE</code> variable, or the GitHub Action&apos;s <code>release</code> input). Each release then gets a page
+        with its pass rate, failing and flaky tests, and what changed from the release before.
     </>
   );
 }
@@ -46,6 +47,7 @@ export function ReleasesPage() {
   return (
     <div>
       <PageHeader title="Releases" subtitle="Runs grouped by the release they tested." />
+      <ExampleNote />
       {query.isLoading ? (
         <Loading text="Loading releases…" />
       ) : query.isError ? (
@@ -81,23 +83,34 @@ export function ReleasesPage() {
   );
 }
 
+const RELEASE_NOTE =
+  "These releases are made up: the demo's runs were grouped into two pretend releases to show the page. Record real ones with qasight run --release.";
+
+function ExampleNote() {
+  return useIsDemoExample("releases") ? <DemoExampleNote className="mb-4" what={RELEASE_NOTE} /> : null;
+}
+
 function TestList({ tests, empty }: { tests: ReleaseTestItem[]; empty: string }) {
+  const rows = useShowMore(tests);
   if (tests.length === 0) return <p className="text-sm text-ink-300">{empty}</p>;
   return (
-    <ul className="space-y-2 text-sm">
-      {tests.map((test) => (
-        <li key={`${test.cycle}:${test.key}`} className="min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-2">
-            <Link to={testPath(test.cycle, test.key)} className="break-all text-brand-300 hover:underline">
-              {test.name}
-            </Link>
-            <span className="text-xs text-ink-400">{test.cycle}</span>
-            {test.new ? <Badge tone="danger">New in this release</Badge> : null}
-          </div>
-          {test.message ? <p className="break-words text-xs text-ink-300">{test.message}</p> : null}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="space-y-2 text-sm">
+        {rows.visible.map((test) => (
+          <li key={`${test.cycle}:${test.key}`} className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <Link to={testPath(test.cycle, test.key)} className="break-all text-brand-300 hover:underline">
+                {test.name}
+              </Link>
+              <span className="text-xs text-ink-400">{test.cycle}</span>
+              {test.new ? <Badge tone="danger">New in this release</Badge> : null}
+            </div>
+            {test.message ? <p className="break-words text-xs text-ink-300">{test.message}</p> : null}
+          </li>
+        ))}
+      </ul>
+      <ShowMoreButton className="mt-3" total={rows.total} expanded={rows.expanded} onToggle={rows.setExpanded} />
+    </>
   );
 }
 
@@ -145,6 +158,7 @@ export function ReleasePage() {
             : undefined
         }
       />
+      <ExampleNote />
       {query.isLoading ? (
         <Loading text="Loading the release…" />
       ) : query.isError || !data ? (

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
-import { Card, HealthBar, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
+import { Card, HealthBar, PageHeader, RunLabel, ShowMoreButton, Spinner, StatusPill, useShowMore } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 import { formatDuration, formatPercent } from "../../lib/format";
 import { DeliveryCard } from "./DeliveryCard";
@@ -89,34 +89,55 @@ export function DashboardPage() {
 
       <DeliveryCard />
 
-      <Card title="Recent runs" actions={<ReportLinks links={data.report_links} />}>
-        {recentRuns.length === 0 ? (
-          <p className="text-sm text-ink-400">No recent runs available.</p>
-        ) : (
-          <ul className="divide-y divide-white/5">
-            {recentRuns.map((run) => (
-              <li key={run.run_id} className="space-y-1.5 py-2.5 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
-                    <RunLabel run={run} linked relative href={run.run_detail_url} />
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-ink-400">
-                    <span>{formatPercent(run.health_pct)} passed</span>
-                    {run.compare_url ? (
-                      <Link to={run.compare_url} className="-my-1 inline-block py-1 text-brand-300 hover:underline">
-                        compare
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-                <HealthBar healthPct={run.health_pct} className="max-w-xs" />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      <RecentRunsCard runs={recentRuns} reportLinks={data.report_links} />
     </section>
+  );
+}
+
+type RecentRun = NonNullable<DashboardOverviewResponse["recent_runs"]>[number];
+
+/** The latest three runs, with the rest one click away. */
+function RecentRunsCard({ runs, reportLinks }: { runs: RecentRun[]; reportLinks: DashboardOverviewResponse["report_links"] }) {
+  const rows = useShowMore(runs);
+  return (
+    <Card
+      title="Recent runs"
+      actions={<ReportLinks links={reportLinks} />}
+      collapsible
+      collapsedSummary={runs.length ? `${runs.length} recent` : undefined}
+    >
+      {runs.length === 0 ? (
+        <p className="text-sm text-ink-400">No recent runs available.</p>
+      ) : (
+        <ul className="divide-y divide-white/5" data-testid="recent-runs">
+          {rows.visible.map((run) => (
+            <li key={run.run_id} className="space-y-1.5 py-2.5 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
+                  <RunLabel run={run} linked relative href={run.run_detail_url} />
+                </div>
+                <div className="flex items-center gap-3 text-xs text-ink-400">
+                  <span>{formatPercent(run.health_pct)} passed</span>
+                  {run.compare_url ? (
+                    <Link to={run.compare_url} className="-my-1 inline-block py-1 text-brand-300 hover:underline">
+                      compare
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+              <HealthBar healthPct={run.health_pct} className="max-w-xs" />
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <ShowMoreButton total={rows.total} expanded={rows.expanded} onToggle={rows.setExpanded} />
+        <Link to="/runs" className="text-sm text-brand-300 hover:underline">
+          All runs
+        </Link>
+      </div>
+    </Card>
   );
 }
 

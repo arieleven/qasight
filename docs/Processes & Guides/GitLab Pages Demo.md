@@ -156,8 +156,19 @@ stream is likewise absent: a static host cannot stream a run that is not running
   export generates the summary for each failed run beforehand, through the same
   `POST /runs/{id}/ai-summary:generate` the button calls, and the Run detail page
   shows that frozen summary (the button itself is disabled). This needs `ANTHROPIC_API_KEY` in the export
-  step's environment (see [Optional: AI summaries](#optional-ai-summaries)); without it the card says
-  summaries are generated live when you run QASight locally.
+  step's environment (see [Optional: AI summaries](#optional-ai-summaries)); without it the demo
+  shows a made-up example instead (below).
+- **Made-up examples**: so the AI and release features are not empty, the demo
+  export (`scripts/export_static_site.py`, never `qasight export-site`) fills
+  them from the demo's real runs with `qasight_api/demo_examples.py`: an AI
+  failure summary for each failed run that has no real one, an AI review on
+  Project health, two example turns on Ask (`data/demo/ask-examples.json`), and
+  two pretend releases (`2.1-example`, `2.0-example`) made by grouping each
+  cycle's runs while the export reads `/releases` (the history database is not
+  changed). No AI is called. AI answers carry `provider: "demo-example"` and the
+  manifest lists the filled pages in `examples`; the UI shows a "Fake example
+  for the live demo" note on each (`frontend/src/components/DemoExampleNote.tsx`).
+  Real summaries, reviews or releases always win over the examples.
 
 Report links work: `static/history/<run_id>/` is copied into the published site,
 so the Allure reports for each framework open from the Run detail page.

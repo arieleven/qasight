@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { apiClient, type FlakyTestItem } from "../../lib/api-client";
-import { Badge, Button, Card, Spinner } from "../../components/ui";
+import { Badge, Card, FIRST_ROWS, ShowMoreButton, Spinner, useShowMore } from "../../components/ui";
 import { testPath } from "../../lib/format";
 import { QuarantineControl } from "../quarantine/QuarantineControl";
 
@@ -29,7 +29,7 @@ function History({ item }: { item: FlakyTestItem }) {
 }
 
 // A big suite can have hundreds of flaky tests; the worst ones come first.
-const FIRST_SHOWN = 10;
+const FIRST_SHOWN = FIRST_ROWS;
 
 /** Flaky tests in this cycle's recent runs, and the broken ones kept apart from them. */
 export function FlakyTestsCard({ cycle }: { cycle: string }) {
@@ -38,6 +38,7 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
     queryKey: ["flaky", cycle],
     queryFn: () => apiClient.getFlakyTests(cycle)
   });
+  const brokenRows = useShowMore(query.data?.broken ?? []);
 
   if (query.isLoading) {
     return (
@@ -112,11 +113,7 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
           ))}
         </ul>
       )}
-      {!showAll && report.items.length > FIRST_SHOWN ? (
-        <Button variant="secondary" size="sm" className="mt-3" onClick={() => setShowAll(true)}>
-          Show all {report.items.length}
-        </Button>
-      ) : null}
+      <ShowMoreButton className="mt-3" total={report.items.length} limit={FIRST_SHOWN} expanded={showAll} onToggle={setShowAll} />
       {broken.length > 0 ? (
         <div className="mt-4">
           <h3 className="text-sm font-semibold text-ink-100">Broken, not flaky ({broken.length})</h3>
@@ -124,7 +121,7 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
             These failed every one of their last runs. Fix them rather than quarantine them.
           </p>
           <ul className="space-y-1">
-            {broken.map((item) => (
+            {brokenRows.visible.map((item) => (
               <li key={item.key} className="text-sm">
                 <Link to={testPath(cycle, item.key)} className="font-mono text-brand-300 hover:underline">
                   {item.name}
@@ -135,6 +132,7 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
               </li>
             ))}
           </ul>
+          <ShowMoreButton className="mt-2" total={brokenRows.total} expanded={brokenRows.expanded} onToggle={brokenRows.setExpanded} />
         </div>
       ) : null}
     </Card>

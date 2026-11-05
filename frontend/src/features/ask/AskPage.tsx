@@ -4,7 +4,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { apiClient, type AskTurnItem } from "../../lib/api-client";
 import { Badge, Button, Card, PageHeader, Spinner } from "../../components/ui";
-import { IS_STATIC_BUILD } from "../../lib/static-backend";
+import { IS_STATIC_BUILD, loadAskExamples } from "../../lib/static-backend";
+import { DemoExampleNote } from "../../components/DemoExampleNote";
 import { CyclePicker } from "../health/ProjectHealthPage";
 import { AiNotReadyNote } from "../../components/AiNotReadyNote";
 
@@ -49,6 +50,10 @@ export function AskPage() {
   const [turns, setTurns] = useState<Turn[]>(loadTurns);
   const [question, setQuestion] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  // The read-only demo can't ask anything, so it shows a made-up conversation instead.
+  const examples = useQuery({ queryKey: ["ask-examples"], queryFn: loadAskExamples, enabled: IS_STATIC_BUILD, staleTime: Infinity });
+  const showExamples = IS_STATIC_BUILD && turns.length === 0 && (examples.data?.length ?? 0) > 0;
+  const shownTurns: Turn[] = showExamples ? (examples.data ?? []) : turns;
 
   const ask = useMutation({
     mutationFn: (text: string) =>
@@ -117,8 +122,16 @@ export function AskPage() {
           <AiNotReadyNote status={aiStatus.data} />
         ) : null}
 
+        {showExamples ? (
+          <DemoExampleNote
+            className="mt-3"
+            testId="ask-example-note"
+            what="These answers were written from this demo's runs by a template, not by an AI, to show what a conversation looks like."
+          />
+        ) : null}
+
         <div className="mt-4 space-y-4" aria-live="polite">
-          {turns.map((turn, index) => (
+          {shownTurns.map((turn, index) => (
             <div key={index} className="space-y-2" data-testid="ask-turn">
               <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-brand-600/30 px-3.5 py-2 text-sm text-white">{turn.question}</p>
               <div className="max-w-[95%] rounded-2xl rounded-bl-md border border-white/5 bg-ink-950/60 px-3.5 py-2.5">
@@ -135,7 +148,7 @@ export function AskPage() {
           <div ref={endRef} />
         </div>
 
-        {turns.length === 0 && !ask.isPending ? (
+        {shownTurns.length === 0 && !ask.isPending ? (
           <div className="mt-2">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Try asking</h3>
             <ul className="flex flex-wrap gap-2">

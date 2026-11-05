@@ -92,7 +92,7 @@ export function CycleDetailPage() {
 
       {/* A recorded-only cycle has one stage with nothing to configure: the header already says it. */}
       {cycle.source === "config" ? (
-        <Card title={`Stages (${cycle.stages.length})`}>
+        <Card title={`Stages (${cycle.stages.length})`} collapsible defaultOpen={false} collapsedSummary={cycle.stages.map((s) => s.name).join(", ")}>
           <ol className="space-y-3">
             {cycle.stages.map((stage, idx) => (
               <li key={stage.name} className="rounded-2xl border border-white/5 bg-ink-950/70 p-3">

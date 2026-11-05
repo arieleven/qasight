@@ -224,3 +224,7 @@ New ADR [Lifecycle Fixes - 2026-11-02](Specs%20&%20ADRs/Lifecycle%20Fixes%20-%20
 ## 2026-11-04: rename to QASight
 
 New ADR [Rename to QASight - 2026-11-04](Specs%20&%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md), linked from the Specs README, Publishing to PyPI and the docs site menu. Every current note now says QASight, `qasight` and `qasight.yaml`, with links to `github.com/arieleven/qasight` and `arieleven.github.io/qasight`; archived notes keep the old names.
+
+## 2026-11-05: added Tidy Cards and Demo Examples
+
+New ADR [Tidy Cards and Demo Examples - 2026-11-05](Specs%20&%20ADRs/Tidy%20Cards%20and%20Demo%20Examples%20-%202026-11-05.md): collapsible cards, 3-row lists, and the live demo's marked fake examples.

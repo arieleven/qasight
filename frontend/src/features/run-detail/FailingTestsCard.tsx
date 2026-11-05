@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { apiClient, type FailingTestItem } from "../../lib/api-client";
-import { Badge, Button, Card } from "../../components/ui";
+import { Badge, Button, Card, FIRST_ROWS } from "../../components/ui";
 import { countLabel, formatDuration, shortRunId, testPath } from "../../lib/format";
 import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { CrashBadge } from "./CrashBadge";
@@ -11,7 +11,7 @@ import { TestLabels } from "../labels/TestLabels";
 import { CAUSE_LABELS, TriageControl } from "./TriageControl";
 
 // Enough to read at a glance; the rest are one click away.
-const INITIAL_ROWS = 15;
+const INITIAL_ROWS = FIRST_ROWS;
 
 function Streak({ test, baselineBranch }: { test: FailingTestItem; baselineBranch?: string | null }) {
   if (test.new) {

@@ -125,7 +125,13 @@ function defaultRoutes(overrides: RouteMap = {}): RouteMap {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  localStorage.clear(); // collapsible cards remember whether they were open
 });
+
+/** The Details card starts closed; open it like a viewer would. */
+async function openDetails() {
+  fireEvent.click(await screen.findByRole("button", { name: /^Details/ }));
+}
 
 describe("RunDetailPage states", () => {
   it("shows an error when the run cannot be loaded", async () => {
@@ -144,10 +150,11 @@ describe("RunDetailPage states", () => {
     );
     expect(screen.getByText("4/4")).toBeInTheDocument();
     expect(screen.getByText("0/2")).toBeInTheDocument();
+    await openDetails();
     expect(screen.getByText("1.2 s")).toBeInTheDocument();
 
     expect(screen.queryByText("artifacts/smoke/run.log")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Artifacts/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Artifacts/ }));
     expect(screen.getByText("artifacts/smoke/run.log")).toBeInTheDocument();
   });
 
@@ -170,8 +177,9 @@ describe("RunDetailPage states", () => {
       expect.stringMatching(/\/history\/run-1\/artifacts\/unit\/run\.log$/)
     );
     expect(screen.getByText(/Failed before any test result was recorded/)).toBeInTheDocument();
+    await openDetails();
     expect(screen.getByText("No tests ran")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Artifacts/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Artifacts/ }));
     expect(screen.getByRole("link", { name: "events.ndjson" })).toHaveAttribute(
       "href",
       expect.stringMatching(/\/history\/run-1\/artifacts\/events\.ndjson$/)
@@ -205,6 +213,7 @@ describe("RunDetailPage states", () => {
       })
     );
     renderAt();
+    await openDetails();
     expect(await screen.findByText("No reports for this run.")).toBeInTheDocument();
     expect(screen.getByText("Per-stage breakdown not available for this run.")).toBeInTheDocument();
     expect(await screen.findByText("Couldn't load the test mix.")).toBeInTheDocument();

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -83,7 +83,7 @@ function renderDashboard() {
     ],
     { initialEntries: ["/"] }
   );
-  render(
+  return render(
     <QueryClientProvider client={new QueryClient()}>
       <RouterProvider router={router} />
     </QueryClientProvider>
@@ -181,6 +181,39 @@ describe("DashboardPage", () => {
     // The card comes before the latest run's numbers.
     const headings = screen.getAllByRole("heading").map((h) => h.textContent);
     expect(headings.indexOf("Needs attention")).toBeLessThan(headings.indexOf("Recent runs"));
+  });
+
+  it("opens and closes Needs attention on click, and remembers it", async () => {
+    stubOverviewFetch(overviewPayload(), {
+      cycles: 2,
+      passing_cycles: 1,
+      failing: [{ cycle: "web", run_id: "run-9", created_at: 1, branch: "main", failed_tests: 4, new_failures: 0, failing_runs: 1 }],
+      newly_flaky: [],
+      slower: []
+    });
+    const { unmount } = renderDashboard();
+    const toggle = within(await screen.findByTestId("needs-attention")).getByRole("button", { name: /^Needs attention/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(screen.getByTestId("needs-attention")).queryByText("web")).not.toBeInTheDocument();
+    expect(screen.getByTestId("needs-attention")).toHaveTextContent("1 cycle red");
+    unmount();
+
+    renderDashboard();
+    expect(within(await screen.findByTestId("needs-attention")).getByRole("button", { name: /^Needs attention/ })).toHaveAttribute("aria-expanded", "false");
+    localStorage.clear();
+  });
+
+  it("shows the last 3 recent runs until asked for all", async () => {
+    const run = overviewPayload().recent_runs[0];
+    const runs = Array.from({ length: 5 }, (_, n) => ({ ...run, run_id: `run-${n}`, run_detail_url: `/runs/run-${n}` }));
+    stubOverviewFetch(overviewPayload({ recent_runs: runs }));
+    renderDashboard();
+    const list = await screen.findByTestId("recent-runs");
+    expect(list.querySelectorAll("li")).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Show all 5" }));
+    expect(screen.getByTestId("recent-runs").querySelectorAll("li")).toHaveLength(5);
   });
 
   it("says when nothing needs you", async () => {

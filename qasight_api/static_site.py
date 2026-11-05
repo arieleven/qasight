@@ -40,6 +40,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/issues/<name>.json                GET /api/v1/analytics/issues?cycle={name}
     data/releases.json                     GET /api/v1/releases
     data/releases/<release>.json           GET /api/v1/releases/{release}
+    data/demo/ask-examples.json            demo only: example Ask turns (demo_examples.py)
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
                                            (<id> is test_history.stable_id(key))
     data/resources.json                    GET /api/v1/resources
@@ -205,6 +206,8 @@ class Exporter:
         self.written: list[str] = []
         self.skipped: list[str] = []
         self.ai_summaries = 0
+        # Made-up content the demo shows where it has none of its own (qasight_api/demo_examples.py).
+        self.examples: set[str] = set()
 
     # --- plumbing -----------------------------------------------------------
 
@@ -260,8 +263,13 @@ class Exporter:
             self._dump(f"/api/v1/runs/{run_id}", f"{base}/detail.json")
             self._dump(f"/api/v1/runs/{run_id}/reports", f"{base}/reports.json")
             self._dump(f"/api/v1/runs/{run_id}/pyramid", f"{base}/pyramid.json")
-            self._dump(f"/api/v1/runs/{run_id}/failures", f"{base}/failures.json")
-            self._dump(f"/api/v1/runs/{run_id}/ai-summary", f"{base}/ai-summary.json")
+            failures = self._dump(f"/api/v1/runs/{run_id}/failures", f"{base}/failures.json")
+            summary = self._dump(f"/api/v1/runs/{run_id}/ai-summary", f"{base}/ai-summary.json")
+            if self.demo and run_id in failed and (summary or {}).get("status") != "available":
+                from qasight_api.demo_examples import example_ai_summary
+
+                self._write(f"{base}/ai-summary.json", example_ai_summary(run_id, failures))
+                self.examples.add("ai-summary")
             self._dump(f"/api/v1/runs/{run_id}/markdown", f"{base}/markdown.json")
         return items
 
@@ -319,10 +327,13 @@ class Exporter:
             )
             self.export_tests(name)
             query = f"?cycle={quote(name, safe='')}"
-            self._dump(f"/api/v1/project-health{query}", f"project-health/cycles/{name}.json")
-            self._dump(
+            health = self._dump(
+                f"/api/v1/project-health{query}", f"project-health/cycles/{name}.json"
+            )
+            review = self._dump(
                 f"/api/v1/project-health/ai-review{query}", f"project-health/ai-review/{name}.json"
             )
+            self._example_review(name, review, health, f"project-health/ai-review/{name}.json")
             for period in REPORT_PERIODS:
                 self._dump(
                     f"/api/v1/report?period={period}&cycle={quote(name, safe='')}",
@@ -351,21 +362,48 @@ class Exporter:
             )
 
     def export_releases(self) -> None:
+        if not self.demo:
+            self._export_releases()
+            return
+        from qasight_api.demo_examples import example_releases
+
+        with example_releases() as made_up:
+            self._export_releases()
+        if made_up:
+            self.examples.add("releases")
+
+    def _export_releases(self) -> None:
         listing = self._dump("/api/v1/releases", "releases.json")
         for item in (listing or {}).get("items", []):
             name = str(item["release"])
             self._dump(f"/api/v1/releases/{quote(name, safe='')}", f"releases/{name}.json")
+
+    def _example_review(self, scope: str | None, review: Any, health: Any, rel_path: str) -> None:
+        """In the demo, an example AI review where the export generated none."""
+        if not self.demo or not health or (review or {}).get("status") == "available":
+            return
+        from qasight_api.demo_examples import example_ai_review
+
+        skills = self._get("/api/v1/project-health/skills") or {}
+        self._write(rel_path, example_ai_review(scope, health, skills))
+        self.examples.add("ai-review")
 
     def export_dashboard(self) -> None:
         overview = self._get("/api/v1/dashboard/overview?recent_limit=6")
         if overview is not None:
             self._write("dashboard/overview.json", self._absolutize_report_links(overview))
         self._dump("/api/v1/dashboard/runs/recent?limit=8", "dashboard/recent-runs.json")
-        self._dump("/api/v1/dashboard/attention", "dashboard/attention.json")
         self._dump("/api/v1/dashboard/delivery?days=7", "dashboard/delivery.json")
-        self._dump("/api/v1/project-health", "project-health/all.json")
+        attention = self._dump("/api/v1/dashboard/attention", "dashboard/attention.json")
+        health = self._dump("/api/v1/project-health", "project-health/all.json")
         self._dump("/api/v1/project-health/skills", "project-health/skills.json")
-        self._dump("/api/v1/project-health/ai-review", "project-health/ai-review.json")
+        review = self._dump("/api/v1/project-health/ai-review", "project-health/ai-review.json")
+        self._example_review(None, review, health, "project-health/ai-review.json")
+        if self.demo:
+            from qasight_api.demo_examples import example_ask_turns
+
+            self._write("demo/ask-examples.json", example_ask_turns(attention, health))
+            self.examples.add("ask")
         for period in REPORT_PERIODS:
             self._dump(f"/api/v1/report?period={period}", f"report/{period}.json")
 
@@ -490,6 +528,7 @@ class Exporter:
                 "latest_run_id": runs[0]["run_id"],
                 "delta_pairs": deltas,
                 "demo": self.demo,
+                "examples": sorted(self.examples),
                 **_provenance(),
             },
         )

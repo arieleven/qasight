@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 # Specs & ADRs
@@ -66,6 +66,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | UI design review: ranked design and UX findings with annotated screenshots, 7.5 / 10 | [UI Design Review - 2026-10-31](UI%20Design%20Review%20-%202026-10-31.md) |
 | Engineering health review: tests, CI, docs accuracy and dependencies, fixes in #222 and ranked proposals | [Engineering Health Review - 2026-10-31](Engineering%20Health%20Review%20-%202026-10-31.md) |
 | UI review fixes: cycle results, run labels, Compare test list, test page charts, quieter cards | [UI Review Fixes - 2026-11-01](UI%20Review%20Fixes%20-%202026-11-01.md) |
+| Collapsible cards, 3-row lists, made-up examples in the live demo | [Tidy Cards and Demo Examples - 2026-11-05](Tidy%20Cards%20and%20Demo%20Examples%20-%202026-11-05.md) |
 | Automating the new user journey: setup pull request, fork comments, AI summaries in CI, automatic quarantine, MCP install, backups | [New User Journey Automation - 2026-11-01](New%20User%20Journey%20Automation%20-%202026-11-01.md) |
 | Lifecycle fixes from the year-two review: storage limits and visibility, runs that die mid-way, token rotation | [Lifecycle Fixes - 2026-11-02](Lifecycle%20Fixes%20-%202026-11-02.md) |
 | The rename from Testosterone (`testo-core`, `testo`) to QASight (`qasight`), and the old names that keep working | [Rename to QASight - 2026-11-04](Rename%20to%20QASight%20-%202026-11-04.md) |

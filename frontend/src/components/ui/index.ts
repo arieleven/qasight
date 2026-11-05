@@ -1,5 +1,6 @@
 export { Button, buttonClasses } from "./Button";
 export { Card } from "./Card";
+export { FIRST_ROWS, ShowMoreButton, useShowMore } from "./ShowMore";
 export { CopyMenu, cardAnchor } from "./CopyMenu";
 export { Badge } from "./Badge";
 export { StatusPill, normalizeRunStatus } from "./StatusPill";

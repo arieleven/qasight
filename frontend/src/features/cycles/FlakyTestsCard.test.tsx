@@ -132,7 +132,7 @@ describe("FlakyTestsCard", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Missing or invalid API token.");
   });
 
-  it("shows the first 10 of a long list until asked for all", async () => {
+  it("shows the first 3 of a long list until asked for all", async () => {
     const items = Array.from({ length: 25 }, (_, n) => ({
       key: `k${n}`,
       name: `test_${n}`,
@@ -149,9 +149,11 @@ describe("FlakyTestsCard", () => {
     }));
     renderCard({ ...base, items });
 
-    await waitFor(() => expect(screen.getByText("test_9")).toBeInTheDocument());
-    expect(screen.queryByText("test_10")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("test_2")).toBeInTheDocument());
+    expect(screen.queryByText("test_3")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Show all 25" }));
     expect(screen.getByText("test_24")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show fewer" }));
+    expect(screen.queryByText("test_24")).not.toBeInTheDocument();
   });
 });

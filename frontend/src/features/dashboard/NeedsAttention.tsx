@@ -2,29 +2,33 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { apiClient, type DashboardAttentionResponse } from "../../lib/api-client";
-import { Badge, Card } from "../../components/ui";
+import { Badge, Card, ShowMoreButton, useShowMore } from "../../components/ui";
 import { countLabel, formatDuration, formatPercent, testPath } from "../../lib/format";
 
 function FailingCycles({ failing }: { failing: DashboardAttentionResponse["failing"] }) {
+  const rows = useShowMore(failing);
   return (
-    <ul className="divide-y divide-white/5">
-      {failing.map((item) => (
-        <li key={item.cycle} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 first:pt-0">
-          <Link to={`/runs/${item.run_id}`} className="-my-1 inline-block py-1 font-semibold text-brand-300 hover:underline">
-            {item.cycle}
-          </Link>
-          <span className="text-sm text-ink-200">
-            {item.failed_tests === 0
-              ? // Red with no failing test: a stage crashed before or outside its tests.
-                "failed outside its tests"
-              : `${countLabel(item.failed_tests, "test")} failing${item.new_failures > 0 ? `, ${item.new_failures} new` : ""}`}
-          </span>
-          {item.new_failures > 0 ? <Badge tone="danger">New failures</Badge> : null}
-          {item.failing_runs > 1 ? <Badge tone="warn">Red for {item.failing_runs} runs</Badge> : null}
-          {item.branch ? <span className="font-mono text-xs text-ink-400">{item.branch}</span> : null}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="divide-y divide-white/5">
+        {rows.visible.map((item) => (
+          <li key={item.cycle} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 first:pt-0">
+            <Link to={`/runs/${item.run_id}`} className="-my-1 inline-block py-1 font-semibold text-brand-300 hover:underline">
+              {item.cycle}
+            </Link>
+            <span className="text-sm text-ink-200">
+              {item.failed_tests === 0
+                ? // Red with no failing test: a stage crashed before or outside its tests.
+                  "failed outside its tests"
+                : `${countLabel(item.failed_tests, "test")} failing${item.new_failures > 0 ? `, ${item.new_failures} new` : ""}`}
+            </span>
+            {item.new_failures > 0 ? <Badge tone="danger">New failures</Badge> : null}
+            {item.failing_runs > 1 ? <Badge tone="warn">Red for {item.failing_runs} runs</Badge> : null}
+            {item.branch ? <span className="font-mono text-xs text-ink-400">{item.branch}</span> : null}
+          </li>
+        ))}
+      </ul>
+      <ShowMoreButton className="mt-2" total={rows.total} expanded={rows.expanded} onToggle={rows.setExpanded} />
+    </>
   );
 }
 
@@ -37,12 +41,13 @@ function TestList({
   tests: DashboardAttentionResponse["slower"];
   detail?: (test: DashboardAttentionResponse["slower"][number]) => string;
 }) {
+  const rows = useShowMore(tests);
   if (tests.length === 0) return null;
   return (
     <div>
       <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">{title}</h3>
       <ul className="space-y-1 text-sm">
-        {tests.map((test) => (
+        {rows.visible.map((test) => (
           <li key={`${test.cycle}:${test.key}`} className="flex flex-wrap items-baseline gap-x-2">
             <Link to={testPath(test.cycle, test.key)} className="-my-1 inline-block break-all py-1 text-brand-300 hover:underline">
               {test.name}
@@ -53,6 +58,7 @@ function TestList({
           </li>
         ))}
       </ul>
+      <ShowMoreButton className="mt-2" total={rows.total} expanded={rows.expanded} onToggle={rows.setExpanded} />
     </div>
   );
 }
@@ -76,8 +82,15 @@ export function NeedsAttention() {
   const { cycles, passing_cycles: passing, failing, newly_flaky: flaky, slower } = query.data;
   const quiet = failing.length === 0 && flaky.length === 0 && slower.length === 0;
 
+  const summary =
+    failing.length > 0
+      ? `${countLabel(failing.length, "cycle")} red`
+      : flaky.length + slower.length > 0
+        ? `${countLabel(flaky.length + slower.length, "test")} to look at`
+        : "Nothing needs you";
+
   return (
-    <Card title="Needs attention" data-testid="needs-attention">
+    <Card title="Needs attention" data-testid="needs-attention" collapsible collapsedSummary={summary}>
       <p className={`text-sm ${failing.length ? "text-ink-200" : "text-success-300"}`}>
         {failing.length === 0
           ? cycles === 1

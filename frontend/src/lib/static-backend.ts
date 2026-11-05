@@ -55,6 +55,29 @@ export interface StaticManifest {
   project_url: string | null;
   /** False for a site written by `qasight export-site`; absent in older exports. */
   demo?: boolean;
+  /** Pages filled with made-up examples in the demo ("releases", "ask", ...); qasight_api/demo_examples.py. */
+  examples?: string[];
+}
+
+/** `provider` of an AI answer the demo export made up (qasight_api/demo_examples.py). */
+export const DEMO_EXAMPLE_PROVIDER = "demo-example";
+
+export interface StaticAskExample {
+  question: string;
+  answer: string;
+  model?: string | null;
+}
+
+/** The demo's example Ask turns; empty outside the demo or in an export without them. */
+export async function loadAskExamples(): Promise<StaticAskExample[]> {
+  if (!IS_STATIC_BUILD) return [];
+  try {
+    const resp = await fetch(`${DATA_BASE}/demo/ask-examples.json`, { headers: { Accept: "application/json" } });
+    if (!resp.ok) return [];
+    return ((await resp.json()) as { items?: StaticAskExample[] }).items ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export const READ_ONLY_MESSAGE =

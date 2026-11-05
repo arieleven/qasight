@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type ReviewSkillItem, type SkillResultItem } from "../../lib/api-client";
 import { Badge, Button, Card, Spinner } from "../../components/ui";
 import { formatRunTime } from "../../lib/format";
-import { IS_STATIC_BUILD } from "../../lib/static-backend";
+import { DEMO_EXAMPLE_PROVIDER, IS_STATIC_BUILD } from "../../lib/static-backend";
+import { DemoExampleNote } from "../../components/DemoExampleNote";
 import { ScoreRing, scoreTone } from "./score";
 import { AiNotReadyNote } from "../../components/AiNotReadyNote";
 
@@ -190,6 +191,14 @@ export function AiReviewCard({ cycle }: { cycle?: string }) {
         </p>
       ) : aiStatus.data && !aiReady ? (
         <AiNotReadyNote status={aiStatus.data} />
+      ) : null}
+
+      {current?.provider === DEMO_EXAMPLE_PROVIDER ? (
+        <DemoExampleNote
+          className="mt-3"
+          testId="ai-review-example-note"
+          what="No AI read these results: the scores and findings below were made up from this demo's runs to show what a review looks like. Open a check to see its findings."
+        />
       ) : null}
 
       {current ? (

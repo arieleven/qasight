@@ -127,6 +127,9 @@ def test_build_site_writes_the_ui_the_data_and_the_pages_fallback(
     assert (out / "assets" / "index-abc.js").exists()
     manifest = json.loads((out / "data" / "manifest.json").read_text())
     assert manifest["demo"] is False and len(manifest["run_ids"]) == 2
+    # Made-up examples are for this repository's own demo only, never a user's site.
+    assert manifest["examples"] == []
+    assert json.loads((out / "data" / "releases.json").read_text())["items"] == []
     runs = json.loads((out / "data" / "runs.json").read_text())["items"]
     assert {run["cycle"] for run in runs} == {"web"}
     assert (out / "data" / "cycles" / "web.json").exists()
@@ -254,3 +257,61 @@ def test_run_cases_are_read_once_per_run_and_the_cache_ends_with_the_export() ->
         assert flaky_service._cases_for_run is fake_load
     finally:
         flaky_service._cases_for_run = original  # type: ignore[assignment]
+
+
+def test_the_demo_fills_empty_ai_and_release_pages_with_marked_examples(
+    history_db: str, tmp_path: Path
+) -> None:
+    from qasight.services.releases import list_releases
+    from qasight_api.demo_examples import DEMO_EXAMPLE_PROVIDER, EXAMPLE_RELEASES
+    from qasight_api.static_site import Exporter
+
+    _record_two_runs(tmp_path)
+    out = tmp_path / "demo"
+    exporter = Exporter(out_dir=out, site_url="", run_limit=5, delta_pairs=2, demo=True)
+    assert exporter.run() == 0
+    data = out / "data"
+
+    manifest = json.loads((data / "manifest.json").read_text())
+    assert manifest["examples"] == ["ai-review", "ai-summary", "ask", "releases"]
+
+    run_id = manifest["latest_run_id"]
+    summary = json.loads((data / "runs" / run_id / "ai-summary.json").read_text())
+    assert summary["status"] == "available" and summary["provider"] == DEMO_EXAMPLE_PROVIDER
+    assert "demo_example" in summary["limitations"]
+    assert summary["summary_text"].startswith("What failed: 1 test failed: bad.")
+
+    review = json.loads((data / "project-health" / "ai-review.json").read_text())
+    assert review["status"] == "available" and review["provider"] == DEMO_EXAMPLE_PROVIDER
+    assert review["skills"] and 0 <= review["score"] <= 100
+    assert (data / "project-health" / "ai-review" / "web.json").exists()
+
+    releases = json.loads((data / "releases.json").read_text())["items"]
+    assert [r["release"] for r in releases] == [EXAMPLE_RELEASES[0]]
+    assert (data / "releases" / f"{EXAMPLE_RELEASES[0]}.json").exists()
+    # Only the export's read was changed: the history itself records no release.
+    assert list_releases() == ()
+
+    ask = json.loads((data / "demo" / "ask-examples.json").read_text())["items"]
+    assert ask[0]["question"] == "What should I fix first?" and "web" in ask[0]["answer"]
+
+
+def test_example_releases_split_each_cycle_into_newer_and_older_runs(
+    history_db: str, tmp_path: Path
+) -> None:
+    from qasight.services.releases import list_releases
+    from qasight_api.demo_examples import EXAMPLE_RELEASES, example_releases
+
+    _record_two_runs(tmp_path)
+    _record_two_runs(tmp_path)
+    with example_releases() as made_up:
+        names = [r.release for r in list_releases()]
+    assert made_up and names == list(EXAMPLE_RELEASES)
+    assert list_releases() == ()
+
+
+def test_example_ai_summary_without_failing_tests_points_at_the_stage_log() -> None:
+    from qasight_api.demo_examples import example_ai_summary
+
+    text = example_ai_summary("r1", {"tests": [], "groups": []})["summary_text"]
+    assert "outside its tests" in text and "stage log" in text
