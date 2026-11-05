@@ -306,7 +306,8 @@ def test_marker_and_body_survive_hostile_names() -> None:
     assert "`` test_`x` ``" in body
     assert "````\n```\n@someone <img>\n````" in body
     assert (
-        "https://qasight.example/cycles/api/test?key=t.py%3A%3Atest_%5Ba--%3Eb%60c%5D%20%3Ax" in body
+        "https://qasight.example/cycles/api/test?key=t.py%3A%3Atest_%5Ba--%3Eb%60c%5D%20%3Ax"
+        in body
     )
 
 
