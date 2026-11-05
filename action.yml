@@ -104,7 +104,7 @@ inputs:
     required: false
     default: ""
   server-url:
-    description: "Also upload each recorded run to this QASight team server (e.g. https://testo.example.com), as `qasight ingest --server` does. The job summary and comment still come from the Actions-cache history."
+    description: "Also upload each recorded run to this QASight team server (e.g. https://qasight.example.com), as `qasight ingest --server` does. The job summary and comment still come from the Actions-cache history."
     required: false
     default: ""
   server-token:

@@ -132,14 +132,14 @@ def test_server_writes_upload_inputs_and_stores_the_token_secret(
     monkeypatch.setenv("TESTO_API_TOKEN", "tok-123")
 
     result = CliRunner().invoke(
-        app, ["init", "--dir", str(repo), "--no-run", "--server", "https://testo.example.com/"]
+        app, ["init", "--dir", str(repo), "--no-run", "--server", "https://qasight.example.com/"]
     )
 
     assert result.exit_code == 0, result.output
     step = yaml.safe_load((repo / ".github/workflows/qasight.yml").read_text())["jobs"]["tests"][
         "steps"
     ][-1]
-    assert step["with"]["server-url"] == "https://testo.example.com"
+    assert step["with"]["server-url"] == "https://qasight.example.com"
     assert step["with"]["server-token"] == "${{ secrets.TESTO_API_TOKEN }}"
     assert (bin_dir / "gh-args").read_text().strip() == "secret set TESTO_API_TOKEN"
     assert (bin_dir / "gh-stdin").read_text() == "tok-123"
@@ -152,7 +152,7 @@ def test_server_without_a_token_says_which_secret_to_add(
     monkeypatch.delenv("TESTO_API_TOKEN", raising=False)
 
     result = CliRunner().invoke(
-        app, ["init", "--dir", str(repo), "--no-run", "--server", "https://testo.example.com"]
+        app, ["init", "--dir", str(repo), "--no-run", "--server", "https://qasight.example.com"]
     )
 
     assert result.exit_code == 0, result.output
@@ -160,7 +160,7 @@ def test_server_without_a_token_says_which_secret_to_add(
 
 
 def test_server_must_be_a_url(repo: Path) -> None:
-    result = CliRunner().invoke(app, ["init", "--dir", str(repo), "--server", "testo.example"])
+    result = CliRunner().invoke(app, ["init", "--dir", str(repo), "--server", "qasight.example"])
 
     assert result.exit_code == 2
 

@@ -123,11 +123,11 @@ def test_a_cycle_with_no_runs_in_the_period_is_left_out(history: list[CompletedR
 
 def test_payloads(history: list[CompletedRunView]) -> None:
     digest = run_digest.build_digest(period="week", now=NOW)
-    slack = run_digest.build_payload("slack", digest, url="https://testo.example")
+    slack = run_digest.build_payload("slack", digest, url="https://qasight.example")
     text = json.dumps(slack)
     assert "Weekly test digest" in slack["blocks"][0]["text"]["text"]
     assert "Turned flaky (1)" in text and "Fixed (1)" in text and "Got slower (1)" in text
-    assert "https://testo.example" in text
+    assert "https://qasight.example" in text
     teams = run_digest.build_payload("teams", digest)
     card = teams["attachments"][0]["content"]
     assert card["type"] == "AdaptiveCard"

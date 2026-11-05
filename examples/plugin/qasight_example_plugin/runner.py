@@ -1,4 +1,4 @@
-"""``python -m testo_example_plugin.runner RESULTS_DIR [unittest args]``.
+"""``python -m qasight_example_plugin.runner RESULTS_DIR [unittest args]``.
 
 Runs unittest discovery (or the given test names) and writes one Allure
 ``*-result.json`` per test into RESULTS_DIR. Exits 1 when a test failed.

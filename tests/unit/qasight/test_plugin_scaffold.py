@@ -24,8 +24,8 @@ def test_names_follow_the_plugin_name() -> None:
     names = names_for("My-Runner")
     assert (names.name, names.dist, names.module, names.cls) == (
         "my-runner",
-        "testo-my-runner-plugin",
-        "testo_my_runner_plugin",
+        "qasight-my-runner-plugin",
+        "qasight_my_runner_plugin",
         "MyRunner",
     )
     for bad in ("1abc", "a b", "a--b", "a-", "", "ä"):
@@ -38,13 +38,13 @@ def test_the_written_plugin_registers_loads_and_runs(
 ) -> None:
     result = CliRunner().invoke(app, ["plugins", "new", "my-runner", "--dir", str(tmp_path)])
     assert result.exit_code == 0, result.output
-    root = tmp_path / "testo-my-runner-plugin"
+    root = tmp_path / "qasight-my-runner-plugin"
 
     meta = tomllib.loads((root / "pyproject.toml").read_text())
     eps = meta["project"]["entry-points"]
-    assert eps["qasight.frameworks"] == {"my-runner": "testo_my_runner_plugin:MyRunnerAdapter"}
+    assert eps["qasight.frameworks"] == {"my-runner": "qasight_my_runner_plugin:MyRunnerAdapter"}
     assert eps["qasight.reporters"] == {
-        "my-runner-summary": "testo_my_runner_plugin:MyRunnerSummaryReporter"
+        "my-runner-summary": "qasight_my_runner_plugin:MyRunnerSummaryReporter"
     }
     config = yaml.safe_load((root / "qasight.yaml").read_text())
     assert config["cycles"]["unit"]["stages"][0]["equipment"] == "my-runner"
@@ -52,7 +52,7 @@ def test_the_written_plugin_registers_loads_and_runs(
     assert not list(root.rglob("*.tmpl"))
 
     monkeypatch.syspath_prepend(str(root))
-    module = importlib.import_module("testo_my_runner_plugin")
+    module = importlib.import_module("qasight_my_runner_plugin")
     adapter = module.MyRunnerAdapter()
     argv = adapter.build_argv(
         target_repo=root,
@@ -80,10 +80,10 @@ def test_the_written_plugin_registers_loads_and_runs(
 
 
 def test_an_existing_folder_is_left_alone(tmp_path: Path) -> None:
-    (tmp_path / "testo-x-plugin").mkdir()
+    (tmp_path / "qasight-x-plugin").mkdir()
     result = CliRunner().invoke(app, ["plugins", "new", "x", "--dir", str(tmp_path)])
     assert result.exit_code == 2
-    assert list((tmp_path / "testo-x-plugin").iterdir()) == []
+    assert list((tmp_path / "qasight-x-plugin").iterdir()) == []
 
 
 def test_plugins_without_a_subcommand_still_lists() -> None:

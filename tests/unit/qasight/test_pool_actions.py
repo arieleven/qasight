@@ -29,7 +29,7 @@ key = os.environ.get("TESTO_RESOURCE_ID", "")
 if verb == "list":
     print("\\n".join(vms))
 elif verb == "create":
-    if key == "testo-vm-bad":
+    if key == "qasight-vm-bad":
         sys.exit("quota exceeded")
     db.write_text("\\n".join(vms + [key]))
 elif verb == "destroy":
@@ -54,7 +54,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
                             "destroy": f"{run} destroy",
                             "allow": ["create", "destroy"],
                             "max_items": 4,
-                            "name_prefix": "testo-vm-",
+                            "name_prefix": "qasight-vm-",
                         },
                     }
                 }
@@ -94,7 +94,7 @@ def _pool(**provider: object) -> object:
                 "destroy": "d",
                 "allow": ["create", "destroy"],
                 "max_items": 3,
-                "name_prefix": "testo-vm-",
+                "name_prefix": "qasight-vm-",
                 **provider,
             },
         },
@@ -103,16 +103,16 @@ def _pool(**provider: object) -> object:
 
 def test_add_names_keys_from_the_prefix_within_max_items() -> None:
     pool = _pool()
-    plan = plan_add(pool, Listing(keys=("vm-1", "testo-vm-1")), count=2)  # type: ignore[arg-type]
-    assert [s.key for s in plan.steps] == ["testo-vm-2"]
-    assert plan.refused == (("testo-vm-3", "max_items 3 reached"),)
+    plan = plan_add(pool, Listing(keys=("vm-1", "qasight-vm-1")), count=2)  # type: ignore[arg-type]
+    assert [s.key for s in plan.steps] == ["qasight-vm-2"]
+    assert plan.refused == (("qasight-vm-3", "max_items 3 reached"),)
 
 
 def test_add_refuses_names_without_the_prefix_and_existing_ones() -> None:
-    plan = plan_add(_pool(), Listing(keys=("testo-vm-1",)), names=["vm-9", "testo-vm-1"])  # type: ignore[arg-type]
+    plan = plan_add(_pool(), Listing(keys=("qasight-vm-1",)), names=["vm-9", "qasight-vm-1"])  # type: ignore[arg-type]
     assert not plan.steps
     assert [why for _, why in plan.refused] == [
-        "doesn't start with name_prefix 'testo-vm-'",
+        "doesn't start with name_prefix 'qasight-vm-'",
         "already exists",
     ]
 
@@ -132,9 +132,9 @@ def test_nothing_runs_when_not_allowed_switched_off_or_list_failed(
 
 
 def test_sweep_only_takes_prefixed_keys_outside_the_pool() -> None:
-    listing = Listing(keys=("vm-1", "other-vm", *(f"testo-vm-{i}" for i in range(1, 8))))
+    listing = Listing(keys=("vm-1", "other-vm", *(f"qasight-vm-{i}" for i in range(1, 8))))
     plan = plan_sweep(_pool(), listing, ())  # type: ignore[arg-type]
-    assert [s.key for s in plan.steps] == [f"testo-vm-{i}" for i in range(1, 6)]
+    assert [s.key for s in plan.steps] == [f"qasight-vm-{i}" for i in range(1, 6)]
     assert plan.note == "2 more after these; run sweep again."
 
 
@@ -142,7 +142,7 @@ def test_add_is_a_dry_run_until_apply(project: Path) -> None:
     runner = CliRunner()
     dry = runner.invoke(app, ["pool", "add", "vms", "--count", "2"])
     assert dry.exit_code == 0, dry.output
-    assert "would run create for testo-vm-1" in dry.stdout and "Dry run" in dry.stdout
+    assert "would run create for qasight-vm-1" in dry.stdout and "Dry run" in dry.stdout
     assert _vms(project) == ["vm-1"]
     assert "No provider commands" in runner.invoke(app, ["pool", "log"]).stdout
 
@@ -152,43 +152,43 @@ def test_add_is_a_dry_run_until_apply(project: Path) -> None:
 
     done = runner.invoke(app, ["pool", "add", "vms", "-n", "2", "--apply", "--yes"])
     assert done.exit_code == 0, done.output
-    assert _vms(project) == ["vm-1", "testo-vm-1", "testo-vm-2"]
-    assert "Add testo-vm-1, testo-vm-2 to resources.vms.items" in done.stdout
+    assert _vms(project) == ["vm-1", "qasight-vm-1", "qasight-vm-2"]
+    assert "Add qasight-vm-1, qasight-vm-2 to resources.vms.items" in done.stdout
 
     # max_items 4: one more fits.
     capped = runner.invoke(app, ["pool", "add", "vms", "-n", "2", "--apply", "--yes"])
     assert "max_items 4 reached" in capped.stdout
-    assert _vms(project)[-1] == "testo-vm-3" and len(_vms(project)) == 4
+    assert _vms(project)[-1] == "qasight-vm-3" and len(_vms(project)) == 4
 
     log = json.loads(runner.invoke(app, ["pool", "log", "vms", "--json"]).stdout)
     assert [(a["item"], a["verb"], a["ok"]) for a in log] == [
-        ("testo-vm-3", "create", True),
-        ("testo-vm-2", "create", True),
-        ("testo-vm-1", "create", True),
+        ("qasight-vm-3", "create", True),
+        ("qasight-vm-2", "create", True),
+        ("qasight-vm-1", "create", True),
     ]
 
 
 def test_a_failing_create_is_logged_and_fails_the_command(project: Path) -> None:
-    result = CliRunner().invoke(app, ["pool", "add", "vms", "testo-vm-bad", "--apply", "--yes"])
+    result = CliRunner().invoke(app, ["pool", "add", "vms", "qasight-vm-bad", "--apply", "--yes"])
     assert result.exit_code == 1
     log = json.loads(CliRunner().invoke(app, ["pool", "log", "--json"]).stdout)
     assert log[0]["ok"] is False and "quota exceeded" in log[0]["detail"]
 
 
 def test_remove_and_sweep_never_touch_pool_items_or_held_keys(project: Path) -> None:
-    (project / "vms.txt").write_text("vm-1 testo-vm-1 testo-vm-2", encoding="utf-8")
+    (project / "vms.txt").write_text("vm-1 qasight-vm-1 qasight-vm-2", encoding="utf-8")
     runner = CliRunner()
     refused = runner.invoke(app, ["pool", "remove", "vms", "vm-1", "--apply", "--yes"])
     assert refused.exit_code == 1
     assert "in the pool's items" in refused.stdout and _vms(project)[0] == "vm-1"
 
-    # Someone holds testo-vm-2 (say it was in items when they took it).
+    # Someone holds qasight-vm-2 (say it was in items when they took it).
     from qasight.resources.client import backend_from_env, default_holder
 
-    backend_from_env().take(parse_pool("vms", {"items": ["testo-vm-2"]}), holder=default_holder())
+    backend_from_env().take(parse_pool("vms", {"items": ["qasight-vm-2"]}), holder=default_holder())
 
     dry = runner.invoke(app, ["pool", "sweep", "vms"])
-    assert "would run destroy for testo-vm-1" in dry.stdout and "holds it" in dry.stdout
+    assert "would run destroy for qasight-vm-1" in dry.stdout and "holds it" in dry.stdout
     swept = runner.invoke(app, ["pool", "sweep", "vms", "--apply", "--yes"])
     assert swept.exit_code == 0, swept.output
-    assert _vms(project) == ["vm-1", "testo-vm-2"]
+    assert _vms(project) == ["vm-1", "qasight-vm-2"]

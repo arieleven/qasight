@@ -90,7 +90,7 @@ qasight ingest test-results/results.json --cycle web-e2e --stage e2e --tier e2e 
 qasight ingest allure-results --cycle api                    # a folder: the files in it
 qasight ingest                                               # find the result files, cycle = folder name
 qasight ingest 'reports/*.xml' --cycle web-unit \
-  --server https://testo.example.com --token "$TESTO_API_TOKEN"   # team server
+  --server https://qasight.example.com --token "$TESTO_API_TOKEN"   # team server
 ```
 
 | Flag | Default | Meaning |
@@ -439,7 +439,7 @@ export TESTO_SLACK_WEBHOOK_URL=...         # from a secret, never on the command
 qasight notify --to slack --cycle nightly                      # only when it needs attention
 qasight notify --to slack --to teams --cycle nightly --when change --run-url "$CI_JOB_URL"
 qasight notify --to teams --cycle nightly --dry-run            # print the payload, send nothing
-qasight notify --to slack --digest week --run-url https://testo.example.com   # weekly digest (cron)
+qasight notify --to slack --digest week --run-url https://qasight.example.com   # weekly digest (cron)
 qasight notify --to email --digest week --email-to cto@acme.com --attach pdf  # the manager report by email
 ```
 
@@ -517,7 +517,7 @@ qasight quarantine add --cycle web-unit "test_refund_flaky" --reason "#412" --ow
 qasight quarantine add --cycle web-unit "tests.payments#*"     # a glob, matched like quarantine: rules
 qasight quarantine list --cycle web-unit
 qasight quarantine remove --cycle web-unit "test_refund_flaky"
-qasight quarantine add --cycle web-unit "test_x" --server https://testo.example.com   # the team server's list
+qasight quarantine add --cycle web-unit "test_x" --server https://qasight.example.com   # the team server's list
 ```
 
 | Command / flag | Meaning |
@@ -752,7 +752,7 @@ Write the files to run a [team server](../Processes%20&%20Guides/Team%20Server.m
 
 ```bash
 qasight server init                                   # ./qasight-server/
-qasight server init --dir /srv/testo --domain testo.example.com --admin ada
+qasight server init --dir /srv/testo --domain qasight.example.com --admin ada
 ```
 
 | Flag | Default | Meaning |
@@ -1045,10 +1045,10 @@ A Python package can add a test runner (`equipment:`) or a reporter (`reporters:
 ```toml
 # the plugin's pyproject.toml
 [project.entry-points."qasight.frameworks"]
-unittest = "testo_example_plugin:UnittestAdapter"
+unittest = "qasight_example_plugin:UnittestAdapter"
 
 [project.entry-points."qasight.reporters"]
-json-summary = "testo_example_plugin:JsonSummaryReporter"
+json-summary = "qasight_example_plugin:JsonSummaryReporter"
 ```
 
 After `pip install`, the names work in `qasight.yaml` and `--reporter`, and `qasight plugins` lists them.

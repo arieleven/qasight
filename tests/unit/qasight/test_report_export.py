@@ -215,14 +215,14 @@ def test_email_message_and_settings(monkeypatch: pytest.MonkeyPatch) -> None:
         sender="qa@example.com",
         brand="Acme",
         attachment=("r.pdf", "application/pdf", b"%PDF-1.7"),
-        url="https://testo.example/report",
+        url="https://qasight.example/report",
     )
     parsed = message_from_bytes(msg.as_bytes())
     assert parsed["To"] == "boss@example.com"
     parts = {p.get_content_type(): p for p in parsed.walk()}
     html = parts["text/html"].get_payload(decode=True).decode()
     assert "Pass rate &lt;rose&gt;." in html and "ACME" in html
-    assert "https://testo.example/report" in parts["text/plain"].get_payload(decode=True).decode()
+    assert "https://qasight.example/report" in parts["text/plain"].get_payload(decode=True).decode()
     assert parts["application/pdf"].get_filename() == "r.pdf"
 
     for key in ("TESTO_SMTP_HOST", "TESTO_SMTP_FROM", "TESTO_SMTP_USER", "TESTO_SMTP_PORT"):

@@ -128,14 +128,14 @@ qasight run --cycle fake-api --ci || true   # a second run gives Compare a pair 
 python scripts/export_static_site.py --out public --site-url http://localhost:8090/testo --demo-resources
 
 cd frontend
-VITE_BASE=/testo/ VITE_STATIC_DATA_BASE=/testo/data \
+VITE_BASE=/qasight/ VITE_STATIC_DATA_BASE=/qasight/data \
   VITE_API_BASE_URL=http://localhost:8090/testo npm run build
 cd .. && cp -r frontend/dist/. public/ && cp public/index.html public/404.html
 ```
 
 `--demo-resources` fills the throwaway history database with the made-up pools from `qasight lease demo` first, so the Resources page has something to show. Leave it off when exporting a real database.
 
-Serve `public/` under a `/testo/` path (any static server) and the demo behaves
+Serve `public/` under a `/qasight/` path (any static server) and the demo behaves
 as it does on Pages, except for the 404 fallback, which is Pages-specific.
 
 ## What visitors see

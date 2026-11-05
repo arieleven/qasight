@@ -38,7 +38,7 @@ class UnittestAdapter:
         return [
             sys.executable,
             "-m",
-            "testo_example_plugin.runner",
+            "qasight_example_plugin.runner",
             str(results_dir),
             *stage_args,
         ]

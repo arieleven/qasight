@@ -61,21 +61,21 @@ def test_domain_adds_caddy_and_keeps_the_server_port_local(tmp_path: Path) -> No
             "--dir",
             str(tmp_path),
             "--domain",
-            "Testo.Example.com",
+            "QASight.Example.com",
             "--admin",
             "ada",
         ],
     )
 
     assert result.exit_code == 0, result.output
-    assert (tmp_path / "Caddyfile").read_text().splitlines()[2] == "testo.example.com {"
+    assert (tmp_path / "Caddyfile").read_text().splitlines()[2] == "qasight.example.com {"
     override = yaml.safe_load((tmp_path / "docker-compose.override.yml").read_text())
     assert override["services"]["caddy"]["ports"] == ["80:80", "443:443"]
     env = _env(tmp_path)
     assert env["TESTO_SERVER_PORT"] == "127.0.0.1:8000"
     assert (env["TESTO_AUTH"], env["TESTO_ADMIN_USER"]) == ("accounts", "ada")
     assert len(env["TESTO_ADMIN_PASSWORD"]) >= 20
-    assert "https://testo.example.com" in result.output
+    assert "https://qasight.example.com" in result.output
 
 
 @pytest.mark.parametrize("args", [["--domain", "not a domain"], ["--admin", "-bad name"]])

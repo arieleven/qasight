@@ -2,7 +2,7 @@
 
 Allure and native report pages run script. Served from the API's own origin, a
 script in a report would act with the viewer's session. With
-``TESTO_REPORTS_ORIGIN=https://reports.testo.example.com`` (a second hostname
+``TESTO_REPORTS_ORIGIN=https://reports.qasight.example.com`` (a second hostname
 pointed at the same server):
 
 - The API host no longer serves ``/history``; it redirects there, after checking

@@ -554,7 +554,7 @@ def test_server_url_uploads_the_recorded_results_after_the_local_run(
     monkeypatch.setattr(module.subprocess, "run", recording_run)
     _plain_env(tmp_path, monkeypatch)
     monkeypatch.setenv("TESTO_SERVER_URL", "https://old.example")  # must not divert the local run
-    monkeypatch.setenv("TESTO_INPUT_SERVER_URL", "https://testo.example.com")
+    monkeypatch.setenv("TESTO_INPUT_SERVER_URL", "https://qasight.example.com")
     monkeypatch.setenv("TESTO_INPUT_SERVER_TOKEN", "s3cret")
 
     assert module.main(["--annotations", "false", "--results", "junit.xml"]) == 0
@@ -563,7 +563,7 @@ def test_server_url_uploads_the_recorded_results_after_the_local_run(
     assert "TESTO_SERVER_URL" not in envs[0]
     upload = calls[-1]
     assert upload[:3] == ["qasight", "ingest", "junit.xml"]
-    assert upload[upload.index("--server") + 1] == "https://testo.example.com"
+    assert upload[upload.index("--server") + 1] == "https://qasight.example.com"
     assert upload[upload.index("--cycle") + 1] == "my-repo"
     assert "s3cret" not in upload  # the token goes in the environment, not argv
     assert envs[-1]["TESTO_API_TOKEN"] == "s3cret"
@@ -580,7 +580,7 @@ def test_a_cycle_run_uploads_its_stage_results(tmp_path: Path, monkeypatch) -> N
     )
     stage_results = tmp_path / "artifacts" / "unit" / "api" / "allure-results"
     stage_results.mkdir(parents=True)
-    monkeypatch.setenv("TESTO_INPUT_SERVER_URL", "https://testo.example.com")
+    monkeypatch.setenv("TESTO_INPUT_SERVER_URL", "https://qasight.example.com")
 
     module.main(["--annotations", "false"])
 

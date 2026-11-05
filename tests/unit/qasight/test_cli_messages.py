@@ -96,13 +96,13 @@ def test_badge_on_an_unknown_cycle_warns_on_stderr_and_still_exits_0(
 # --- P16: a server URL without a scheme -------------------------------------------
 
 
-@pytest.mark.parametrize("url", ["not-a-url", "testo.example.com", "ftp://x", "http://"])
+@pytest.mark.parametrize("url", ["not-a-url", "qasight.example.com", "ftp://x", "http://"])
 def test_a_bad_server_url_is_named(url: str) -> None:
     problem = server_url_problem(url)
     assert problem is not None and "--server must be a URL" in problem
 
 
-@pytest.mark.parametrize("url", [None, "", "http://localhost:8000", "https://testo.example.com/"])
+@pytest.mark.parametrize("url", [None, "", "http://localhost:8000", "https://qasight.example.com/"])
 def test_good_server_urls_pass(url: str | None) -> None:
     assert server_url_problem(url) is None
 

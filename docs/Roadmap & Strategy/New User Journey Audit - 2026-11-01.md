@@ -118,7 +118,7 @@ Two small bugs found on the way, worth fixing whatever is picked: the header tha
 - **Already automated:** the server image with the UI built in, schema migrations at startup, history retention, a protected-reads default, login throttling, a queued-run table, the runner service, a CI smoke test of the whole compose file.
 - **Friction:** every item in "by hand" is a separate page section; a small team without an ops person stops at HTTPS.
 - **Proposals:**
-  - **T1 (Med, M).** `qasight server init [--domain testo.example.com]`: writes `docker-compose.yml` and `.env` with a generated token, an optional Caddy service that gets a certificate on its own, the first admin from `TESTO_ADMIN_USER` / `TESTO_ADMIN_PASSWORD` on first start, and prints the CI lines to paste (or sets them with `gh`, C2).
+  - **T1 (Med, M).** `qasight server init [--domain qasight.example.com]`: writes `docker-compose.yml` and `.env` with a generated token, an optional Caddy service that gets a certificate on its own, the first admin from `TESTO_ADMIN_USER` / `TESTO_ADMIN_PASSWORD` on first start, and prints the CI lines to paste (or sets them with `gh`, C2).
   - **T2 (Med, S, after #248).** A backup service in the compose file running `qasight backup` nightly with a kept count.
   - **T3 (Low, S).** Fix the stale "Limits today" bullet in [Team Server](../Processes%20&%20Guides/Team%20Server.md).
 

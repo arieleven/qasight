@@ -269,7 +269,7 @@ def test_config_from_env() -> None:
             "TESTO_ISSUES_CLOSE_AFTER": "4",
             "TESTO_ISSUES_REPO": "acme/other",
             "GITHUB_API_URL": "https://ghe.example/api/v3",
-            "TESTO_UI_URL": "https://testo.example/",
+            "TESTO_UI_URL": "https://qasight.example/",
         }
     )
     assert config == IssuesConfig(
@@ -279,7 +279,7 @@ def test_config_from_env() -> None:
         assign=True,
         close_after=4,
         api_url="https://ghe.example/api/v3",
-        ui_url="https://testo.example",
+        ui_url="https://qasight.example",
     )
     defaults = flaky_issues.config_from_env({"TESTO_ISSUES_CLOSE_AFTER": "x"})
     assert (defaults.labels, defaults.close_after, defaults.assign) == (("flaky-test",), 10, False)
@@ -301,12 +301,12 @@ def test_marker_and_body_survive_hostile_names() -> None:
         cycle="api",
         key=key,
         message="```\n@someone <img>",
-        page_url=flaky_issues.test_page_url("https://testo.example", "api", key),
+        page_url=flaky_issues.test_page_url("https://qasight.example", "api", key),
     )
     assert "`` test_`x` ``" in body
     assert "````\n```\n@someone <img>\n````" in body
     assert (
-        "https://testo.example/cycles/api/test?key=t.py%3A%3Atest_%5Ba--%3Eb%60c%5D%20%3Ax" in body
+        "https://qasight.example/cycles/api/test?key=t.py%3A%3Atest_%5Ba--%3Eb%60c%5D%20%3Ax" in body
     )
 
 

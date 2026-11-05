@@ -10,7 +10,7 @@ qasight run --cycle unit       # 2 passed; reports/summary.json written
 ```
 
 - [`pyproject.toml`](pyproject.toml) registers both through the `qasight.frameworks` and `qasight.reporters` entry point groups.
-- [`testo_example_plugin/__init__.py`](testo_example_plugin/__init__.py) has the adapter (`build_argv` returns the command) and the reporter (`publish` receives the collected results).
-- [`testo_example_plugin/runner.py`](testo_example_plugin/runner.py) writes one Allure `*-result.json` per test into the results directory the adapter is given, which is all QASight needs to count, diff and track the tests.
+- [`qasight_example_plugin/__init__.py`](qasight_example_plugin/__init__.py) has the adapter (`build_argv` returns the command) and the reporter (`publish` receives the collected results).
+- [`qasight_example_plugin/runner.py`](qasight_example_plugin/runner.py) writes one Allure `*-result.json` per test into the results directory the adapter is given, which is all QASight needs to count, diff and track the tests.
 
 The plugin interface is described in the [Command Reference](../../docs/CLI%20Commands/Command%20Reference.md#plugins).

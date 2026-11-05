@@ -147,10 +147,10 @@ def test_the_cli_client_speaks_this_api(
 ) -> None:
     def through_app(method: str, url: str, **kwargs: object) -> object:
         kwargs.pop("timeout", None)
-        return client.request(method, url.removeprefix("https://testo.example"), **kwargs)  # type: ignore[arg-type]
+        return client.request(method, url.removeprefix("https://qasight.example"), **kwargs)  # type: ignore[arg-type]
 
     monkeypatch.setattr(requests, "request", through_app)
-    remote = RemoteLeases("https://testo.example", _TOKEN)
+    remote = RemoteLeases("https://qasight.example", _TOKEN)
     pool = parse_pool("vms", _SPEC)
     with acquire(
         remote, pool, labels=["win"], holder=default_holder(run_id="r1"), wait_s=0
@@ -165,7 +165,7 @@ def test_the_cli_client_speaks_this_api(
     assert remote.force_release("vms", "vm-1") is False
 
     with pytest.raises(LeaseError, match="answered 401"):
-        RemoteLeases("https://testo.example", "wrong").take(pool, holder=default_holder())
+        RemoteLeases("https://qasight.example", "wrong").take(pool, holder=default_holder())
 
 
 def test_a_clean_release_reaches_the_next_taker(client: TestClient) -> None:
@@ -195,7 +195,7 @@ def test_the_server_keeps_the_provider_log_and_never_runs_it(
 ) -> None:
     from qasight.resources.store import ProviderAction
 
-    action = {"pool": "vms", "item": "testo-vm-1", "verb": "create", "ok": True}
+    action = {"pool": "vms", "item": "qasight-vm-1", "verb": "create", "ok": True}
     assert client.post("/api/v1/resources/actions", json=action).status_code == 401
     assert (
         client.post(
@@ -206,14 +206,14 @@ def test_the_server_keeps_the_provider_log_and_never_runs_it(
 
     def through_app(method: str, url: str, **kwargs: object) -> object:
         kwargs.pop("timeout", None)
-        return client.request(method, url.removeprefix("https://testo.example"), **kwargs)  # type: ignore[arg-type]
+        return client.request(method, url.removeprefix("https://qasight.example"), **kwargs)  # type: ignore[arg-type]
 
     monkeypatch.setattr(requests, "request", through_app)
-    remote = RemoteLeases("https://testo.example", _TOKEN)
+    remote = RemoteLeases("https://qasight.example", _TOKEN)
     remote.record_action(
         ProviderAction(
             pool="vms",
-            item="testo-vm-1",
+            item="qasight-vm-1",
             verb="destroy",
             user="dana",
             host="laptop-7",

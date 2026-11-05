@@ -7,7 +7,7 @@
 #
 #   pip install qasight
 #   qasight ingest 'reports/**/*.xml' --cycle web-unit \
-#     --server https://testo.example.com --token "$TESTO_API_TOKEN"
+#     --server https://qasight.example.com --token "$TESTO_API_TOKEN"
 #
 # Put it behind HTTPS (a reverse proxy) before exposing it beyond your network.
 # Guide: docs/Processes & Guides/Team Server.md

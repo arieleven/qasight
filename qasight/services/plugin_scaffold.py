@@ -2,8 +2,8 @@
 
 The files are templates under ``qasight/templates/plugin/`` (Python files end
 in ``.tmpl`` so linters and test collectors skip them), filled with the
-plugin's name: ``qasight plugins new my-runner`` writes ``testo-my-runner-plugin/``
-with package ``testo_my_runner_plugin``, the framework entry point
+plugin's name: ``qasight plugins new my-runner`` writes ``qasight-my-runner-plugin/``
+with package ``qasight_my_runner_plugin``, the framework entry point
 ``my-runner`` (class ``MyRunnerAdapter``) and the reporter ``my-runner-summary``.
 It is the repository's ``examples/plugin`` under another name, and works as
 written: ``pip install -e .`` then ``qasight run --cycle unit``.
@@ -41,8 +41,8 @@ def names_for(name: str) -> PluginNames:
     parts = name.split("-")
     return PluginNames(
         name=name,
-        dist=f"testo-{name}-plugin",
-        module=f"testo_{'_'.join(parts)}_plugin",
+        dist=f"qasight-{name}-plugin",
+        module=f"qasight_{'_'.join(parts)}_plugin",
         cls="".join(p.capitalize() for p in parts),
     )
 

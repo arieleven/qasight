@@ -375,8 +375,8 @@ def test_tokenless_api_refuses_a_rebinding_host(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_allowed_hosts_and_token_lift_the_host_check(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TESTO_ALLOWED_HOSTS", "testo.lan")
-    assert _client().get("/api/v1/health/live", headers={"Host": "testo.lan"}).status_code == 200
+    monkeypatch.setenv("TESTO_ALLOWED_HOSTS", "qasight.lan")
+    assert _client().get("/api/v1/health/live", headers={"Host": "qasight.lan"}).status_code == 200
     monkeypatch.setenv("TESTO_API_TOKEN", "s3cret")
     assert _client().get("/api/v1/health/live", headers={"Host": "other.lan"}).status_code == 200
     monkeypatch.delenv("TESTO_API_TOKEN")

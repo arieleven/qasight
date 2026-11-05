@@ -213,7 +213,7 @@ def test_client_posts_files_and_raises_the_servers_message(tmp_path: Path) -> No
     ok.json.return_value = {"run_id": "r1", "exit_code": 0}
     with patch("requests.post", return_value=ok) as post:
         body = ingest_client.upload_reports(
-            server="https://testo.example.com/",
+            server="https://qasight.example.com/",
             token="t",
             cycle="web",
             files=[report],
@@ -222,7 +222,7 @@ def test_client_posts_files_and_raises_the_servers_message(tmp_path: Path) -> No
     assert body == {"run_id": "r1", "exit_code": 0}
     url = post.call_args[0][0]
     kwargs = post.call_args[1]
-    assert url == "https://testo.example.com/api/v1/ingest"
+    assert url == "https://qasight.example.com/api/v1/ingest"
     assert kwargs["headers"] == {"Authorization": "Bearer t"}
     assert kwargs["data"]["cycle"] == "web"
     assert kwargs["data"]["ci_provider"] == "github"

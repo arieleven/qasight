@@ -16,7 +16,7 @@ One QASight server that every CI job uploads its test results to, so the whole t
 Quickest, from any machine with Docker and `pip install qasight`:
 
 ```bash
-qasight server init --domain testo.example.com --admin ada   # both optional
+qasight server init --domain qasight.example.com --admin ada   # both optional
 cd qasight-server && docker compose up -d
 ```
 
@@ -45,7 +45,7 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_MAX_CONCURRENT_RUNS` | `2` | Runs started from the UI or API that execute at once; the rest wait as `queued` |
 | `TESTO_AUTH` | `token` | `token`: everyone shares `TESTO_API_TOKEN`. `accounts`: people sign in with their own username and password, with roles and an audit log ([Accounts](#accounts)) |
 | `TESTO_LOGIN_MAX_FAILURES` | `5` | With accounts: failed sign-ins per name in 15 minutes before `/login` answers `429` for a while (four times this per client address) |
-| `TESTO_REPORTS_ORIGIN` | unset | e.g. `https://reports.testo.example.com`: serve report pages from that second hostname instead of the API's ([Reports on their own origin](#reports-on-their-own-origin)) |
+| `TESTO_REPORTS_ORIGIN` | unset | e.g. `https://reports.qasight.example.com`: serve report pages from that second hostname instead of the API's ([Reports on their own origin](#reports-on-their-own-origin)) |
 | `TESTO_RUNNER` | `host` | `container`: each stage of a run started on the server runs in a fresh container through the runner service ([Runs in throwaway containers](#runs-in-throwaway-containers)) |
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
 | `TESTO_ALLOWED_HOSTS` | unset | Only matters without a token: extra `Host` names a token-less API answers (it otherwise answers only `localhost`, `127.0.0.1` and `::1`, so a DNS-rebinding page can't read it). With a token, or `TESTO_ALLOW_UNAUTHENTICATED=1`, any name is answered |
@@ -96,7 +96,7 @@ The Report page (`/report`) summarises a day, week, month or quarter for people 
 Allure and native reports are web pages that run script. By default they are served from the server's own address, so a script in a report would run with the viewer's session. To keep them apart, point a second hostname at the same server (a DNS name and a reverse-proxy rule) and set:
 
 ```bash
-export TESTO_REPORTS_ORIGIN=https://reports.testo.example.com
+export TESTO_REPORTS_ORIGIN=https://reports.qasight.example.com
 ```
 
 Report links in the UI keep working: the server checks that the viewer may read, then redirects to the reports host with a 60-second signed ticket, which that host trades for its own cookie. The reports host serves nothing but `/history`, its cookie can only read reports, and the API refuses writes that come from the reports origin. Worth turning on when the server is reachable by people you don't fully trust.
@@ -150,11 +150,11 @@ GitHub Actions, with the Action (it keeps the job summary and pull request comme
 ```yaml
       - uses: arieleven/qasight@v1
         with:
-          server-url: https://testo.example.com
+          server-url: https://qasight.example.com
           server-token: ${{ secrets.TESTO_API_TOKEN }}
 ```
 
-`qasight init --server https://testo.example.com` writes those lines and, with the GitHub CLI and `$TESTO_API_TOKEN` set, stores the secret. Or as a plain step:
+`qasight init --server https://qasight.example.com` writes those lines and, with the GitHub CLI and `$TESTO_API_TOKEN` set, stores the secret. Or as a plain step:
 
 ```yaml
       - run: npx jest --ci --json --outputFile=jest.json   # your tests, plus Jest's own report
@@ -163,7 +163,7 @@ GitHub Actions, with the Action (it keeps the job summary and pull request comme
           pip install qasight
           qasight ingest jest.json --cycle web-unit
         env:
-          TESTO_SERVER_URL: https://testo.example.com
+          TESTO_SERVER_URL: https://qasight.example.com
           TESTO_API_TOKEN: ${{ secrets.TESTO_API_TOKEN }}
 ```
 

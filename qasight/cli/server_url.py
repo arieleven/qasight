@@ -17,7 +17,7 @@ def server_url_problem(url: str | None, *, flag: str = "--server") -> str | None
     parts = urlsplit(url.strip())
     if parts.scheme not in ("http", "https") or not parts.netloc:
         return (
-            f"{flag} must be a URL like https://testo.example.com (or $TESTO_SERVER_URL); "
+            f"{flag} must be a URL like https://qasight.example.com (or $TESTO_SERVER_URL); "
             f"got {url!r}"
         )
     return None

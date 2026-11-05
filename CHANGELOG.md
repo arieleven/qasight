@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 - The web UI's sidebar, the first-run dashboard, report titles and Slack/Teams message headers still said "Testo"; they now say QASight
+- `qasight plugins new NAME` writes `qasight-NAME-plugin` (was `testo-NAME-plugin`); the example plugin, example server domains (`qasight.example.com`) and example VM names in the docs use the new name too
 - Web UI: the molecule, vials and syringe line art behind every page is gone; the background is plain
 
 ## [1.6.0] - 2026-11-04

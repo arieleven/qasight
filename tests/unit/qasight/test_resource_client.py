@@ -180,10 +180,10 @@ def test_backend_choice_and_the_absolute_local_url(
     from qasight.resources.client import RemoteLeases
 
     remote = backend_from_env(
-        env={"TESTO_SERVER_URL": "https://testo.example/", "TESTO_API_TOKEN": "t"}
+        env={"TESTO_SERVER_URL": "https://qasight.example/", "TESTO_API_TOKEN": "t"}
     )
     assert isinstance(remote, RemoteLeases)
-    assert remote.base == "https://testo.example/api/v1/resources"
+    assert remote.base == "https://qasight.example/api/v1/resources"
     assert remote.headers == {"Authorization": "Bearer t"}
 
     monkeypatch.chdir(tmp_path)

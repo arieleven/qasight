@@ -138,7 +138,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: pytest --junitxml=reports/junit.xml || true
-      - uses: taltal-beep/testosterone@v1
+      - uses: arieleven/qasight@v1
         with:
           results: reports/*.xml
           static-site: "true"

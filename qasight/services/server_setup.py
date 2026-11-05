@@ -141,7 +141,7 @@ def write_server_files(
     domain = (domain or "").strip().lower() or None
     if domain and not _DOMAIN.match(domain):
         raise ServerSetupError(
-            f"--domain must be a host name like testo.example.com, not {domain!r}"
+            f"--domain must be a host name like qasight.example.com, not {domain!r}"
         )
     if admin:
         try:

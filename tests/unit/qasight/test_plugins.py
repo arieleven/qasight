@@ -49,12 +49,12 @@ def site(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     root.mkdir()
     _install(
         root,
-        "testo-example-plugin",
+        "qasight-example-plugin",
         """\
         [qasight.frameworks]
-        unittest = testo_example_plugin:UnittestAdapter
+        unittest = qasight_example_plugin:UnittestAdapter
         [qasight.reporters]
-        json-summary = testo_example_plugin:JsonSummaryReporter
+        json-summary = qasight_example_plugin:JsonSummaryReporter
         """,
     )
     monkeypatch.syspath_prepend(str(root))
@@ -72,8 +72,8 @@ def test_installed_plugins_are_discovered(site: Path) -> None:
     found = {(p.kind, p.name): p for p in plugins.list_plugins()}
 
     assert set(found) == {("framework", "unittest"), ("reporter", "json-summary")}
-    assert found["framework", "unittest"].package == "testo-example-plugin 0.1.0"
-    assert found["framework", "unittest"].target == "testo_example_plugin:UnittestAdapter"
+    assert found["framework", "unittest"].package == "qasight-example-plugin 0.1.0"
+    assert found["framework", "unittest"].target == "qasight_example_plugin:UnittestAdapter"
     assert {"pytest", "unittest"} <= plugins.framework_names()
     assert {"allure", "json-summary"} <= plugins.reporter_types()
 

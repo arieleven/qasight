@@ -85,7 +85,7 @@ def test_server_mode_calls_the_api(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(requests, "request", fake)
     monkeypatch.setenv("TESTO_API_TOKEN", "tok")
-    server = "https://testo.example"
+    server = "https://qasight.example"
     assert _testo("quarantine", "add", "--cycle", "web", "t1", "--server", server).exit_code == 0
     listed = _testo("quarantine", "list", "--server", server)
     assert "web  t1" in listed.output and "after 5 clean runs" in listed.output
