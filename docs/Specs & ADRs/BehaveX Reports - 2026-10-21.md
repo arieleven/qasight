@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-21
-updated: 2026-11-04
+updated: 2026-11-05
 related: "Deep Dive - Execution Logic, Architecture Overview"
 ---
 

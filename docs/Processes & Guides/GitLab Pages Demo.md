@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-07
-updated: 2026-11-04
+updated: 2026-11-05
 title: GitLab Pages Demo
 tags: [ci, gitlab, pages, frontend, demo]
 ---

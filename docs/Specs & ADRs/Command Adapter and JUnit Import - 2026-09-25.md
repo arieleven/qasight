@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-09-25
-updated: 2026-11-04
+updated: 2026-11-05
 related: "Architecture Overview, Deep Dive - Execution Logic, QA Strategies"
 ---
 
