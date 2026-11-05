@@ -5,7 +5,6 @@ import { useIsFetching, useIsMutating, useQuery } from "@tanstack/react-query";
 import { apiClient } from "../lib/api-client";
 import { EYE_BRAND_BLUE, EyeLogo } from "../components/mascot";
 import { scoreTone } from "../features/health/score";
-import { BackgroundArt } from "../components/BackgroundArt";
 import { DemoBadge } from "../components/StaticBuildBanner";
 import { Icons } from "../components/ui";
 
@@ -95,7 +94,6 @@ export function AppShell() {
           Skip to content
         </a>
       </nav>
-      <BackgroundArt />
       <aside className="glass-panel print:hidden fixed inset-y-4 left-4 z-20 hidden w-64 flex-col overflow-y-auto px-4 py-6 lg:flex">
         <Link to="/" className="flex items-center justify-center gap-2.5 pb-6" aria-label="QASight home">
           <BrandEye />
