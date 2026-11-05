@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use QASight in your work, please cite it as below."
 title: "QASight (qasight)"
-abstract: "See what broke, what's flaky and what got slower on every run: test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest or any JUnit-writing runner."
+abstract: "Run and track your tests, compare and export results, and catch the flaky ones. Get deeper insight with AI, using your own model."
 type: software
 authors:
   - alias: arieleven

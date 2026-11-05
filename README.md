@@ -7,7 +7,7 @@
 
 _Formerly Testosterone (`testo-core`). Old commands, imports and config files keep working; see [the rename notes](docs/Specs%20%26%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md)._
 
-**See what broke, what's flaky and what got slower on every run.** Run your tests, keep their history and see what changed, with any framework. On your laptop, in CI, or on one shared server for the whole team.
+**Run and track your tests, compare and export results, and catch the flaky ones.** Get deeper insight with AI, using your own model. On your laptop, in CI, or on one shared server for the whole team.
 
 [![CI](https://github.com/arieleven/qasight/actions/workflows/ci.yml/badge.svg)](https://github.com/arieleven/qasight/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/qasight)](https://pypi.org/project/qasight/)

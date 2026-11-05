@@ -8,7 +8,7 @@
 # See docs/Specs & ADRs/Docs Site - 2026-10-19.md
 
 site_name: QASight
-site_description: See what broke, what's flaky and what got slower on every run. Test history, run-to-run diffs and flaky detection for any test runner.
+site_description: Run and track your tests, compare and export results, and catch the flaky ones. Get deeper insight with AI, using your own model.
 site_url: https://arieleven.github.io/qasight/docs/
 repo_url: https://github.com/arieleven/qasight
 repo_name: arieleven/qasight

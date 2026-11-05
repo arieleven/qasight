@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "qasight"
 version = "1.6.0"
-description = "See what broke, what's flaky and what got slower on every run. Run your tests, keep their history and see what changed, with any framework."
+description = "Run and track your tests, compare and export results, and catch the flaky ones. Get deeper insight with AI, using your own model."
 dynamic = ["readme"]
 requires-python = ">=3.11"
 license = "MIT"
