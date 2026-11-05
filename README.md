@@ -1,4 +1,9 @@
-# QASight
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/qasight-logo-dark.png">
+    <img alt="QASight" src="docs/assets/qasight-logo-light.png" width="360">
+  </picture>
+</h1>
 
 _Formerly Testosterone (`testo-core`). Old commands, imports and config files keep working; see [the rename notes](docs/Specs%20%26%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md)._
 
@@ -14,7 +19,7 @@ _Formerly Testosterone (`testo-core`). Old commands, imports and config files ke
 
 **Live demo: <https://arieleven.github.io/qasight/>** · **Docs: <https://arieleven.github.io/qasight/docs/>**
 
-[![Dashboard: health, failed, pass count and duration cards with trends for the latest run, rollups, quick links and the recent self-test and fake-api runs](docs/assets/screenshots/dashboard.png)](https://arieleven.github.io/qasight/)
+[![Dashboard: what needs attention first (the red fake-api cycle), then project health, failed, passed and duration cards for the latest run compared with the one before](docs/assets/screenshots/dashboard.png)](https://arieleven.github.io/qasight/)
 
 | Run detail (failed fake-api run) | Compare (two fake-api runs) |
 |---|---|
