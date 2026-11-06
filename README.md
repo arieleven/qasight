@@ -345,15 +345,18 @@ Thank you to everyone who has helped make QASight better:
 | Contributor | Contributions |
 |-------------|---------------|
 | [@arieleven](https://github.com/arieleven) | Creator and maintainer |
-| [@evidentart](https://github.com/evidentart) | Run history records the repository each run tested ([#115](https://github.com/arieleven/qasight/pull/115), fixes [#102](https://github.com/arieleven/qasight/issues/102)) |
+| [@evidentart](https://github.com/evidentart) | Run history records the repository each run tested ([#115](https://github.com/arieleven/qasight/pull/115), fixes [#102](https://github.com/arieleven/qasight/issues/102)); the starter config runs ordinary pytest tests ([#124](https://github.com/arieleven/qasight/pull/124), fixes [#100](https://github.com/arieleven/qasight/issues/100)) |
+| [@drivepulator](https://github.com/drivepulator) | The format, AI review, test and deploy CI pipeline ([#39](https://github.com/arieleven/qasight/pull/39)) |
 
 Want to join them? The [good first issues](https://github.com/arieleven/qasight/labels/good%20first%20issue)
 are a friendly place to start, and [CONTRIBUTING.md](CONTRIBUTING.md) walks you through the setup.
 
 ## History
 
-The project started as UQO ("Unified Quality Orchestrator") and was renamed to QASight
-(the `uqo` command and `UQO_*` variables became `qasight` and `TESTO_*`). v1.1 replaced the Streamlit UI
+The project started as UQO ("Unified Quality Orchestrator"), became Testosterone (`testo`,
+`testo-core`; the `uqo` command and `UQO_*` variables became `testo` and `TESTO_*`), and was
+renamed to QASight in 1.6.0 (the `testo` command and `testosterone.yaml` still work).
+v1.1 replaced the Streamlit UI
 with the React frontend and dropped the Docker-based headless runner (stages now run as host
 subprocesses). Full details in [CHANGELOG.md](CHANGELOG.md).
 

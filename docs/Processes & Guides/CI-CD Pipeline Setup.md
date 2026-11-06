@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-11-05
+updated: 2026-11-06
 ---
 
 # CI Integrations
@@ -67,7 +67,7 @@ steps:
 
 **Browse CI's history locally.** The cached history is also uploaded as a `testo-history-*` artifact (kept 7 days; `history-artifact: false` turns it off), and `qasight ui --from-github` downloads the newest one with the GitHub CLI and opens the UI on it, see [`qasight ui`](../CLI%20Commands/Command%20Reference.md#qasight-ui).
 
-**Results on GitHub Pages.** `static-site: "true"` writes the history as a read-only site after the run ([`qasight export-site`](../CLI%20Commands/Command%20Reference.md#qasight-export-site)) and uploads it with `actions/upload-pages-artifact`; a second job publishes it with `actions/deploy-pages` (Settings → Pages → Source: GitHub Actions). The site is served under `/<repo>/` unless `static-site-base-path` says otherwise (`/` for a custom domain). It needs the UI a released `qasight` ships, so not `package: .`; an export that fails is a warning. The YAML is in the [Action README](https://github.com/taltal-beep/testosterone/blob/main/integrations/github-action/README.md#results-on-github-pages).
+**Results on GitHub Pages.** `static-site: "true"` writes the history as a read-only site after the run ([`qasight export-site`](../CLI%20Commands/Command%20Reference.md#qasight-export-site)) and uploads it with `actions/upload-pages-artifact`; a second job publishes it with `actions/deploy-pages` (Settings → Pages → Source: GitHub Actions). The site is served under `/<repo>/` unless `static-site-base-path` says otherwise (`/` for a custom domain). It needs the UI a released `qasight` ships, so not `package: .`; an export that fails is a warning. The YAML is in the [Action README](https://github.com/arieleven/qasight/blob/main/integrations/github-action/README.md#results-on-github-pages).
 
 **Pull requests from forks.** Their token is read-only, so the comment can't be posted from their run. `comment-artifact: "true"` uploads it as a `testo-comment` artifact instead, and a `workflow_run` workflow posts it with `post-comments-from` (no fork code is checked out; only marker-prefixed, size-capped files are posted, on the pull request whose head is the tested commit). `qasight init --forks` writes both; the YAML is in the [Action README](https://github.com/arieleven/qasight/blob/main/integrations/github-action/README.md#pull-requests-from-forks).
 
