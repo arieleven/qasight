@@ -220,7 +220,7 @@ runs:
       # For `qasight ui --from-github`. A name taken twice (a matrix job) must not fail the job.
       if: always() && steps.history.outputs.cache == 'true' && inputs.history-artifact == 'true'
       continue-on-error: true
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ steps.history.outputs.key }}
         path: ${{ steps.history.outputs.dir }}/testo_history.db
@@ -243,7 +243,7 @@ runs:
         path: ${{ steps.site.outputs.site_dir }}
     - name: Upload the pull request comment
       if: always() && steps.run_testo.outputs.comment_dir != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: testo-comment
         path: ${{ steps.run_testo.outputs.comment_dir }}
