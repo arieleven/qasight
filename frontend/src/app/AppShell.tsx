@@ -287,6 +287,7 @@ function Footer() {
 }
 
 const RELEASES_URL = "https://github.com/arieleven/qasight/releases";
+const AUTHOR_URL = "https://github.com/arieleven";
 
 /** The running version, and a link when PyPI has a newer one (GET /api/v1/version). */
 export function VersionNote() {
@@ -309,6 +310,10 @@ export function VersionNote() {
           </a>
         </>
       ) : null}
+      {" · made by "}
+      <a href={AUTHOR_URL} target="_blank" rel="noreferrer" className="text-ink-300 underline-offset-2 hover:text-white hover:underline">
+        arieleven
+      </a>
     </p>
   );
 }
