@@ -81,7 +81,7 @@ function Results({ report, names }: { report: JunitReport; names: string[] }) {
               </ul>
             </div>
           ) : null}
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-fade">
             {failing.slice(0, SHOWN_ROWS).map((test, idx) => (
               // Names can repeat across suites; position keeps rows apart.
               <CaseRow key={`${test.classname}-${test.name}-${idx}`} test={test} />

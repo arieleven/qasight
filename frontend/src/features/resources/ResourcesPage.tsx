@@ -135,7 +135,7 @@ function PoolCard({ pool, now }: { pool: ResourcePoolStatus; now: number }) {
         </span>
       }
     >
-      <ul className="-mx-5 -mb-5 divide-y divide-white/5">
+      <ul className="-mx-5 -mb-5 divide-fade">
         {pool.items.map((item) => (
           <KeyRow key={item.item} pool={pool.name} item={item} now={now} />
         ))}
@@ -151,7 +151,7 @@ function ProviderLog({ actions, now }: { actions: ResourceActionItem[]; now: num
       title="Provider commands"
       actions={<span className="text-xs text-ink-300">Run by people with qasight pool, newest first</span>}
     >
-      <ul className="-mx-5 -mb-5 divide-y divide-white/5" data-testid="provider-log">
+      <ul className="-mx-5 -mb-5 divide-fade" data-testid="provider-log">
         {actions.map((a, i) => (
           <li key={`${a.at}-${a.item}-${i}`} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
             <Badge tone={a.ok ? "success" : "danger"}>{a.verb}</Badge>

@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- Web UI polish: cards have a soft light edge, the dashboard's KPI cards show an icon tile (red for failures) and a ring for the health score, the Last 7 days numbers sit in darker tiles, list rows are split by fading lines, the desktop top bar sticks and turns to glass as you scroll, the sidebar has a "Need help?" card, and every page ends with Docs, GitHub and Report an issue links. See `docs/Specs & ADRs/UI Polish - 2026-11-08.md`
 - Tidier pages: Needs attention and Recent runs on the dashboard open and close on click, and long lists (recent runs, failing, flaky and broken tests, release tests) show 3 rows with "Show all". The run page's Test mix, Details and Artifacts and the cycle page's Stages start closed. A card you close stays closed in that browser
 - The live demo shows made-up examples, each marked "Fake example for the live demo", where it has nothing of its own: an AI failure summary per failed run, an AI review, an Ask conversation and two pretend releases. Only the demo export does this; `qasight export-site` does not
 

@@ -60,7 +60,7 @@ export function ReleasesPage() {
         <EmptyState mascot={<MuscleShrug />} title="No releases recorded yet" message={<HowTo />} />
       ) : (
         <Card title="All releases">
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-fade">
             {items.map((item) => (
               <li key={item.release} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5">
                 <Link to={releasePath(item.release)} className="font-semibold text-brand-300 hover:underline">
@@ -196,7 +196,7 @@ export function ReleasePage() {
             <Delta data={data} />
           </Card>
           <Card title="Cycles">
-            <ul className="divide-y divide-white/5 text-sm">
+            <ul className="divide-fade text-sm">
               {data.cycles.map((c) => (
                 <li key={c.cycle} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
                   <Link to={cyclePath(c.cycle)} className="font-semibold text-brand-300 hover:underline">

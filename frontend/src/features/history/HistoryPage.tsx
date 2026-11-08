@@ -206,7 +206,7 @@ export function HistoryPage() {
           }
         />
       ) : (
-        <ul className="divide-y divide-white/5 glass-card">
+        <ul className="divide-fade glass-card">
           {items.map((run) => (
             <li key={run.run_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
               <div className="flex min-w-0 items-center gap-3">

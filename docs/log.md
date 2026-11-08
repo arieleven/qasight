@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-11-05
+updated: 2026-11-08
 ---
 
 # Vault log
@@ -232,3 +232,7 @@ New ADR [QASight Logo - 2026-11-05](Specs%20&%20ADRs/QASight%20Logo%20-%202026-1
 ## 2026-11-05: added Tidy Cards and Demo Examples
 
 New ADR [Tidy Cards and Demo Examples - 2026-11-05](Specs%20&%20ADRs/Tidy%20Cards%20and%20Demo%20Examples%20-%202026-11-05.md): collapsible cards, 3-row lists, and the live demo's marked fake examples.
+
+## 2026-11-08: added UI Polish
+
+New ADR [UI Polish - 2026-11-08](Specs%20&%20ADRs/UI%20Polish%20-%202026-11-08.md): the small touches from the Vision UI reference and its licence check, with screenshots in `docs/assets/ui-polish-2026-11-08/`. Linked from the Specs README and the docs site menu.

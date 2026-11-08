@@ -9,7 +9,7 @@ function FailingCycles({ failing }: { failing: DashboardAttentionResponse["faili
   const rows = useShowMore(failing);
   return (
     <>
-      <ul className="divide-y divide-white/5">
+      <ul className="divide-fade">
         {rows.visible.map((item) => (
           <li key={item.cycle} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 first:pt-0">
             <Link to={`/runs/${item.run_id}`} className="-my-1 inline-block py-1 font-semibold text-brand-300 hover:underline">

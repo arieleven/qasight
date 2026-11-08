@@ -56,7 +56,7 @@ export function HealthBar({ healthPct, className }: { healthPct: number | null; 
     >
       {pct != null ? (
         <span
-          className={`block h-full ${pct >= 90 ? "bg-success-400" : pct >= 60 ? "bg-warn-400" : "bg-danger-400"}`}
+          className={`block h-full rounded-full bg-gradient-to-r ${pct >= 90 ? "from-success-600 to-success-300" : pct >= 60 ? "from-warn-500 to-warn-300" : "from-danger-600 to-danger-300"}`}
           style={{ width: `${pct}%` }}
         />
       ) : null}

@@ -76,8 +76,21 @@ function BrandEye() {
  * the page. Below `lg` the sidebar is hidden and a top bar with a disclosure
  * menu takes its place.
  */
+/** True once the page has scrolled a little, so the top bar can turn to glass over the content. */
+function useScrolled(threshold = 8) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > threshold);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [threshold]);
+  return scrolled;
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
+  const scrolled = useScrolled();
   return (
     <div className="min-h-full">
       {/* Inside a landmark, like all content, so screen-reader region navigation finds it. */}
@@ -109,11 +122,15 @@ export function AppShell() {
             <NavItem key={link.to} link={link} />
           ))}
         </nav>
-        <DocsLink />
+        <HelpCard />
         <VersionNote />
       </aside>
 
-      <header className="sticky top-0 z-30 print:hidden border-b border-white/5 bg-ink-950/80 backdrop-blur-xl lg:hidden">
+      <header
+        className={`sticky top-0 z-30 print:hidden border-b backdrop-blur-xl transition-colors duration-300 lg:hidden ${
+          scrolled ? "border-white/10 bg-ink-950/70 shadow-lg shadow-black/30" : "border-white/5 bg-ink-950/40"
+        }`}
+      >
         <div className="relative flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2" aria-label="QASight home">
             <BrandEye />
@@ -130,10 +147,22 @@ export function AppShell() {
 
       <div className="lg:pl-[18rem] print:pl-0">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:pt-5 print:max-w-none print:p-0">
-          <header className="mb-5 hidden print:hidden items-center justify-between gap-4 lg:flex">
+          <header
+            data-scrolled={scrolled || undefined}
+            className={`sticky top-3 z-20 -mx-4 mb-5 hidden print:hidden items-center justify-between gap-4 rounded-2xl border px-4 py-2.5 transition-[background-color,border-color,box-shadow] duration-300 lg:flex ${
+              scrolled
+                ? "border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.01] bg-ink-900/[0.97] shadow-xl shadow-black/30 backdrop-blur-2xl"
+                : "border-transparent"
+            }`}
+          >
             <nav aria-label="Breadcrumb" className="text-xs text-ink-300">
               <ol className="flex flex-wrap items-center gap-1">
-                <li>QASight</li>
+                <li className="flex items-center gap-1.5">
+                  <Link to="/" className="text-ink-400 hover:text-white" aria-label="QASight home">
+                    <Icons.HomeIcon />
+                  </Link>
+                  QASight
+                </li>
                 {breadcrumbs(pathname).map((crumb, i, all) => (
                   <li key={`${crumb.label}-${i}`} className="flex items-center gap-1">
                     <span className="text-ink-500" aria-hidden>
@@ -163,6 +192,7 @@ export function AppShell() {
           <main id="main" tabIndex={-1} className="outline-none">
             <Outlet />
           </main>
+          <Footer />
         </div>
       </div>
     </div>
@@ -188,7 +218,7 @@ function NavItem({ link, size = "compact" }: { link: NavLinkSpec; size?: "compac
           <span
             className={[
               "flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-xl transition-colors",
-              isActive ? "bg-brand-500 text-white" : "bg-ink-800 text-brand-400 group-hover:bg-ink-700"
+              isActive ? "brand-tile" : "bg-ink-800 text-brand-400 shadow-md shadow-black/20 group-hover:bg-ink-700 group-hover:text-brand-300"
             ].join(" ")}
           >
             <Icon />
@@ -200,19 +230,59 @@ function NavItem({ link, size = "compact" }: { link: NavLinkSpec; size?: "compac
   );
 }
 
-function DocsLink() {
+/**
+ * The sidebar's help card: a lit glass tile with the eye's blue glow behind
+ * it, pointing at the docs site.
+ */
+function HelpCard() {
   return (
-    <a
-      href={DOCS_URL}
-      target="_blank"
-      rel="noreferrer"
-      className="mt-auto flex items-center gap-3 rounded-2xl px-4 py-2 text-sm font-medium text-ink-300 transition-colors hover:bg-ink-800/40 hover:text-white"
-    >
-      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-xl bg-ink-800 text-brand-400">
-        <Icons.HelpIcon />
+    <div className="relative mt-auto overflow-hidden rounded-2xl border border-white/10 bg-ink-900 p-4">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 85% 0%, rgb(74 155 255 / 0.65), transparent 55%), radial-gradient(circle at 0% 100%, rgb(52 211 153 / 0.28), transparent 50%), radial-gradient(circle at 40% 60%, rgb(99 65 255 / 0.35), transparent 60%)"
+        }}
+      />
+      <div className="relative">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-brand-500 shadow-md shadow-black/20">
+          <Icons.HelpIcon />
+        </span>
+        <p className="mt-3 text-sm font-bold text-white">Need help?</p>
+        <p className="text-xs text-ink-200">Guides, commands and CI setup.</p>
+        <a
+          href={DOCS_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 block rounded-xl border border-white/15 bg-ink-950/50 px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-white backdrop-blur transition-colors hover:border-white/30 hover:bg-ink-950/70"
+        >
+          Docs
+        </a>
+      </div>
+    </div>
+  );
+}
+
+const REPO_URL = "https://github.com/arieleven/qasight";
+
+/** A quiet line under every page: where the docs and the code are. On phones it is the only Docs link. */
+function Footer() {
+  return (
+    <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-5 text-xs text-ink-400 print:hidden">
+      <span className="font-semibold text-ink-200">QASight</span>
+      <span className="flex gap-4">
+        <a href={DOCS_URL} target="_blank" rel="noreferrer" className="hover:text-white">
+          Docs
+        </a>
+        <a href={REPO_URL} target="_blank" rel="noreferrer" className="hover:text-white">
+          GitHub
+        </a>
+        <a href={`${REPO_URL}/issues`} target="_blank" rel="noreferrer" className="hover:text-white">
+          Report an issue
+        </a>
       </span>
-      Docs
-    </a>
+    </footer>
   );
 }
 
@@ -380,7 +450,7 @@ function HealthDot() {
       data-testid="health-indicator"
       title={detail}
     >
-      <span className={`h-2.5 w-2.5 rounded-full ${color}`} aria-hidden />
+      <span className={`h-2.5 w-2.5 rounded-full ring-4 ring-white/5 ${color}`} aria-hidden />
       <span className="hidden sm:inline">{label}</span>
     </span>
   );

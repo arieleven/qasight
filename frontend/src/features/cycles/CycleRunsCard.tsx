@@ -63,7 +63,7 @@ export function CycleRunsCard({ cycle }: { cycle: string }) {
           </li>
         ))}
       </ol>
-      <ul className="divide-y divide-white/5">
+      <ul className="divide-fade">
         {runs.slice(0, 3).map((run) => (
           <li key={run.run_id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
             <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />

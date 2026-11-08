@@ -52,7 +52,7 @@ function Findings({ findings }: { findings: HealthFindingItem[] }) {
     return <p className="text-sm text-success-300">Nothing to fix: no red cycles, flaky, slower, skipped or quarantined tests.</p>;
   }
   return (
-    <ul className="divide-y divide-white/5">
+    <ul className="divide-fade">
       {findings.map((finding, index) => {
         const badge = FINDING_BADGE[finding.kind];
         const to = findingLink(finding);
