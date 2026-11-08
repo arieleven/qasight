@@ -45,12 +45,14 @@ function slicePath(a0: number, a1: number): string {
 /**
  * Original art for the dashboard hero: QASight's eye as a glowing iris,
  * made of rings and fibres. With `slices` the iris is a pie of the latest
- * run's results (passed, failed, broken, skipped), each slice showing its
+ * run's results (passed, failed, broken, skipped), the colours fading into
+ * each other and shaded like a rounded iris, each slice showing its
  * count on hover; without them it takes the run's colour.
  */
 export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: ResultSlice[]; className?: string }) {
   const id = useId().replace(/:/g, "");
   const c = ART[tone];
+  const hasSlices = (slices ?? []).some((s) => s.count > 0);
   const fibres = Array.from({ length: 48 }, (_, i) => {
     const a = (i / 48) * Math.PI * 2;
     const inner = 34 + (i % 3) * 2;
@@ -71,6 +73,18 @@ export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: R
           <stop offset="70%" stopColor={c.deep} />
           <stop offset="100%" stopColor="#060b26" />
         </radialGradient>
+        <radialGradient id={`${id}-shade`} gradientUnits="userSpaceOnUse" cx="150" cy="122" r="130">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
+          <stop offset="35%" stopColor="#ffffff" stopOpacity="0.08" />
+          <stop offset="70%" stopColor="#060b26" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#060b26" stopOpacity="0.7" />
+        </radialGradient>
+        <radialGradient id={`${id}-depth`} gradientUnits="userSpaceOnUse" cx="180" cy="160" r={IRIS_OUTER}>
+          <stop offset={`${(IRIS_INNER - 4) / IRIS_OUTER}`} stopColor="#030616" stopOpacity="0.9" />
+          <stop offset={`${(IRIS_INNER + 16) / IRIS_OUTER}`} stopColor="#030616" stopOpacity="0" />
+          <stop offset="88%" stopColor="#030616" stopOpacity="0" />
+          <stop offset="100%" stopColor="#030616" stopOpacity="0.5" />
+        </radialGradient>
         <filter id={`${id}-blur`} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="6" />
         </filter>
@@ -83,15 +97,24 @@ export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: R
       <circle cx="180" cy="160" r="100" fill="none" stroke={c.iris} strokeOpacity="0.25" strokeWidth="1.5" />
       <circle cx="180" cy="160" r="92" fill={c.iris} opacity="0.35" filter={`url(#${id}-blur)`} />
       <circle cx="180" cy="160" r="88" fill={`url(#${id}-iris)`} />
+      {blend(slices).map((seg, i) => (
+        <path key={`seg-${i}`} d={seg.d} fill={seg.color} />
+      ))}
+      {hasSlices && (
+        <>
+          {/* Light from the top left and a curve into the pupil, so the ring reads as a rounded iris. */}
+          <circle cx="180" cy="160" r={IRIS_OUTER} fill={`url(#${id}-shade)`} />
+          <circle cx="180" cy="160" r={IRIS_OUTER} fill={`url(#${id}-depth)`} />
+          <circle cx="180" cy="160" r={IRIS_OUTER - 1} fill="none" stroke="#060b26" strokeOpacity="0.55" strokeWidth="2" />
+        </>
+      )}
       {pie(slices).map((slice) => (
         <path
           key={slice.key}
           d={slice.d}
-          fill={SLICE_COLOR[slice.key]}
-          fillOpacity="0.85"
-          stroke="#060b26"
-          strokeWidth={slice.full ? 0 : 1.5}
-          className="pointer-events-auto transition-[fill-opacity] hover:fill-opacity-100"
+          fill="white"
+          fillOpacity="0"
+          className="pointer-events-auto transition-[fill-opacity] hover:fill-opacity-10"
           data-testid={`iris-slice-${slice.key}`}
         >
           <title>{`${slice.count} ${slice.label}`}</title>
@@ -111,21 +134,11 @@ export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: R
   );
 }
 
-/**
- * A big gauge: an open ring (three quarters of a circle) that fills to
- * `value` out of 100, with whatever is passed as children in its middle.
- */
-/** Turns counts into ring slices; a single non-empty slice is drawn as a full ring. */
-function pie(slices: ResultSlice[] | undefined) {
+/** Each non-empty slice's start and end angle; every slice gets at least a sliver, so one broken test out of a thousand still shows. */
+function pieAngles(slices: ResultSlice[] | undefined) {
   const shown = (slices ?? []).filter((s) => s.count > 0);
   const total = shown.reduce((n, s) => n + s.count, 0);
   if (total === 0) return [];
-  if (shown.length === 1) {
-    const s = shown[0];
-    // Two half arcs, since one SVG arc can't draw a whole circle.
-    return [{ ...s, full: true, d: `${slicePath(0, Math.PI)} ${slicePath(Math.PI, 2 * Math.PI)}` }];
-  }
-  // Every slice gets at least a sliver, so one broken test out of a thousand still shows.
   const minAngle = 0.06;
   const raw = shown.map((s) => Math.max((s.count / total) * 2 * Math.PI, minAngle));
   const scale = (2 * Math.PI) / raw.reduce((a, b) => a + b, 0);
@@ -133,10 +146,65 @@ function pie(slices: ResultSlice[] | undefined) {
   return shown.map((s, i) => {
     const a0 = a;
     a += raw[i] * scale;
-    return { ...s, full: false, d: slicePath(a0, a) };
+    return { ...s, a0, a1: a };
   });
 }
 
+/** Turns counts into ring slices (used as hover targets); a single non-empty slice is drawn as a full ring. */
+function pie(slices: ResultSlice[] | undefined) {
+  const shown = pieAngles(slices);
+  if (shown.length === 1) {
+    // Two half arcs, since one SVG arc can't draw a whole circle.
+    return [{ ...shown[0], d: `${slicePath(0, Math.PI)} ${slicePath(Math.PI, 2 * Math.PI)}` }];
+  }
+  return shown.map((s) => ({ ...s, d: slicePath(s.a0, s.a1) }));
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Shortest distance between two angles on the circle. */
+function angleGap(a: number, b: number): number {
+  const d = Math.abs(a - b) % (2 * Math.PI);
+  return Math.min(d, 2 * Math.PI - d);
+}
+
+/**
+ * The pie as many thin wedges whose colours fade from one slice into the
+ * next (SVG has no conic gradient). Each slice keeps its pure colour in its
+ * middle and blends over a soft band at each edge.
+ */
+function blend(slices: ResultSlice[] | undefined) {
+  const shown = pieAngles(slices);
+  if (shown.length === 0) return [];
+  const steps = 144;
+  const step = (2 * Math.PI) / steps;
+  return Array.from({ length: steps }, (_, i) => {
+    const mid = (i + 0.5) * step;
+    let r = 0, g = 0, b = 0, total = 0;
+    for (const s of shown) {
+      const span = s.a1 - s.a0;
+      const feather = Math.min(0.45, Math.max(span * 0.6, 0.12));
+      const inside = span >= 2 * Math.PI - 1e-6 || (((mid - s.a0) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) <= span;
+      const dist = inside ? 0 : Math.min(angleGap(mid, s.a0), angleGap(mid, s.a1));
+      const t = Math.max(0, 1 - dist / feather);
+      const w = t * t * (3 - 2 * t);
+      if (w <= 0) continue;
+      const [cr, cg, cb] = hexToRgb(SLICE_COLOR[s.key]);
+      r += cr * w; g += cg * w; b += cb * w; total += w;
+    }
+    const color = `rgb(${Math.round(r / total)} ${Math.round(g / total)} ${Math.round(b / total)})`;
+    // A hair of overlap hides the seams between wedges.
+    return { color, d: slicePath(i * step, Math.min((i + 1) * step + 0.01, 2 * Math.PI)) };
+  });
+}
+
+/**
+ * A big gauge: an open ring (three quarters of a circle) that fills to
+ * `value` out of 100, with whatever is passed as children in its middle.
+ */
 export function Gauge({ value, color, children, size = 168 }: { value: number | null; color: string; children: ReactNode; size?: number }) {
   const r = 70;
   const sweep = 0.75; // the ring is open at the bottom
