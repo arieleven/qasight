@@ -303,7 +303,7 @@ function LatestRunHero({ data, latest }: { data: DashboardOverviewResponse; late
                 : "radial-gradient(circle at 85% 40%, rgb(45 212 191 / 0.18), transparent 55%)"
         }}
       />
-      <IrisArt tone={tone} slices={slices} className="pointer-events-none absolute -right-24 -top-20 h-[230px] w-[260px] opacity-35 sm:-right-6 sm:-top-6 sm:h-[300px] sm:w-[340px] sm:opacity-90" />
+      <IrisArt tone={tone} slices={slices} className="pointer-events-none absolute -right-24 -top-20 h-[230px] w-[260px] opacity-35 sm:-right-6 sm:-top-6 sm:h-[300px] sm:w-[340px] sm:opacity-90 lg:-right-24 lg:-top-20 lg:h-[230px] lg:w-[260px] lg:opacity-50 wide:-right-6 wide:-top-6 wide:h-[300px] wide:w-[340px] wide:opacity-90" />
       <div className="relative max-w-md">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-300">
           Latest run

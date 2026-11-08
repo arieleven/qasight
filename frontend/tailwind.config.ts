@@ -4,6 +4,8 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Wide enough for the dashboard hero to show the eye full size beside its text.
+      screens: { wide: "87.5rem" },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', "ui-sans-serif", "system-ui", "sans-serif"]
       },
