@@ -151,7 +151,7 @@ export function AppShell() {
             data-scrolled={scrolled || undefined}
             className={`sticky top-3 z-20 -mx-4 mb-5 hidden print:hidden items-center justify-between gap-4 rounded-2xl border px-4 py-2.5 transition-[background-color,border-color,box-shadow] duration-300 lg:flex ${
               scrolled
-                ? "border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.01] bg-ink-900/[0.97] shadow-xl shadow-black/30 backdrop-blur-2xl"
+                ? "border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.01] bg-ink-900 shadow-xl shadow-black/30 backdrop-blur-2xl"
                 : "border-transparent"
             }`}
           >

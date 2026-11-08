@@ -27,7 +27,7 @@ export function DeliveryStats({ delivery: d }: { delivery: Delivery }) {
   const weekPlus = d.open_by_age.slice(2).reduce((n, b) => n + b.count, 0);
   const branch = d.default_branch ?? "Default branch";
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3">
       <Stat
         testId="delivery-fix"
         label="Time to fix"
