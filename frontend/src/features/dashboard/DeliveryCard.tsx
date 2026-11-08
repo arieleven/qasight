@@ -15,7 +15,7 @@ function Was({ now, before, text }: { now: number | null; before: number | null;
 
 function Stat({ label, value, sub, testId }: { label: string; value: string; sub: ReactNode; testId: string }) {
   return (
-    <div className="min-w-0" data-testid={testId}>
+    <div className="inset-tile min-w-0 px-4 py-3" data-testid={testId}>
       <p className="text-xs font-medium text-ink-300">{label}</p>
       <p className="my-0.5 text-lg font-bold tabular-nums text-white">{value}</p>
       <p className="text-xs text-ink-400">{sub}</p>
@@ -27,7 +27,7 @@ export function DeliveryStats({ delivery: d }: { delivery: Delivery }) {
   const weekPlus = d.open_by_age.slice(2).reduce((n, b) => n + b.count, 0);
   const branch = d.default_branch ?? "Default branch";
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3">
       <Stat
         testId="delivery-fix"
         label="Time to fix"

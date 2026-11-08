@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- New accent colour: the web UI's blue is now the green of the logo's eye (navy stays), and primary buttons use dark text on green for contrast
+- Dashboard redesign: a hero card for the latest run (pass rate in big type, three small stats, and QASight's eye drawn as a glowing iris split like a pie into the run's passed, failed, broken and skipped tests), a big gauge for project health, uneven columns instead of rows of equal boxes, and a bar per recent run (pass rate and result) on Recent runs
+- Web UI polish: cards have a soft light edge, the Last 7 days numbers sit in darker tiles, list rows are split by fading lines, the desktop top bar sticks and turns to glass as you scroll, the sidebar has a "Need help?" card, every page ends with Docs, GitHub and Report an issue links, and the version under the sidebar says "made by arieleven" with a link to the author's GitHub. See `docs/Specs & ADRs/UI Polish - 2026-11-08.md`
 - Tidier pages: Needs attention and Recent runs on the dashboard open and close on click, and long lists (recent runs, failing, flaky and broken tests, release tests) show 3 rows with "Show all". The run page's Test mix, Details and Artifacts and the cycle page's Stages start closed. A card you close stays closed in that browser
 - The live demo shows made-up examples, each marked "Fake example for the live demo", where it has nothing of its own: an AI failure summary per failed run, an AI review, an Ask conversation and two pretend releases. Only the demo export does this; `qasight export-site` does not
 

@@ -194,7 +194,7 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
         </div>
       ) : null}
 
-      <ul className="divide-y divide-white/5">
+      <ul className="divide-fade">
         {visible.map((test) => (
           <FailingTestRow key={test.key} test={test} runId={runId} cycle={cycle} baselineBranch={baselineBranch} />
         ))}

@@ -6,24 +6,71 @@ body {
   height: 100%;
 }
 
-/* Deep navy page lit by a soft electric-blue glow, as in the Vision UI reference. */
+/* Deep navy page lit by a soft green glow, the colour of the logo's iris. */
 body {
   background-color: theme(colors.ink.950);
   background-image:
-    radial-gradient(ellipse 60% 45% at 70% 60%, rgb(0 117 255 / 0.38), transparent 70%),
-    radial-gradient(ellipse 50% 40% at 15% 10%, rgb(99 65 255 / 0.18), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 70% 60%, rgb(16 185 129 / 0.26), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 15% 10%, rgb(45 212 191 / 0.14), transparent 70%),
     linear-gradient(159deg, #0f123b 14%, #090d2e 56%, #020515 86%);
   background-attachment: fixed;
   color: theme(colors.ink.100);
 }
 
-/* Frosted card surface shared by Card, KPI tiles and page-level panels. */
+/*
+ * Frosted card surface shared by Card, KPI tiles and page-level panels. The
+ * edge is a hairline of light that is brightest at the top left and fades out
+ * (the ::before ring), as if the glass catches the glow behind it.
+ */
 @utility glass-card {
+  position: relative;
   border-radius: 1.25rem;
-  border: 1px solid rgb(255 255 255 / 0.06);
+  border: 1px solid transparent;
   background-image: linear-gradient(127deg, rgb(6 11 40 / 0.94) 19%, rgb(10 14 35 / 0.55) 77%);
   box-shadow: 0 20px 27px rgb(0 0 0 / 0.05);
   backdrop-filter: blur(60px);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.04) 40%, rgb(255 255 255 / 0.02) 70%, rgb(52 211 153 / 0.12));
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+}
+
+/* A darker well inside a card, for a number or a short group that stands on its own. */
+@utility inset-tile {
+  border-radius: 1rem;
+  background-image: linear-gradient(127deg, rgb(6 11 40 / 0.9) 28%, rgb(10 14 35 / 0.6) 91%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* Rows split by a hairline that fades out at both ends, instead of a hard rule. */
+@utility divide-fade {
+  & > * + * {
+    border-top: 1px solid transparent;
+    border-image: linear-gradient(to right, transparent, rgb(255 255 255 / 0.12) 20%, rgb(255 255 255 / 0.12) 80%, transparent) 1;
+  }
+}
+
+/* The green icon tile on KPI cards and the active nav item: brand gradient with a soft glow. */
+@utility brand-tile {
+  background-image: linear-gradient(135deg, theme(colors.brand.400), theme(colors.brand.600));
+  box-shadow: 0 6px 16px -4px rgb(16 185 129 / 0.55);
+  color: white;
+}
+
+/* Text selection and scrollbars in the app's colours. */
+::selection {
+  background: rgb(16 185 129 / 0.45);
+  color: white;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: theme(colors.ink.700) transparent;
 }
 
 /* Sidebar and help card: the same glass, a little brighter at the top. */

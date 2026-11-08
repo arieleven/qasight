@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-19
-updated: 2026-11-05
+updated: 2026-11-08
 ---
 
 # UI Restyle - 2026-10-19
@@ -13,13 +13,13 @@ The web UI used the near-black, Vercel-like look from [Phase 5 UI Redesign - Cyc
 
 ## Decision
 
-- **Tokens, not per-page rewrites.** `frontend/tailwind.config.ts` remaps the `ink` scale to navy and `brand` to `#0075ff`, so every page that already used the tokens changed with no edits. The font is Plus Jakarta Sans from Google Fonts (`frontend/index.html`), falling back to the system sans.
+- **Tokens, not per-page rewrites.** `frontend/tailwind.config.ts` remaps the `ink` scale to navy and `brand` to `#0075ff` (green `#34d399` since [UI Polish](UI%20Polish%20-%202026-11-08.md)), so every page that already used the tokens changed with no edits. The font is Plus Jakarta Sans from Google Fonts (`frontend/index.html`), falling back to the system sans.
 - **Two surface utilities** in `frontend/src/styles.css`: `glass-card` (cards, KPI tiles, page panels) and `glass-panel` (sidebar). The page background is a fixed navy gradient with a blue radial glow.
-- **Sidebar shell.** From the `lg` breakpoint `AppShell.tsx` shows a fixed glass sidebar: the four primary links and an Advanced section (Quick Run, AI Settings), each with an icon tile that turns blue when active, and a "Need help?" card linking to the docs site. A breadcrumb with the demo badge and health dot sits above the page. Below `lg` the old top bar and disclosure menu stay, so the mobile tests and behaviour are unchanged. The desktop Advanced dropdown is gone; its links live in the sidebar.
+- **Sidebar shell.** From the `lg` breakpoint `AppShell.tsx` shows a fixed glass sidebar: the four primary links and an Advanced section (Quick Run, AI Settings), each with an icon tile that turns blue when active, and a "Need help?" card linking to the docs site (a plain Docs link for a while, a card again since [UI Polish](UI%20Polish%20-%202026-11-08.md)). A breadcrumb with the demo badge and health dot sits above the page. Below `lg` the old top bar and disclosure menu stay, so the mobile tests and behaviour are unchanged. The desktop Advanced dropdown is gone; its links live in the sidebar.
 - **Background art** (added 2026-10-20, removed 2026-11-05): line art of the testosterone molecule and two vials with a syringe sat behind every page. It went with the rename to QASight, since it carried the old name's joke; the background is now plain.
 - **Icons** are inline SVGs in `frontend/src/components/ui/icons.tsx` (no icon library). Dashboard KPI cards show one in a blue tile, as the reference does.
 
-Styling only: no route, API or behaviour change.
+Styling only: no route, API or behaviour change. The reference is the free [Vision UI Dashboard React](https://demos.creative-tim.com/vision-ui-dashboard-react/#/dashboard) template (MIT); no code or images were copied from it. A second pass of small touches from it is in [UI Polish - 2026-11-08](UI%20Polish%20-%202026-11-08.md).
 
 ## Consequences
 

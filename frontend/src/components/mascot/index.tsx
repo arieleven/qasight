@@ -3,7 +3,7 @@ import { AnimatedPixelArt } from "./AnimatedPixelArt";
 import { FLEX, GLOVES, HURT, SMASH } from "./animations";
 
 export { PixelArt } from "./PixelArt";
-export { EyeLogo, EYE_BRAND_BLUE } from "./EyeLogo";
+export { EyeLogo, EYE_BRAND_GREEN } from "./EyeLogo";
 export { AnimatedPixelArt } from "./AnimatedPixelArt";
 export { FLEX, SMASH, HURT, GLOVES, ANIMATIONS, MASCOT_PALETTE } from "./animations";
 

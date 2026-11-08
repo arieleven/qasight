@@ -54,7 +54,7 @@ export function CycleIssuesCard({ cycle }: { cycle: string }) {
         )}{" "}
         <span className="text-ink-400">out of {countLabel(items.length, "issue")} the tests point at.</span>
       </p>
-      <ul className="divide-y divide-white/5 text-sm">
+      <ul className="divide-fade text-sm">
         {items.slice(0, SHOWN).map((item) => (
           <li key={item.issue} className="py-2">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">

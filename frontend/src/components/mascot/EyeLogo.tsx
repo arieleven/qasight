@@ -5,7 +5,7 @@
 
 export interface EyeLogoProps {
   size?: number;
-  /** Iris colour; defaults to the brand blue. */
+  /** Iris colour; defaults to the brand green. */
   irisColor?: string;
   /** Spin the pupil, e.g. while data is loading. */
   spinning?: boolean;
@@ -13,7 +13,7 @@ export interface EyeLogoProps {
   title?: string;
 }
 
-export const EYE_BRAND_BLUE = "#0075ff";
+export const EYE_BRAND_GREEN = "#34d399";
 
 // 16 short streaks around the pupil give the iris its texture.
 const STREAKS = Array.from({ length: 16 }, (_, i) => {
@@ -22,7 +22,7 @@ const STREAKS = Array.from({ length: 16 }, (_, i) => {
   return { x1: 50 + cos * 11.5, y1: 30 + sin * 11.5, x2: 50 + cos * 16.5, y2: 30 + sin * 16.5 };
 });
 
-export function EyeLogo({ size = 26, irisColor = EYE_BRAND_BLUE, spinning = false, className, title = "QASight" }: EyeLogoProps) {
+export function EyeLogo({ size = 26, irisColor = EYE_BRAND_GREEN, spinning = false, className, title = "QASight" }: EyeLogoProps) {
   return (
     <svg
       viewBox="0 0 100 60"

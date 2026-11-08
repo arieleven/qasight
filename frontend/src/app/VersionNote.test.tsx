@@ -30,9 +30,14 @@ describe("VersionNote", () => {
     );
   });
 
-  it("shows only the version when it is the newest or unknown", async () => {
+  it("shows no update link when the version is the newest or unknown", async () => {
     renderWith({ version: "1.6.0", latest: null, update_available: false });
-    expect(await screen.findByTestId("version-note")).toHaveTextContent("qasight 1.6.0");
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("version-note")).toHaveTextContent("qasight 1.6.0 · made by arieleven");
+    expect(screen.queryByRole("link", { name: /is out/ })).not.toBeInTheDocument();
+  });
+
+  it("credits the author with a link to their GitHub", async () => {
+    renderWith({ version: "1.6.0", latest: null, update_available: false });
+    expect(await screen.findByRole("link", { name: "arieleven" })).toHaveAttribute("href", "https://github.com/arieleven");
   });
 });

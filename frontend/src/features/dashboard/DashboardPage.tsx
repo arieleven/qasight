@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
-import { Card, HealthBar, PageHeader, RunLabel, ShowMoreButton, Spinner, StatusPill, useShowMore } from "../../components/ui";
+import { Card, HealthBar, Icons, PageHeader, RunLabel, ShowMoreButton, Spinner, StatusPill, useShowMore } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 import { formatDuration, formatPercent } from "../../lib/format";
 import { DeliveryCard } from "./DeliveryCard";
 import { NeedsAttention } from "./NeedsAttention";
+import { Gauge, IrisArt, RunBars, SLICE_COLOR, type ResultSlice, type RunTone } from "./DashboardVisuals";
 import { TONE_TEXT, scoreTone } from "../health/score";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
@@ -41,6 +42,7 @@ export function DashboardPage() {
   }
   const recentRuns = recentRunsQuery.data?.items ?? data.recent_runs ?? [];
   const latestRunId = data.headline_kpis?.latest_run_id;
+  const latestRun = recentRuns.find((run) => run.run_id === latestRunId) ?? recentRuns[0];
 
   // First-run experience: nothing has ever executed, so guide instead of showing n/a walls.
   if (!latestRunId && recentRuns.length === 0) {
@@ -59,37 +61,20 @@ export function DashboardPage() {
         </p>
       ) : null}
 
-      <NeedsAttention />
-
-      <TrendBaseline kpis={data.headline_kpis} />
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid gap-5 lg:grid-cols-12">
+        <LatestRunHero data={data} latest={latestRun} />
         <ProjectHealthKpi />
-        <KpiCard
-          label="Failed"
-         
-          value={formatInt(data.headline_kpis.fail_count)}
-          trend={data.trend_indicators.failed_count}
-          lowerIsBetter
-        />
-        <KpiCard
-          label="Passed tests"
-         
-          value={formatInt(data.headline_kpis.pass_count)}
-          trend={{ direction: "unknown", delta_abs: null, delta_pct: null }}
-        />
-        <KpiCard
-          label="Duration"
-         
-          value={formatDuration(data.headline_kpis.duration_ms)}
-          trend={data.trend_indicators.duration}
-          lowerIsBetter
-        />
       </div>
 
-      <DeliveryCard />
-
-      <RecentRunsCard runs={recentRuns} reportLinks={data.report_links} />
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        <div className="flex min-w-0 flex-col gap-5 lg:w-5/12">
+          <NeedsAttention />
+          <DeliveryCard />
+        </div>
+        <div className="min-w-0 flex-1">
+          <RecentRunsCard runs={recentRuns} reportLinks={data.report_links} />
+        </div>
+      </div>
     </section>
   );
 }
@@ -106,10 +91,18 @@ function RecentRunsCard({ runs, reportLinks }: { runs: RecentRun[]; reportLinks:
       collapsible
       collapsedSummary={runs.length ? `${runs.length} recent` : undefined}
     >
+      <RunBars
+        runs={[...runs].reverse().map((run) => ({
+          run_id: run.run_id,
+          label: run.cycle ?? "run",
+          health_pct: run.health_pct,
+          tone: runTone(run)
+        }))}
+      />
       {runs.length === 0 ? (
         <p className="text-sm text-ink-400">No recent runs available.</p>
       ) : (
-        <ul className="divide-y divide-white/5" data-testid="recent-runs">
+        <ul className="divide-fade mt-3" data-testid="recent-runs">
           {rows.visible.map((run) => (
             <li key={run.run_id} className="space-y-1.5 py-2.5 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -241,32 +234,126 @@ function TrendBaseline({ kpis }: { kpis: DashboardOverviewResponse["headline_kpi
 function ProjectHealthKpi() {
   const query = useQuery({ queryKey: ["project-health", ""], queryFn: () => apiClient.getProjectHealth() });
   const score = query.data?.score;
+  const tone = scoreTone(score);
   return (
     <Link
       to="/health"
-      className="glass-card group block p-4 transition-colors hover:border-brand-500/50"
+      className="glass-card group flex flex-col p-5 transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgb(52_211_153/0.45),0_12px_32px_-12px_rgb(16_185_129/0.5)] lg:col-span-5"
       data-testid="project-health-kpi"
       aria-label={score == null ? "Project health: no score yet. Open project health" : `Project health: ${score} out of 100${query.data?.grade ? `, grade ${query.data.grade}` : ""}. Open project health`}
     >
-      <strong className="text-xs font-medium text-ink-300">Project health</strong>
-      <p className={`my-0.5 text-lg font-bold ${score == null ? "text-white" : TONE_TEXT[scoreTone(score)]}`}>
-        {score == null ? "n/a" : `${score} / 100`}
-        {query.data?.grade ? <span className="ml-1.5 text-sm font-semibold text-ink-300">{query.data.grade}</span> : null}
-      </p>
-      <p className="text-xs font-semibold text-brand-300 group-hover:underline">See what drives it →</p>
+      <strong className="text-base font-bold text-white">Project health</strong>
+      <span className="text-sm text-ink-300">Your tests, scored out of 100</span>
+      <div className="mt-2 flex flex-1 items-center justify-center">
+        <Gauge value={score ?? null} color={GAUGE_COLOR[tone]}>
+          <span className={`text-4xl font-bold tabular-nums ${score == null ? "text-white" : TONE_TEXT[tone]}`}>{score == null ? "n/a" : score}</span>
+          <span className="text-xs text-ink-300">{query.data?.grade ? `Grade ${query.data.grade}` : "out of 100"}</span>
+        </Gauge>
+      </div>
+      <p className="-mt-3 text-center text-sm font-semibold text-brand-300 group-hover:underline">See what drives it →</p>
     </Link>
   );
 }
 
-function KpiCard({
+const GAUGE_COLOR = { success: "#34d399", warn: "#fbbf24", danger: "#f87171", neutral: "#56618f" } as const;
+
+function runTone(run: RecentRun | undefined): RunTone {
+  if (!run) return "neutral";
+  const status = (run.status ?? "").toLowerCase();
+  if (run.returncode === 0 && !status.includes("fail")) return "success";
+  return "danger";
+}
+
+/**
+ * The dashboard's opening card: the latest run's result in big type, with
+ * QASight's eye in the run's colour beside it and three small numbers below.
+ */
+function LatestRunHero({ data, latest }: { data: DashboardOverviewResponse; latest: RecentRun | undefined }) {
+  const kpis = data.headline_kpis;
+  const tone = runTone(latest);
+  const failed = kpis.fail_count ?? 0;
+  // Per-status counts for the iris pie; the dashboard overview only carries passed and failed.
+  const counts = useQuery({
+    queryKey: ["latest-run-counts", kpis.latest_run_id],
+    queryFn: () => apiClient.listRuns(kpis.cycle ?? undefined, 5),
+    enabled: Boolean(kpis.latest_run_id)
+  });
+  const row = counts.data?.items.find((r) => r.run_id === kpis.latest_run_id);
+  const slices: ResultSlice[] | undefined = row
+    ? [
+        { key: "passed", label: "passed", count: row.passed ?? 0 },
+        { key: "failed", label: "failed", count: row.failed ?? 0 },
+        { key: "broken", label: "broken", count: row.broken ?? 0 },
+        { key: "skipped", label: "skipped", count: row.skipped ?? 0 }
+      ]
+    : undefined;
+  const headline =
+    latest?.health_pct != null ? `${formatPercent(latest.health_pct)} passed` : tone === "success" ? "Passed" : tone === "danger" ? "Failed" : "No result yet";
+  return (
+    <article className="glass-card relative overflow-hidden p-5 sm:p-6 lg:col-span-7" data-testid="latest-run-hero">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            tone === "danger"
+              ? "radial-gradient(circle at 85% 40%, rgb(248 113 113 / 0.18), transparent 55%)"
+              : tone === "success"
+                ? "radial-gradient(circle at 85% 40%, rgb(52 211 153 / 0.16), transparent 55%)"
+                : "radial-gradient(circle at 85% 40%, rgb(45 212 191 / 0.18), transparent 55%)"
+        }}
+      />
+      <IrisArt tone={tone} slices={slices} className="pointer-events-none absolute -right-24 -top-20 h-[230px] w-[260px] opacity-35 sm:-right-6 sm:-top-6 sm:h-[300px] sm:w-[340px] sm:opacity-90" />
+      <div className="relative max-w-md">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-300">
+          Latest run
+          {latest ? <StatusPill status={latest.status ?? "unknown"} returncode={latest.returncode} /> : null}
+        </p>
+        <p className="mt-2 text-3xl font-bold text-white sm:text-4xl">{headline}</p>
+        <div className="mt-2 max-w-sm">
+          <TrendBaseline kpis={kpis} />
+        </div>
+        {kpis.latest_run_id ? (
+          <Link to={`/runs/${kpis.latest_run_id}`} className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-white hover:text-brand-300">
+            Open the run <span aria-hidden>→</span>
+          </Link>
+        ) : null}
+      </div>
+      <div className="relative mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
+        <MiniStat label="Failed" icon={<Icons.CrossIcon />} alarm={failed > 0} value={formatInt(kpis.fail_count)} trend={data.trend_indicators.failed_count} lowerIsBetter />
+        <MiniStat label="Passed tests" icon={<Icons.CheckIcon />} value={formatInt(kpis.pass_count)} trend={{ direction: "unknown", delta_abs: null, delta_pct: null }} />
+        <MiniStat label="Duration" icon={<Icons.ClockIcon />} value={formatDuration(kpis.duration_ms)} trend={data.trend_indicators.duration} lowerIsBetter />
+      </div>
+      {slices && slices.some((s) => s.count > 0) ? (
+        <ul className="relative mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-300 sm:justify-end" data-testid="iris-legend">
+          {slices
+            .filter((s) => s.count > 0)
+            .map((s) => (
+              <li key={s.key} className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full" style={{ background: SLICE_COLOR[s.key] }} aria-hidden />
+                <span className="font-semibold tabular-nums text-white">{s.count}</span> {s.label}
+              </li>
+            ))}
+        </ul>
+      ) : null}
+    </article>
+  );
+}
+
+function MiniStat({
   label,
   value,
   trend,
+  icon,
+  alarm = false,
   lowerIsBetter = false
 }: {
   label: string;
   value: string;
   trend: DashboardTrendIndicator;
+  /** Shown in a small tile before the label; red instead of blue when `alarm` is set. */
+  icon: React.ReactNode;
+  alarm?: boolean;
   lowerIsBetter?: boolean;
 }) {
   const semantic = trendSemantic(trend, lowerIsBetter);
@@ -277,17 +364,25 @@ function KpiCard({
         ? "text-danger-400"
         : "text-ink-400";
   return (
-    <article className="glass-card p-4">
-      <div className="min-w-0">
-        <strong className="text-xs font-medium text-ink-300">{label}</strong>
-        <p className="my-0.5 text-lg font-bold text-white">{value}</p>
-        {semantic.label === "unknown" ? null : (
-          <p data-testid={`${label.toLowerCase().replace(/\s+/g, "-")}-trend`} className={`text-xs font-semibold ${trendColor}`}>
-            {TREND_COPY[semantic.label]}
-          </p>
-        )}
-      </div>
-    </article>
+    <div className="min-w-0 rounded-2xl bg-ink-950/70 p-3 backdrop-blur-md">
+      <p className="flex items-center gap-2 text-xs font-medium text-ink-300">
+        <span
+          aria-hidden
+          className={`hidden h-6 w-6 shrink-0 items-center justify-center rounded-lg sm:flex [&_svg]:h-3.5 [&_svg]:w-3.5 ${
+            alarm ? "bg-gradient-to-br from-danger-400 to-danger-600 text-white" : "brand-tile"
+          }`}
+        >
+          {icon}
+        </span>
+        <span className="truncate">{label}</span>
+      </p>
+      <p className="mt-1.5 text-lg font-bold tabular-nums text-white">{value}</p>
+      {semantic.label === "unknown" ? null : (
+        <p data-testid={`${label.toLowerCase().replace(/\s+/g, "-")}-trend`} className={`text-[11px] font-semibold ${trendColor}`}>
+          {TREND_COPY[semantic.label]}
+        </p>
+      )}
+    </div>
   );
 }
 
