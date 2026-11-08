@@ -19,13 +19,13 @@ _Formerly Testosterone (`testo-core`). Old commands, imports and config files ke
 
 **Live demo: <https://arieleven.github.io/qasight/>** · **Docs: <https://arieleven.github.io/qasight/docs/>**
 
-[![Dashboard: what needs attention first (the red fake-api cycle), then project health, failed, passed and duration cards for the latest run compared with the one before](docs/assets/screenshots/dashboard.png)](https://arieleven.github.io/qasight/)
+[![Dashboard: the latest fake-api run in a hero card with QASight's eye drawn as a pie of its results, the project health gauge, what needs attention first, and a bar per recent run](docs/assets/screenshots/dashboard.png)](https://arieleven.github.io/qasight/)
 
 | Run detail (failed fake-api run) | Compare (two fake-api runs) |
 |---|---|
 | [![Run detail of a failed fake-api run: summary, report links, test pyramid and per-stage health](docs/assets/screenshots/run-detail-failed-fake-api.png)](docs/assets/screenshots/run-detail-failed-fake-api.png) | [![Compare view: regressions and improvements, outcome mix, and reliability and performance deltas between two fake-api runs](docs/assets/screenshots/compare-fake-api-runs.png)](docs/assets/screenshots/compare-fake-api-runs.png) |
 | **Cycle page with its flaky tests** | **Dashboard on a phone** |
-| [![fake-api cycle page: run the cycle from the browser, the flaky test it found with its pass and fail history, and the cycle's stages](docs/assets/screenshots/cycle-detail-fake-api.png)](docs/assets/screenshots/cycle-detail-fake-api.png) | <a href="docs/assets/screenshots/dashboard-phone.png"><img src="docs/assets/screenshots/dashboard-phone.png" width="200" alt="Dashboard at phone width: top bar with menu and stacked health, failed, pass count and duration cards"></a> |
+| [![fake-api cycle page: run the cycle from the browser, the flaky test it found with its pass and fail history, and the cycle's stages](docs/assets/screenshots/cycle-detail-fake-api.png)](docs/assets/screenshots/cycle-detail-fake-api.png) | <a href="docs/assets/screenshots/dashboard-phone.png"><img src="docs/assets/screenshots/dashboard-phone.png" width="200" alt="Dashboard at phone width: top bar with menu, the latest run card with its failed, passed and duration numbers, and the project health gauge"></a> |
 
 What you're looking at: QASight testing itself (its own test suite) and `fake-api`, a
 small app whose routes fail on purpose. CI runs both cycles and publishes the real results as a
