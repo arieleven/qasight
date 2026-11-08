@@ -160,6 +160,6 @@ describe("AppShell eye logo", () => {
   it("stays brand blue on other pages", async () => {
     renderAt("/", 50);
     await waitFor(() => expect(screen.getAllByTestId("eye-logo")[0]).toHaveAttribute("data-spinning", "false"));
-    expect(screen.getAllByTestId("eye-logo-iris")[0]).toHaveAttribute("fill", "#0075ff");
+    expect(screen.getAllByTestId("eye-logo-iris")[0]).toHaveAttribute("fill", "#34d399");
   });
 });

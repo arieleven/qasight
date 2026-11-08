@@ -9,7 +9,7 @@ export type RunTone = "success" | "danger" | "neutral";
 const ART = {
   success: { iris: "#34d399", deep: "#047857", glow: "52 211 153" },
   danger: { iris: "#f87171", deep: "#b91c1c", glow: "248 113 113" },
-  neutral: { iris: "#4a9bff", deep: "#0050b3", glow: "0 117 255" }
+  neutral: { iris: "#2dd4bf", deep: "#0f766e", glow: "45 212 191" }
 } as const;
 
 // Fixed "random" spots for the floating specks, so the art is the same on every render.
@@ -18,12 +18,37 @@ const SPECKS = [
   [40, 160, 1], [250, 30, 1.1], [150, 300, 1.3], [210, 290, 0.9], [20, 90, 1.2]
 ] as const;
 
+export interface ResultSlice {
+  key: "passed" | "failed" | "broken" | "skipped";
+  label: string;
+  count: number;
+}
+
+/** Slice colours: the same pass / fail / warn / grey as everywhere else. */
+export const SLICE_COLOR: Record<ResultSlice["key"], string> = {
+  passed: "#34d399",
+  failed: "#f87171",
+  broken: "#fbbf24",
+  skipped: "#7e88ae"
+};
+
+const IRIS_INNER = 38;
+const IRIS_OUTER = 88;
+
+/** One ring slice of the iris, from angle a0 to a1 (radians, 0 at the top, clockwise). */
+function slicePath(a0: number, a1: number): string {
+  const pt = (r: number, a: number) => `${(180 + Math.sin(a) * r).toFixed(2)} ${(160 - Math.cos(a) * r).toFixed(2)}`;
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  return `M ${pt(IRIS_OUTER, a0)} A ${IRIS_OUTER} ${IRIS_OUTER} 0 ${large} 1 ${pt(IRIS_OUTER, a1)} L ${pt(IRIS_INNER, a1)} A ${IRIS_INNER} ${IRIS_INNER} 0 ${large} 0 ${pt(IRIS_INNER, a0)} Z`;
+}
+
 /**
  * Original art for the dashboard hero: QASight's eye as a glowing iris,
- * made of rings and fibres, in the colour of the latest run. It plays the
- * part the photo plays in the reference dashboards, but means something.
+ * made of rings and fibres. With `slices` the iris is a pie of the latest
+ * run's results (passed, failed, broken, skipped), each slice showing its
+ * count on hover; without them it takes the run's colour.
  */
-export function IrisArt({ tone, className }: { tone: RunTone; className?: string }) {
+export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: ResultSlice[]; className?: string }) {
   const id = useId().replace(/:/g, "");
   const c = ART[tone];
   const fibres = Array.from({ length: 48 }, (_, i) => {
@@ -58,6 +83,20 @@ export function IrisArt({ tone, className }: { tone: RunTone; className?: string
       <circle cx="180" cy="160" r="100" fill="none" stroke={c.iris} strokeOpacity="0.25" strokeWidth="1.5" />
       <circle cx="180" cy="160" r="92" fill={c.iris} opacity="0.35" filter={`url(#${id}-blur)`} />
       <circle cx="180" cy="160" r="88" fill={`url(#${id}-iris)`} />
+      {pie(slices).map((slice) => (
+        <path
+          key={slice.key}
+          d={slice.d}
+          fill={SLICE_COLOR[slice.key]}
+          fillOpacity="0.85"
+          stroke="#060b26"
+          strokeWidth={slice.full ? 0 : 1.5}
+          className="pointer-events-auto transition-[fill-opacity] hover:fill-opacity-100"
+          data-testid={`iris-slice-${slice.key}`}
+        >
+          <title>{`${slice.count} ${slice.label}`}</title>
+        </path>
+      ))}
       {fibres.map((f, i) => (
         <line key={i} x1={f.x1} y1={f.y1} x2={f.x2} y2={f.y2} stroke="white" strokeOpacity={f.o} strokeWidth="1" strokeLinecap="round" />
       ))}
@@ -76,6 +115,28 @@ export function IrisArt({ tone, className }: { tone: RunTone; className?: string
  * A big gauge: an open ring (three quarters of a circle) that fills to
  * `value` out of 100, with whatever is passed as children in its middle.
  */
+/** Turns counts into ring slices; a single non-empty slice is drawn as a full ring. */
+function pie(slices: ResultSlice[] | undefined) {
+  const shown = (slices ?? []).filter((s) => s.count > 0);
+  const total = shown.reduce((n, s) => n + s.count, 0);
+  if (total === 0) return [];
+  if (shown.length === 1) {
+    const s = shown[0];
+    // Two half arcs, since one SVG arc can't draw a whole circle.
+    return [{ ...s, full: true, d: `${slicePath(0, Math.PI)} ${slicePath(Math.PI, 2 * Math.PI)}` }];
+  }
+  // Every slice gets at least a sliver, so one broken test out of a thousand still shows.
+  const minAngle = 0.06;
+  const raw = shown.map((s) => Math.max((s.count / total) * 2 * Math.PI, minAngle));
+  const scale = (2 * Math.PI) / raw.reduce((a, b) => a + b, 0);
+  let a = 0;
+  return shown.map((s, i) => {
+    const a0 = a;
+    a += raw[i] * scale;
+    return { ...s, full: false, d: slicePath(a0, a) };
+  });
+}
+
 export function Gauge({ value, color, children, size = 168 }: { value: number | null; color: string; children: ReactNode; size?: number }) {
   const r = 70;
   const sweep = 0.75; // the ring is open at the bottom

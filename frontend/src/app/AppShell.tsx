@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useSearchParams } from "react-route
 import { useIsFetching, useIsMutating, useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "../lib/api-client";
-import { EYE_BRAND_BLUE, EyeLogo } from "../components/mascot";
+import { EYE_BRAND_GREEN, EyeLogo } from "../components/mascot";
 import { scoreTone } from "../features/health/score";
 import { DemoBadge } from "../components/StaticBuildBanner";
 import { Icons } from "../components/ui";
@@ -48,11 +48,11 @@ function breadcrumbs(pathname: string): { label: string; to?: string }[] {
 }
 
 // Iris colours for the health page, the same green/amber/red scale as the score ring.
-const IRIS_BY_TONE = { success: "#34d399", warn: "#fbbf24", danger: "#f87171", neutral: EYE_BRAND_BLUE } as const;
+const IRIS_BY_TONE = { success: "#34d399", warn: "#fbbf24", danger: "#f87171", neutral: "#7e88ae" } as const;
 
 /**
  * The eye logo. On the Project health page its iris takes the colour of the
- * health score; everywhere else it stays brand blue. The pupil spins while
+ * health score; everywhere else it stays brand green. The pupil spins while
  * any request is in flight.
  */
 function BrandEye() {
@@ -67,7 +67,7 @@ function BrandEye() {
     enabled: onHealthPage
   });
   const loading = useIsFetching() + useIsMutating() > 0;
-  const iris = onHealthPage && health.data ? IRIS_BY_TONE[scoreTone(health.data.score)] : EYE_BRAND_BLUE;
+  const iris = onHealthPage && health.data ? IRIS_BY_TONE[scoreTone(health.data.score)] : EYE_BRAND_GREEN;
   return <EyeLogo size={30} irisColor={iris} spinning={loading} />;
 }
 
@@ -102,7 +102,7 @@ export function AppShell() {
             event.preventDefault();
             document.getElementById("main")?.focus();
           }}
-          className="sr-only z-50 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          className="sr-only z-50 rounded-xl bg-brand-400 px-4 py-2 text-sm font-semibold text-ink-950 focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
         >
           Skip to content
         </a>
@@ -231,7 +231,7 @@ function NavItem({ link, size = "compact" }: { link: NavLinkSpec; size?: "compac
 }
 
 /**
- * The sidebar's help card: a lit glass tile with the eye's blue glow behind
+ * The sidebar's help card: a lit glass tile with the eye's green glow behind
  * it, pointing at the docs site.
  */
 function HelpCard() {
@@ -242,7 +242,7 @@ function HelpCard() {
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 85% 0%, rgb(74 155 255 / 0.65), transparent 55%), radial-gradient(circle at 0% 100%, rgb(52 211 153 / 0.28), transparent 50%), radial-gradient(circle at 40% 60%, rgb(99 65 255 / 0.35), transparent 60%)"
+            "radial-gradient(circle at 85% 0%, rgb(52 211 153 / 0.6), transparent 55%), radial-gradient(circle at 0% 100%, rgb(45 212 191 / 0.3), transparent 50%), radial-gradient(circle at 40% 60%, rgb(16 185 129 / 0.25), transparent 60%)"
         }}
       />
       <div className="relative">

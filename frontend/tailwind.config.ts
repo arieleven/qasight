@@ -22,13 +22,13 @@ export default {
           200: "#cbd2e1",
           100: "#f0f3fa"
         },
-        // Single brand accent: the electric blue of the icon tiles and active nav.
+        // Single brand accent: the green of the logo's iris, on icon tiles, active nav, links and buttons.
         brand: {
-          300: "#8cbcff",
-          400: "#4a9bff",
-          500: "#0075ff",
-          600: "#0062d6",
-          700: "#004fb0"
+          300: "#6ee7b7",
+          400: "#34d399",
+          500: "#10b981",
+          600: "#059669",
+          700: "#047857"
         },
         success: {
           300: "#6ee7b7",

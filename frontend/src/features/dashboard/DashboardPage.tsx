@@ -7,7 +7,7 @@ import { MuscleShrug } from "../../components/mascot";
 import { formatDuration, formatPercent } from "../../lib/format";
 import { DeliveryCard } from "./DeliveryCard";
 import { NeedsAttention } from "./NeedsAttention";
-import { Gauge, IrisArt, RunBars, type RunTone } from "./DashboardVisuals";
+import { Gauge, IrisArt, RunBars, SLICE_COLOR, type ResultSlice, type RunTone } from "./DashboardVisuals";
 import { TONE_TEXT, scoreTone } from "../health/score";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
@@ -238,7 +238,7 @@ function ProjectHealthKpi() {
   return (
     <Link
       to="/health"
-      className="glass-card group flex flex-col p-5 transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgb(74_155_255/0.45),0_12px_32px_-12px_rgb(0_117_255/0.5)] lg:col-span-5"
+      className="glass-card group flex flex-col p-5 transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgb(52_211_153/0.45),0_12px_32px_-12px_rgb(16_185_129/0.5)] lg:col-span-5"
       data-testid="project-health-kpi"
       aria-label={score == null ? "Project health: no score yet. Open project health" : `Project health: ${score} out of 100${query.data?.grade ? `, grade ${query.data.grade}` : ""}. Open project health`}
     >
@@ -272,6 +272,21 @@ function LatestRunHero({ data, latest }: { data: DashboardOverviewResponse; late
   const kpis = data.headline_kpis;
   const tone = runTone(latest);
   const failed = kpis.fail_count ?? 0;
+  // Per-status counts for the iris pie; the dashboard overview only carries passed and failed.
+  const counts = useQuery({
+    queryKey: ["latest-run-counts", kpis.latest_run_id],
+    queryFn: () => apiClient.listRuns(kpis.cycle ?? undefined, 5),
+    enabled: Boolean(kpis.latest_run_id)
+  });
+  const row = counts.data?.items.find((r) => r.run_id === kpis.latest_run_id);
+  const slices: ResultSlice[] | undefined = row
+    ? [
+        { key: "passed", label: "passed", count: row.passed ?? 0 },
+        { key: "failed", label: "failed", count: row.failed ?? 0 },
+        { key: "broken", label: "broken", count: row.broken ?? 0 },
+        { key: "skipped", label: "skipped", count: row.skipped ?? 0 }
+      ]
+    : undefined;
   const headline =
     latest?.health_pct != null ? `${formatPercent(latest.health_pct)} passed` : tone === "success" ? "Passed" : tone === "danger" ? "Failed" : "No result yet";
   return (
@@ -285,10 +300,10 @@ function LatestRunHero({ data, latest }: { data: DashboardOverviewResponse; late
               ? "radial-gradient(circle at 85% 40%, rgb(248 113 113 / 0.18), transparent 55%)"
               : tone === "success"
                 ? "radial-gradient(circle at 85% 40%, rgb(52 211 153 / 0.16), transparent 55%)"
-                : "radial-gradient(circle at 85% 40%, rgb(0 117 255 / 0.22), transparent 55%)"
+                : "radial-gradient(circle at 85% 40%, rgb(45 212 191 / 0.18), transparent 55%)"
         }}
       />
-      <IrisArt tone={tone} className="pointer-events-none absolute -right-24 -top-20 h-[230px] w-[260px] opacity-35 sm:-right-6 sm:-top-6 sm:h-[300px] sm:w-[340px] sm:opacity-90" />
+      <IrisArt tone={tone} slices={slices} className="pointer-events-none absolute -right-24 -top-20 h-[230px] w-[260px] opacity-35 sm:-right-6 sm:-top-6 sm:h-[300px] sm:w-[340px] sm:opacity-90" />
       <div className="relative max-w-md">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-300">
           Latest run
@@ -309,6 +324,18 @@ function LatestRunHero({ data, latest }: { data: DashboardOverviewResponse; late
         <MiniStat label="Passed tests" icon={<Icons.CheckIcon />} value={formatInt(kpis.pass_count)} trend={{ direction: "unknown", delta_abs: null, delta_pct: null }} />
         <MiniStat label="Duration" icon={<Icons.ClockIcon />} value={formatDuration(kpis.duration_ms)} trend={data.trend_indicators.duration} lowerIsBetter />
       </div>
+      {slices && slices.some((s) => s.count > 0) ? (
+        <ul className="relative mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-300 sm:justify-end" data-testid="iris-legend">
+          {slices
+            .filter((s) => s.count > 0)
+            .map((s) => (
+              <li key={s.key} className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full" style={{ background: SLICE_COLOR[s.key] }} aria-hidden />
+                <span className="font-semibold tabular-nums text-white">{s.count}</span> {s.label}
+              </li>
+            ))}
+        </ul>
+      ) : null}
     </article>
   );
 }
