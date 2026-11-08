@@ -44,12 +44,12 @@ function slicePath(a0: number, a1: number): string {
 
 /**
  * Original art for the dashboard hero: QASight's eye as a glowing iris,
- * made of rings and fibres. With `slices` the iris is a pie of the latest
+ * made of rings and fibres. With `slices` (and no fibres) the iris is a pie of the latest
  * run's results (passed, failed, broken, skipped), the colours fading into
  * each other and shaded like a rounded iris, each slice showing its
  * count on hover; without them it takes the run's colour.
  */
-export function IrisArt({ tone, slices, fibres: showFibres = true, className }: { tone: RunTone; slices?: ResultSlice[]; fibres?: boolean; className?: string }) {
+export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: ResultSlice[]; className?: string }) {
   const id = useId().replace(/:/g, "");
   const c = ART[tone];
   const hasSlices = (slices ?? []).some((s) => s.count > 0);
@@ -125,7 +125,8 @@ export function IrisArt({ tone, slices, fibres: showFibres = true, className }: 
           <title>{`${slice.count} ${slice.label}`}</title>
         </path>
       ))}
-      {showFibres && fibres.map((f, i) => (
+      {/* Fibres only on the plain iris; on the results pie they hide the colours. */}
+      {!hasSlices && fibres.map((f, i) => (
         <line key={i} x1={f.x1} y1={f.y1} x2={f.x2} y2={f.y2} stroke="white" strokeOpacity={f.o} strokeWidth="1" strokeLinecap="round" />
       ))}
       <circle cx="180" cy="160" r="34" fill="#030616" />
