@@ -15,6 +15,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Tidier pages: Needs attention and Recent runs on the dashboard open and close on click, and long lists (recent runs, failing, flaky and broken tests, release tests) show 3 rows with "Show all". The run page's Test mix, Details and Artifacts and the cycle page's Stages start closed. A card you close stays closed in that browser
 - The live demo shows made-up examples, each marked "Fake example for the live demo", where it has nothing of its own: an AI failure summary per failed run, an AI review, an Ask conversation and two pretend releases. Only the demo export does this; `qasight export-site` does not
 
+### Fixed
+- On laptop-width screens the dashboard's eye art no longer covers the latest run's headline
+
 ## [1.6.0] - 2026-11-05
 
 ### Renamed
