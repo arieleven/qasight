@@ -49,7 +49,7 @@ function slicePath(a0: number, a1: number): string {
  * each other and shaded like a rounded iris, each slice showing its
  * count on hover; without them it takes the run's colour.
  */
-export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: ResultSlice[]; className?: string }) {
+export function IrisArt({ tone, slices, fibres: showFibres = true, className }: { tone: RunTone; slices?: ResultSlice[]; fibres?: boolean; className?: string }) {
   const id = useId().replace(/:/g, "");
   const c = ART[tone];
   const hasSlices = (slices ?? []).some((s) => s.count > 0);
@@ -94,8 +94,13 @@ export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: R
       <ellipse cx="180" cy="160" rx="170" ry="92" fill="none" stroke="white" strokeOpacity="0.10" />
       <ellipse cx="180" cy="160" rx="140" ry="70" fill="none" stroke={c.iris} strokeOpacity="0.35" strokeDasharray="2 6" />
       <circle cx="180" cy="160" r="118" fill="none" stroke="white" strokeOpacity="0.06" />
-      <circle cx="180" cy="160" r="100" fill="none" stroke={c.iris} strokeOpacity="0.25" strokeWidth="1.5" />
-      <circle cx="180" cy="160" r="92" fill={c.iris} opacity="0.35" filter={`url(#${id}-blur)`} />
+      {/* The run-coloured rim; the results pie carries its own colours, so it goes without. */}
+      {!hasSlices && (
+        <>
+          <circle cx="180" cy="160" r="100" fill="none" stroke={c.iris} strokeOpacity="0.25" strokeWidth="1.5" />
+          <circle cx="180" cy="160" r="92" fill={c.iris} opacity="0.35" filter={`url(#${id}-blur)`} />
+        </>
+      )}
       <circle cx="180" cy="160" r="88" fill={`url(#${id}-iris)`} />
       {blend(slices).map((seg, i) => (
         <path key={`seg-${i}`} d={seg.d} fill={seg.color} />
@@ -120,11 +125,11 @@ export function IrisArt({ tone, slices, className }: { tone: RunTone; slices?: R
           <title>{`${slice.count} ${slice.label}`}</title>
         </path>
       ))}
-      {fibres.map((f, i) => (
+      {showFibres && fibres.map((f, i) => (
         <line key={i} x1={f.x1} y1={f.y1} x2={f.x2} y2={f.y2} stroke="white" strokeOpacity={f.o} strokeWidth="1" strokeLinecap="round" />
       ))}
       <circle cx="180" cy="160" r="34" fill="#030616" />
-      <circle cx="180" cy="160" r="34" fill="none" stroke={c.iris} strokeOpacity="0.6" strokeWidth="2" />
+      <circle cx="180" cy="160" r="34" fill="none" stroke={hasSlices ? "white" : c.iris} strokeOpacity={hasSlices ? 0.12 : 0.6} strokeWidth="2" />
       <ellipse cx="164" cy="142" rx="11" ry="7" fill="white" opacity="0.85" transform="rotate(-30 164 142)" />
       <circle cx="196" cy="176" r="3" fill="white" opacity="0.5" />
       {SPECKS.map(([x, y, r], i) => (
