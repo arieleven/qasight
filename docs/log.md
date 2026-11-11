@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-11-08
+updated: 2026-11-11
 ---
 
 # Vault log
@@ -236,3 +236,7 @@ New ADR [Tidy Cards and Demo Examples - 2026-11-05](Specs%20&%20ADRs/Tidy%20Card
 ## 2026-11-08: added UI Polish
 
 New ADR [UI Polish - 2026-11-08](Specs%20&%20ADRs/UI%20Polish%20-%202026-11-08.md): the small touches from the Vision UI reference and its licence check, with screenshots in `docs/assets/ui-polish-2026-11-08/`. Linked from the Specs README and the docs site menu.
+
+## 2026-11-11: added External Audit Tools
+
+New ADR [External Audit Tools - 2026-11-11](Specs%20&%20ADRs/External%20Audit%20Tools%20-%202026-11-11.md): what the third-party review tools found and the fixes. Linked from the Specs README and the docs site menu.

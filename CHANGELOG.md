@@ -8,6 +8,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Security
+- Uploaded and stage JUnit, TRX and Robot Framework XML is parsed with `defusedxml`: a file that declares entities is reported as unreadable instead of being expanded. `defusedxml` is a new dependency
+- GitHub Actions hardening: every third-party action is pinned to a commit SHA, checkouts no longer keep the job token unless the workflow pushes, the PyPI release build no longer restores the npm cache, and branch names reach shell scripts through `env:`. CI now runs zizmor on the workflows, and a weekly OpenSSF Scorecard workflow reports to code scanning (results are not published). See `docs/Specs & ADRs/External Audit Tools - 2026-11-11.md`
+
+### Performance
+- The web UI loads each page other than the dashboard on demand (the first download is 344 kB instead of 610 kB), and the dashboard no longer jumps while the demo notice and the first data load. The page has a meta description
+
 ### Changed
 - New accent colour: the web UI's blue is now the green of the logo's eye (navy stays), and primary buttons use dark text on green for contrast. The docs site follows: green on white in light mode, green on the app's navy in dark mode (it was deep orange)
 - Dashboard redesign: a hero card for the latest run (pass rate in big type, three small stats, and QASight's eye drawn as a glowing iris split like a pie into the run's passed, failed, broken and skipped tests), a big gauge for project health, uneven columns instead of rows of equal boxes, and a bar per recent run (pass rate and result) on Recent runs

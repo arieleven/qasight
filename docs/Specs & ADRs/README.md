@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-08
+updated: 2026-11-11
 ---
 
 # Specs & ADRs
@@ -72,5 +72,6 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Lifecycle fixes from the year-two review: storage limits and visibility, runs that die mid-way, token rotation | [Lifecycle Fixes - 2026-11-02](Lifecycle%20Fixes%20-%202026-11-02.md) |
 | The rename from Testosterone (`testo-core`, `testo`) to QASight (`qasight`), and the old names that keep working | [Rename to QASight - 2026-11-04](Rename%20to%20QASight%20-%202026-11-04.md) |
 | The QASight logo: the eye and the name, where its files come from and how they are rendered | [QASight Logo - 2026-11-05](QASight%20Logo%20-%202026-11-05.md) |
+| External audit tools (gitleaks, pip-audit, Bandit, Semgrep, zizmor, Lighthouse): findings, the fixes, and the checks kept in CI | [External Audit Tools - 2026-11-11](External%20Audit%20Tools%20-%202026-11-11.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).
