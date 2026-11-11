@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -44,3 +45,38 @@ def test_trx_and_robot_refuse_entities(tmp_path: Path, reader, root: str) -> Non
     path.write_text(_BOMB.format(root=root), encoding="utf-8")
     with pytest.raises(ValueError):
         reader(path, tool="command")
+
+
+@pytest.mark.parametrize(
+    ("report", "kind"),
+    [
+        (
+            {
+                "testResults": [
+                    {
+                        "name": "a",
+                        "assertionResults": [
+                            {"title": "t", "status": "failed", "failureMessages": 5}
+                        ],
+                    }
+                ]
+            },
+            "Jest/Vitest",
+        ),
+        (
+            {"suites": [{"title": "s", "specs": [{"title": "t", "tests": [{"results": 3}]}]}]},
+            "Playwright",
+        ),
+    ],
+)
+def test_a_json_report_with_a_wrong_typed_field_says_so(
+    tmp_path: Path, report: dict[str, object], kind: str
+) -> None:
+    (tmp_path / "r.json").write_text(json.dumps(report), encoding="utf-8")
+    result = import_junit_reports(
+        target_repo=tmp_path, patterns=("*.json",), results_dir=tmp_path / "out"
+    )
+    assert result.unreadable == 1
+    [error] = result.errors
+    assert f"looks like a {kind} report, but a field is missing or has an unexpected type" in error
+    assert "could not be read" not in error
