@@ -189,7 +189,9 @@ export function AppShell() {
               <HealthDot />
             </div>
           </header>
-          <main id="main" tabIndex={-1} className="outline-none">
+          {/* At least a screen tall, so the footer starts below the fold and a page
+              that fills in after loading doesn't push it down (layout shift). */}
+          <main id="main" tabIndex={-1} className="min-h-screen outline-none">
             <Outlet />
           </main>
           <Footer />

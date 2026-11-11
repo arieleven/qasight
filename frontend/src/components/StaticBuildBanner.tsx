@@ -49,13 +49,16 @@ function useDemoNoticeDismissed() {
  */
 export function StaticBuildBanner() {
   const [manifest, setManifest] = useState<StaticManifest | null>(null);
+  const [manifestLoaded, setManifestLoaded] = useState(false);
   const isDismissed = useDemoNoticeDismissed();
 
   useEffect(() => {
     if (!IS_STATIC_BUILD) return;
     let active = true;
     loadManifest().then((m) => {
-      if (active) setManifest(m);
+      if (!active) return;
+      setManifest(m);
+      setManifestLoaded(true);
     });
     return () => {
       active = false;
@@ -108,6 +111,16 @@ export function StaticBuildBanner() {
               live version.
             </p>
           )}
+          {!manifestLoaded ? (
+            // Holds the export line's place until the manifest arrives, so the
+            // page below doesn't jump down when it does (layout shift).
+            <p className="invisible flex flex-wrap gap-x-3 gap-y-1" aria-hidden data-testid="demo-notice-placeholder">
+              <span>Exported Wed, 01 Jan 2026 00:00:00 GMT</span>
+              <span>
+                Commit <code className="font-mono">00000000</code> (main)
+              </span>
+            </p>
+          ) : null}
           <p className="flex flex-wrap gap-x-3 gap-y-1 text-ink-400">
             {generated ? <span>Exported {generated}</span> : null}
             {commit ? (

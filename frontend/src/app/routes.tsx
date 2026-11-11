@@ -3,22 +3,10 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "./AppShell";
 
 import { NotFoundPage } from "./NotFoundPage";
-import { AskPage } from "../features/ask/AskPage";
-import { ComparePage } from "../features/compare/ComparePage";
-import { CycleDetailPage } from "../features/cycles/CycleDetailPage";
-import { CyclesPage } from "../features/cycles/CyclesPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
-import { QuickRunPage } from "../features/execution/QuickRunPage";
-import { ProjectHealthPage } from "../features/health/ProjectHealthPage";
-import { HistoryPage } from "../features/history/HistoryPage";
-import { ReleasePage, ReleasesPage } from "../features/releases/ReleasesPage";
-import { ReportPage } from "../features/report/ReportPage";
-import { ResourcesPage } from "../features/resources/ResourcesPage";
-import { RunDetailPage } from "../features/run-detail/RunDetailPage";
-import { TestPage } from "../features/tests/TestPage";
-import { TryPage } from "../features/try/TryPage";
-import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
 
+// The dashboard is the landing page and loads with the app; every other page
+// is its own chunk, fetched the first time someone opens it.
 export const routes = [
   {
     path: "/",
@@ -30,63 +18,63 @@ export const routes = [
       },
       {
         path: "cycles",
-        element: <CyclesPage />
+        lazy: () => import("../features/cycles/CyclesPage").then((m) => ({ Component: m.CyclesPage }))
       },
       {
         path: "cycles/:name",
-        element: <CycleDetailPage />
+        lazy: () => import("../features/cycles/CycleDetailPage").then((m) => ({ Component: m.CycleDetailPage }))
       },
       {
         path: "cycles/:name/test",
-        element: <TestPage />
+        lazy: () => import("../features/tests/TestPage").then((m) => ({ Component: m.TestPage }))
       },
       {
         path: "runs",
-        element: <HistoryPage />
+        lazy: () => import("../features/history/HistoryPage").then((m) => ({ Component: m.HistoryPage }))
       },
       {
         path: "runs/:runId",
-        element: <RunDetailPage />
+        lazy: () => import("../features/run-detail/RunDetailPage").then((m) => ({ Component: m.RunDetailPage }))
       },
       {
         path: "compare",
-        element: <ComparePage />
+        lazy: () => import("../features/compare/ComparePage").then((m) => ({ Component: m.ComparePage }))
       },
       {
         path: "releases",
-        element: <ReleasesPage />
+        lazy: () => import("../features/releases/ReleasesPage").then((m) => ({ Component: m.ReleasesPage }))
       },
       {
         path: "releases/:release",
-        element: <ReleasePage />
+        lazy: () => import("../features/releases/ReleasesPage").then((m) => ({ Component: m.ReleasePage }))
       },
       {
         path: "health",
-        element: <ProjectHealthPage />
+        lazy: () => import("../features/health/ProjectHealthPage").then((m) => ({ Component: m.ProjectHealthPage }))
       },
       {
         path: "report",
-        element: <ReportPage />
+        lazy: () => import("../features/report/ReportPage").then((m) => ({ Component: m.ReportPage }))
       },
       {
         path: "ask",
-        element: <AskPage />
+        lazy: () => import("../features/ask/AskPage").then((m) => ({ Component: m.AskPage }))
       },
       {
         path: "resources",
-        element: <ResourcesPage />
+        lazy: () => import("../features/resources/ResourcesPage").then((m) => ({ Component: m.ResourcesPage }))
       },
       {
         path: "quick-run",
-        element: <QuickRunPage />
+        lazy: () => import("../features/execution/QuickRunPage").then((m) => ({ Component: m.QuickRunPage }))
       },
       {
         path: "try",
-        element: <TryPage />
+        lazy: () => import("../features/try/TryPage").then((m) => ({ Component: m.TryPage }))
       },
       {
         path: "settings/ai",
-        element: <AIIntegrationSettingsPage />
+        lazy: () => import("../features/settings/AIIntegrationSettingsPage").then((m) => ({ Component: m.AIIntegrationSettingsPage }))
       },
       {
         path: "*",
