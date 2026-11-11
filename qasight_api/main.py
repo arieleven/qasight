@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 import mimetypes
 import threading
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
+from typing import Any
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -167,6 +168,24 @@ def _start_retention_timer() -> Callable[[], None]:
     return stop.set
 
 
+def _json_safe_errors(errors: Sequence[Any]) -> list[dict[str, Any]]:
+    """Validation errors as JSON: a raw ``bytes`` body or an exception in ``ctx``
+    would otherwise make the 422 handler itself fail with a 500."""
+
+    def safe(value: Any) -> Any:
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, dict):
+            return {str(k): safe(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [safe(v) for v in value]
+        return str(value)
+
+    return [safe(dict(error)) for error in errors]
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="QASight API",
@@ -293,7 +312,7 @@ def create_app() -> FastAPI:
                 "error": {
                     "code": "invalid_input",
                     "message": "Request validation failed.",
-                    "details": {"errors": exc.errors()},
+                    "details": {"errors": _json_safe_errors(exc.errors())},
                 },
                 "request_id": getattr(request.state, "request_id", str(uuid4())),
             },
