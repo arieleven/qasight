@@ -12,6 +12,7 @@ render their dashboard PDFs. Spreadsheet and slides live in
 
 from __future__ import annotations
 
+import base64
 import csv
 import io
 import json
@@ -93,16 +94,51 @@ def render_csv(report: ManagerReport, brand: str = DEFAULT_BRAND) -> bytes:  # n
 _FONT_LINKS = re.compile(
     r"<link[^>]+(?:fonts\.googleapis\.com|fonts\.gstatic\.com)[^>]*>\s*", re.IGNORECASE | re.DOTALL
 )
+_PRELOAD_LINKS = re.compile(r'<link rel="modulepreload"[^>]*>\s*')
 _SCRIPT = re.compile(r'<script type="module"[^>]*\bsrc="([^"]+)"[^>]*></script>')
 _TITLE = re.compile(r"<title>.*?</title>", re.DOTALL)
 _STYLE = re.compile(r'<link rel="stylesheet"[^>]*\bhref="([^"]+)"[^>]*>')
 
 
 def _asset(root: Path, href: str) -> str:
-    path = (root / href.lstrip("/").split("?", 1)[0]).resolve()
+    return _asset_path(root, href).read_text(encoding="utf-8")
+
+
+def _asset_path(root: Path, href: str, *, base: Path | None = None) -> Path:
+    rel = href.split("?", 1)[0]
+    path = ((base or root) / (rel if base else rel.lstrip("/"))).resolve()
     if root.resolve() not in path.parents:
         raise ExportUnavailable(f"UI build refers to a file outside it: {href}")
-    return path.read_text(encoding="utf-8")
+    return path
+
+
+# A static `import ... from "./chunk.js"` or `import "./chunk.js"` (not a dynamic
+# `import("./page.js")`, which only the lazily loaded pages use).
+_STATIC_IMPORT = re.compile(r"""(\b(?:from|import)\s*)(["'])(\.{1,2}/[^"']+\.js)\2""")
+
+
+def _module_source(root: Path, path: Path, seen: dict[Path, str]) -> str:
+    """A bundle chunk's code with every chunk it imports statically inlined as a ``data:`` URL.
+
+    Pages load lazily, so the entry imports the code it shares with them from a
+    separate chunk; a single-file export has no ``./assets`` to fetch it from.
+    The same chunk always becomes the same URL, so it still runs once.
+    """
+    if path in seen:
+        return seen[path]
+
+    def inline(match: re.Match[str]) -> str:
+        child = _asset_path(root, match.group(3), base=path.parent)
+        if seen.get(child) == "":  # a cycle between chunks: leave that import as it is
+            return match.group(0)
+        code = _module_source(root, child, seen)
+        url = "data:text/javascript;base64," + base64.b64encode(code.encode("utf-8")).decode()
+        return f"{match.group(1)}{match.group(2)}{url}{match.group(2)}"
+
+    seen[path] = ""  # in progress
+    code = _STATIC_IMPORT.sub(inline, path.read_text(encoding="utf-8"))
+    seen[path] = code
+    return code
 
 
 def render_html(
@@ -114,6 +150,8 @@ def render_html(
         raise ExportUnavailable(_BUILD_HINT)
     page = (root / "index.html").read_text(encoding="utf-8")
     page = _FONT_LINKS.sub("", page)
+    # Preloads of the chunks the entry imports; those are inlined below.
+    page = _PRELOAD_LINKS.sub("", page)
     scripts = _SCRIPT.findall(page)
     if not scripts:
         raise ExportUnavailable(f"{root / 'index.html'} has no module script; rebuild the UI.")
@@ -125,7 +163,7 @@ def render_html(
     data = data.replace("<", "\\u003c")
     baked = f"<script>window.__TESTO_REPORT__ = {data};</script>"
     for href in scripts:
-        js = _asset(root, href).replace("</script", "<\\/script")
+        js = _module_source(root, _asset_path(root, href), {}).replace("</script", "<\\/script")
         page = _replace_first(_SCRIPT, page, f'{baked}<script type="module">{js}</script>')
         baked = ""
     page = _replace_first(_TITLE, page, f"<title>{_escape(report.title)}</title>")
