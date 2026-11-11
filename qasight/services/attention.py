@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from qasight.history.read_model import latest_run_per_cycle, list_cycle_runs
 from qasight.history.views import CompletedRunView
+from qasight.repository.models import RunStatus
 from qasight.services import flaky_service, test_history
 from qasight.services.run_failures import load_run_failures
 
@@ -55,7 +56,7 @@ class Attention:
 
 
 def _failed(run: CompletedRunView) -> bool:
-    return run.returncode != 0 or run.status == "failed"
+    return run.returncode != 0 or run.status == RunStatus.FAILED
 
 
 def _failing_streak(run: CompletedRunView, history: list[CompletedRunView]) -> int:

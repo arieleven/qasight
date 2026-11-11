@@ -27,6 +27,7 @@ from qasight.history.read_model import latest_run_per_cycle, list_cycle_runs
 from qasight.history.views import CompletedRunView
 from qasight.reporting.pyramid_data import build_pyramid_model
 from qasight.reporting.pyramid_viz import PyramidModel, PyramidShape, classify_shape
+from qasight.repository.models import RunStatus
 from qasight.services import test_history
 from qasight.services.test_history import TestSummary
 
@@ -121,7 +122,7 @@ def _share_score(bad: int, total: int, penalty: int) -> int | None:
 
 
 def _failed(run: CompletedRunView) -> bool:
-    return run.returncode != 0 or run.status == "failed"
+    return run.returncode != 0 or run.status == RunStatus.FAILED
 
 
 def _quarantined(run: CompletedRunView) -> list[str]:
