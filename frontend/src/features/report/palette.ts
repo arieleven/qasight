@@ -6,7 +6,8 @@
 export const PAPER = {
   ink: "#101828",
   muted: "#475467",
-  faint: "#98a2b3",
+  // Small print on white: #667085 keeps 4.8:1 contrast (WCAG AA); #98a2b3 was 2.6:1.
+  faint: "#667085",
   rule: "#e4e7ec",
   wash: "#f2f4f7",
   brand: "#1d4ed8",

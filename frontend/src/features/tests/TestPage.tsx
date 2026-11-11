@@ -204,20 +204,28 @@ export function TestPage() {
   );
 
   if (!key) {
-    return <p className="text-sm text-ink-300">No test picked. {back}</p>;
+    return (
+      <TestPageState>
+        <p className="text-sm text-ink-300">No test picked. {back}</p>
+      </TestPageState>
+    );
   }
   if (query.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-ink-300">
-        <Spinner /> Loading test history…
-      </div>
+      <TestPageState>
+        <div className="flex items-center gap-2 text-sm text-ink-300">
+          <Spinner /> Loading test history…
+        </div>
+      </TestPageState>
     );
   }
   if (query.isError || !query.data) {
     return (
-      <p className="text-sm text-danger-400">
-        Couldn't find this test in the recent runs of {cycle}. It may have been renamed or removed. {back}
-      </p>
+      <TestPageState>
+        <p className="text-sm text-danger-400">
+          Couldn't find this test in the recent runs of {cycle}. It may have been renamed or removed. {back}
+        </p>
+      </TestPageState>
     );
   }
 
@@ -353,6 +361,16 @@ export function TestPage() {
           ]}
         />
       </Card>
+    </section>
+  );
+}
+
+/** The page's heading around a state with no test to show, so the page always has its h1. */
+function TestPageState({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <PageHeader title="Test" />
+      {children}
     </section>
   );
 }

@@ -146,13 +146,21 @@ export function ComparePage() {
   );
 
   if (runsQuery.isLoading) {
-    return <p className="text-sm text-ink-300">Loading runs…</p>;
+    return <CompareState><p className="text-sm text-ink-300">Loading runs…</p></CompareState>;
   }
   if (runsQuery.isError) {
-    return <p className="text-sm text-danger-400">Couldn't load runs to compare. Check that the API is running, then reload.</p>;
+    return (
+      <CompareState>
+        <p className="text-sm text-danger-400">Couldn't load runs to compare. Check that the API is running, then reload.</p>
+      </CompareState>
+    );
   }
   if (options.length < 2) {
-    return <p className="text-sm text-ink-300">At least two completed runs are required for comparison.</p>;
+    return (
+      <CompareState>
+        <p className="text-sm text-ink-300">At least two completed runs are required for comparison.</p>
+      </CompareState>
+    );
   }
 
   // The first pick keeps what was shown automatically, then changes one thing.
@@ -189,7 +197,7 @@ export function ComparePage() {
 
   return (
     <section className="space-y-4">
-      <PageHeader title="Compare runs" subtitle="Pick a baseline and a current run to see what regressed and what improved." />
+      <PageHeader title="Compare runs" subtitle={COMPARE_SUBTITLE} />
 
       <div className="grid gap-4 glass-card p-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)]">
         <label className={labelClass}>
@@ -669,5 +677,17 @@ function FilterButton({ label, count, active, onClick }: { label: string; count:
     >
       {label} <span className="font-mono opacity-70">{count}</span>
     </button>
+  );
+}
+
+const COMPARE_SUBTITLE = "Pick a baseline and a current run to see what regressed and what improved.";
+
+/** The page's heading around a state with nothing to compare yet, so the page always has its h1. */
+function CompareState({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <PageHeader title="Compare runs" subtitle={COMPARE_SUBTITLE} />
+      {children}
+    </section>
   );
 }
