@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-11-06
+updated: 2026-11-11
 ---
 
 # CI Integrations
@@ -126,7 +126,7 @@ Tier selection is marker-driven and shared between local runs and GitHub Actions
 
 Reference CI definitions:
 
-- GitHub: `.github/workflows/ci.yml` (unified pipeline: format (ruff lint + format check, mypy, and `lint-imports`, the import-linter layer contracts from `pyproject.toml` `[tool.importlinter]`, all blocking) and test run in parallel, then deploy on a release; the fast-required gate lives in its `test` job on Python 3.11, followed by the heavy tier, and `test_python_versions` runs the same suite on 3.12, 3.13 and 3.14 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
+- GitHub: `.github/workflows/ci.yml` (unified pipeline: format (ruff lint + format check, mypy, `lint-imports`, the import-linter layer contracts from `pyproject.toml` `[tool.importlinter]`, and zizmor, the workflow security audit, all blocking) and test run in parallel, then deploy on a release; the fast-required gate lives in its `test` job on Python 3.11, followed by the heavy tier, and `test_python_versions` runs the same suite on 3.12, 3.13 and 3.14 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
 
@@ -136,7 +136,7 @@ What runs on QASight itself, as opposed to the wrappers above that run it in oth
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `qasight` and `qasight_api`; the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
+| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `qasight` and `qasight_api`, zizmor on the workflows and both `action.yml` files (accepted findings in `.github/zizmor.yml`); the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
 | `commitlint.yml` | pull request | Conventional commit messages |
 | `changelog-on-main.yml` | push to `main` | Drafts a `CHANGELOG.md` [Unreleased] entry from the pushed commits with Claude and commits it to `main`; skips when its bot secrets are missing |
 | `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles and publishes the read-only UI and the docs site to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |
@@ -147,7 +147,10 @@ What runs on QASight itself, as opposed to the wrappers above that run it in oth
 | `release-gate.yml` | manual | Release checks before publishing |
 | `dependabot.yml` (config, not a workflow) | weekly | Grouped dependency update PRs for pip, npm (`/` and `frontend/`) and GitHub Actions, committed as `chore(deps)` with the `no-changelog` label so commitlint and `changelog_required` pass |
 | `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published (`publish.yml` and `docker-publish.yml` can also be run by hand for an existing tag) | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md), [Publishing Docker Images](Publishing%20Docker%20Images.md)) |
+| `scorecard.yml` | push to `main`, weekly, manual | OpenSSF Scorecard; results go to Security > Code scanning and a workflow artifact. `publish_results` is off, so nothing is published to the public Scorecard API |
 | `move-major-tag.yml` | GitHub Release published (not prereleases), manual | Force-moves the `v<major>` tag (e.g. `v1`) to the release's commit |
+
+Every third-party action is pinned to a full commit SHA with the version in a comment (`uses: actions/checkout@<sha> # v7.0.1`); Dependabot updates both. Checkouts set `persist-credentials: false` except in the two workflows that push with the job token, the PyPI build restores no cache, and the Docker release builds reuse only the layer cache that the release workflows write themselves.
 
 ## Versioning policy
 
