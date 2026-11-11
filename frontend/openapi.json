@@ -9110,7 +9110,6 @@
             "schema": {
               "default": 5,
               "maximum": 100,
-              "minimum": 1,
               "title": "Recent Limit",
               "type": "integer"
             }
@@ -9155,7 +9154,6 @@
             "schema": {
               "default": 10,
               "maximum": 500,
-              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }

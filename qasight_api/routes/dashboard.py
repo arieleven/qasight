@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/v1", tags=["dashboard"])
 
 
 @router.get("/dashboard/overview", response_model=DashboardOverviewResponse)
-def get_dashboard_overview(recent_limit: int = Query(5, ge=1, le=100)) -> DashboardOverviewResponse:
+def get_dashboard_overview(recent_limit: int = Query(5, le=100)) -> DashboardOverviewResponse:
     service = DashboardService()
     try:
         payload = service.get_overview(recent_limit=recent_limit)
@@ -125,7 +125,7 @@ def get_dashboard_delivery(days: int = Query(7, ge=1, le=90)) -> DeliveryRespons
 
 
 @router.get("/dashboard/runs/recent", response_model=DashboardRecentRunsResponse)
-def get_dashboard_recent_runs(limit: int = Query(10, ge=1, le=500)) -> DashboardRecentRunsResponse:
+def get_dashboard_recent_runs(limit: int = Query(10, le=500)) -> DashboardRecentRunsResponse:
     service = DashboardService()
     try:
         items = service.get_recent_runs(limit=limit)

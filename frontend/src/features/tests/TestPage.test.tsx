@@ -77,7 +77,8 @@ describe("TestPage", () => {
 
     renderAt(`/cycles/smoke/test?${new URLSearchParams({ key: TEST.key }).toString()}`);
 
-    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("test_login");
+    // While history loads the page is headed "Test"; the test's own name replaces it.
+    expect(await screen.findByRole("heading", { level: 1, name: /test_login/ })).toBeInTheDocument();
     expect(screen.getByText("Passed 3 of 4 runs (75%) in smoke")).toBeInTheDocument();
     expect(screen.getByText("Flaky")).toBeInTheDocument();
     expect(screen.getAllByText("AssertionError: 1 != 2")).toHaveLength(2);
