@@ -4,6 +4,7 @@ from dataclasses import asdict
 
 from fastapi import APIRouter, Depends
 
+from qasight.history import memo
 from qasight.services.project_health import project_health
 from qasight.services.project_review import SKILLS, ProjectReviewService
 from qasight_api.dependencies import get_project_review_service
@@ -21,7 +22,10 @@ router = APIRouter(prefix="/api/v1", tags=["project-health"])
 @router.get("/project-health", response_model=ProjectHealthResponse)
 def get_project_health(cycle: str | None = None) -> ProjectHealthResponse:
     """The project under test's test health score: every cycle, or ``cycle`` alone."""
-    return ProjectHealthResponse.model_validate(asdict(project_health(cycle=cycle or None)))
+    health = memo.cached(
+        "project_health", (cycle or None,), lambda: project_health(cycle=cycle or None)
+    )
+    return ProjectHealthResponse.model_validate(asdict(health))
 
 
 @router.get("/project-health/skills", response_model=ReviewSkillsResponse)

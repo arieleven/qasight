@@ -4,6 +4,7 @@ import time
 
 from fastapi import APIRouter, HTTPException, Query
 
+from qasight.history import memo
 from qasight.services.attention import needs_attention
 from qasight.services.dashboard_service import DashboardRecentRun, DashboardService
 from qasight_api.models import (
@@ -103,7 +104,7 @@ def get_dashboard_overview(recent_limit: int = Query(5, le=100)) -> DashboardOve
 @router.get("/dashboard/attention", response_model=DashboardAttentionResponse)
 def get_dashboard_attention() -> DashboardAttentionResponse:
     """Red cycles (most new failures first), newly flaky tests and tests that got slower."""
-    attention = needs_attention()
+    attention = memo.cached("attention", (), needs_attention)
     return DashboardAttentionResponse(
         cycles=attention.cycles,
         passing_cycles=attention.passing_cycles,

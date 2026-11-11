@@ -185,6 +185,20 @@ class SQLModelRunRepository(BaseRunRepository):
                 session.expunge(r)
             return rows
 
+    def history_fingerprint(self) -> tuple[Any, ...]:
+        stmt = (
+            select(
+                RunRecord.status,
+                func.count(),
+                func.max(RunRecord.start_time),
+                func.max(RunRecord.end_time),
+            )
+            .group_by(RunRecord.status)
+            .order_by(RunRecord.status)
+        )
+        with Session(self._engine) as session:
+            return tuple(tuple(row) for row in session.exec(stmt).all())
+
     def list_run_keys(self) -> list[tuple[str, str | None, datetime | None, RunStatus]]:
         stmt = select(
             RunRecord.id, RunRecord.cycle, RunRecord.start_time, RunRecord.status
