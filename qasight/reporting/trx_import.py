@@ -22,9 +22,11 @@ that died before or between tests is never recorded as passed.
 from __future__ import annotations
 
 import re
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
 from pathlib import Path
 from typing import Any
+
+from defusedxml import ElementTree as SafeET
 
 from qasight.reporting.imported_results import iso_ms, make_result
 
@@ -164,7 +166,7 @@ def _run_errors(root: ET.Element, *, tool: str, start_ms: int) -> list[dict[str,
 
 def trx_results_for_file(path: Path, *, tool: str) -> list[dict[str, Any]]:
     """Allure result dicts for one TRX file; :class:`ValueError` if it isn't one."""
-    root = ET.parse(path).getroot()  # noqa: S314 — stage-owned file, expat ignores external entities
+    root = SafeET.parse(path).getroot()
     if not is_trx_root(root):
         raise ValueError("not a TRX file (no <TestRun> root)")
     return trx_results_for_root(root, tool=tool, fallback_ms=int(path.stat().st_mtime * 1000))

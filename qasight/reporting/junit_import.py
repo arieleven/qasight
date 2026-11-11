@@ -47,10 +47,12 @@ import hashlib
 import json
 import re
 import uuid
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from defusedxml import ElementTree as SafeET
 
 from qasight.reporting.imported_results import fold_attempts
 
@@ -370,7 +372,7 @@ def _results_for_any(
         # Whitespace (or a BOM, then whitespace) before ``<?xml`` is an expat error
         # ("XML or text declaration not at start of entity"); a stray newline from a
         # shell redirect shouldn't make the report unreadable.
-        root = ET.fromstring(raw.removeprefix(b"\xef\xbb\xbf").lstrip())  # noqa: S314 — stage-owned file, expat ignores external entities
+        root = SafeET.fromstring(raw.removeprefix(b"\xef\xbb\xbf").lstrip())
         from qasight.reporting.robot_import import is_robot_root, robot_results_for_root
         from qasight.reporting.trx_import import is_trx_root, trx_results_for_root
 
