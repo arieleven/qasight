@@ -12,6 +12,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Uploaded and stage JUnit, TRX and Robot Framework XML is parsed with `defusedxml`: a file that declares entities is reported as unreadable instead of being expanded. `defusedxml` is a new dependency
 - GitHub Actions hardening: every third-party action is pinned to a commit SHA, checkouts no longer keep the job token unless the workflow pushes, the PyPI release build no longer restores the npm cache, and branch names reach shell scripts through `env:`. CI now runs zizmor on the workflows, and a weekly OpenSSF Scorecard workflow reports to code scanning (results are not published). See `docs/Specs & ADRs/External Audit Tools - 2026-11-11.md`
 
+### Fixed
+- The API answers a dashboard `limit` / `recent_limit` too large for the database, and a request body it cannot parse, with a 422 instead of a 500 (found by Schemathesis)
+- Accessibility (found by axe): Compare and the test page keep their heading while loading or empty, the report's small print has 4.8:1 contrast instead of 2.6:1, and its wide tables scroll from the keyboard
+
 ### Performance
 - The web UI loads each page other than the dashboard on demand (the first download is 344 kB instead of 610 kB), and the dashboard no longer jumps while the demo notice and the first data load. The page has a meta description
 

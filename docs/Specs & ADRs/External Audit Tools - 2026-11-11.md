@@ -27,6 +27,20 @@ Found:
 | JUnit, TRX and Robot XML parsed with `xml.etree` (reports arrive through API uploads too) | Bandit, Semgrep | Parsed with `defusedxml`; an entity declaration makes the file unreadable instead of being expanded |
 | Demo: CLS 0.85 on mobile, one 610 kB bundle, no meta description; performance 46 mobile, 74 desktop | Lighthouse | The demo notice holds its export line's place, the main area is at least a screen tall, pages other than the dashboard load on demand (344 kB entry), meta description. Now 76 mobile, 98 desktop, CLS 0 |
 
+### Second round
+
+Taltal then asked for seven more kinds of checks, run the same day:
+
+| Tool | Result | Fix |
+|------|--------|-----|
+| Schemathesis (1,782 generated API requests) | 3 requests answered 500: a dashboard limit of 2^63 (SQLite overflow), and validation errors whose bytes body or exception context the 422 handler could not serialize | Upper bounds on both dashboard limits; the 422 handler makes its error list JSON-safe. `tests/contract/api/test_api_fuzz_regressions.py` |
+| OWASP ZAP 2.17 (OpenAPI import, spider, active scan) | No high findings, no injection or XSS. Medium: the CSP sets only `frame-ancestors`; no SRI on the Google Fonts stylesheet | Not changed: a full CSP needs its own design (inline styles, fonts, AI provider calls) |
+| Hypothesis, every importer | JUnit, TRX and Robot XML never broke. Jest, Playwright, k6 JSON with wrong-typed fields raise `TypeError`/`KeyError`; the import keeps the other files and reports the file as unreadable | Not changed: the message is vague but nothing is lost |
+| mutmut on `flaky_service`, `retention`, `attention` against their own test files | 561 of 830 mutants killed (68%); weakest: `flaky_costs`, `classify`, `broken`, `needs_attention` | Not changed |
+| Locust, single uvicorn process, SQLite | Fine at 20 users except `/report` (2.7 s alone) and `/dashboard/attention`; a 300-test ingest takes ~1.4 s and stalls other requests; at 100 users p50 is 6-8 s | Not changed: matches the single-process API in the [Architecture Review](Architecture%20Review%20-%202026-10-31.md) |
+| axe-core on 16 pages, desktop and phone | No `h1` on Compare and the test page while loading or empty; report small print 2.6:1; report tables not keyboard-scrollable | Fixed; 0 violations after |
+| vulture, radon, pip-licenses | No dead code (one false positive); average complexity A (4.4) with 15 functions at E/F (`parse_stage` 55, `init` 53); no GPL, psycopg is LGPL (optional `db` extra) | Not changed |
+
 ## Decision
 
 - Keep the checks running: zizmor is a blocking step in the CI `format` job, with accepted findings listed and explained in `.github/zizmor.yml`; `scorecard.yml` runs OpenSSF Scorecard weekly and on push to `main`, results in Security > Code scanning.
