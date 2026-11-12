@@ -88,7 +88,8 @@ api = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "python-multipart>=0.0.9",
-    "pyjwt>=2.9.0",
+    # [crypto]: RS256 and ES256 ID tokens for single sign-on (qasight_api/oidc.py).
+    "pyjwt[crypto]>=2.9.0",
     # `qasight export-site` calls the API in-process through starlette's TestClient.
     "httpx>=0.27.0",
 ]

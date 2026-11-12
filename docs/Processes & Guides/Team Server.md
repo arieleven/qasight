@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Team Server
@@ -87,6 +87,21 @@ People then sign in at `/login` with their username and password. Admins can als
 After five wrong passwords for one name within 15 minutes (`TESTO_LOGIN_MAX_FAILURES`), that name has to wait before trying again, even with the right password; the wait is in the audit log as `429`.
 
 Set `TESTO_AUTH=token` (or unset it) to go back; the accounts stay in the database for next time.
+
+### Single sign-on
+
+With accounts on, people can also sign in with your company's identity provider (any OpenID Connect provider: Google Workspace, Microsoft Entra ID, Okta, Keycloak, Auth0, GitLab, or GitHub through Dex). Register QASight as a web app there with the redirect URL `https://<your server>/api/v1/auth/oidc/callback`, then set:
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `TESTO_OIDC_ISSUER` | unset | The provider's issuer URL, e.g. `https://accounts.google.com` or `https://login.microsoftonline.com/<tenant>/v2.0` |
+| `TESTO_OIDC_CLIENT_ID`, `TESTO_OIDC_CLIENT_SECRET` | unset | The app you registered. SSO is on when the issuer, id and secret are all set |
+| `TESTO_OIDC_ALLOWED_DOMAINS` | any | Comma-separated email domains allowed in, e.g. `example.com`. Set it with public providers such as Google, or anyone with an account there gets in as a viewer |
+| `TESTO_OIDC_DEFAULT_ROLE` | `viewer` | Role of the account a person's first sign-in creates |
+| `TESTO_OIDC_REDIRECT_URL` | worked out | The full callback URL, when the server can't tell its own public address (behind a proxy without `FORWARDED_ALLOW_IPS`) |
+| `TESTO_OIDC_LABEL` | `Sign in with SSO` | The button's text on `/login` |
+
+The sign-in page then shows the SSO button next to the password form. The first sign-in creates an account named after the person's verified email, with the default role; an admin raises it with `qasight users set-role`. The flow is the authorization-code flow with PKCE, and the ID token's signature, issuer, audience and nonce are checked against the provider's published keys. Every SSO sign-in is in the audit log, failed ones as user `sso`.
 
 ## Reports for managers
 
