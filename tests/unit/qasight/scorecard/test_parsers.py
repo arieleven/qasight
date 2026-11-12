@@ -306,3 +306,14 @@ def test_banner_before_json_is_skipped(tmp_path: Path) -> None:
     path = tmp_path / "r.json"
     path.write_text('Run started\n{"results": []}', encoding="utf-8")
     assert TOOLS_BY_ID["bandit"].parse(path).score == 100
+
+
+def test_xml_reports_with_entities_are_refused(tmp_path: Path) -> None:
+    path = tmp_path / "r.xml"
+    path.write_text(
+        '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa">]>'
+        '<testsuite><testcase name="&a;"/></testsuite>',
+        encoding="utf-8",
+    )
+    with pytest.raises(ReportError):
+        TOOLS_BY_ID["schemathesis"].parse(path)

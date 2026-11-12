@@ -22,6 +22,8 @@ from __future__ import annotations
 import csv
 import json
 import math
+import re
+import xml.etree.ElementTree as ET  # noqa: S405 - parsed with no DTD or entities (_xml_root)
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -624,12 +626,21 @@ def parse_locust(path: Path) -> ToolResult:
 # --- Tests and their quality -----------------------------------------------------
 
 
+def _xml_root(path: Path) -> ET.Element:
+    """Parse an XML report with no DTD or entities (so no entity expansion attacks)."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if "<!DOCTYPE" in text or "<!ENTITY" in text:
+        # Cobertura files may carry a DOCTYPE line; entities are never needed.
+        text = re.sub(r"<!DOCTYPE[^>\[]*(\[[^\]]*\])?\s*>", "", text, count=1)
+        if "<!ENTITY" in text or "<!DOCTYPE" in text:
+            raise ReportError(f"{path.name} declares XML entities, which are not allowed")
+    return ET.fromstring(text)  # noqa: S314 - no DTD or entities left (checked above)
+
+
 def parse_junit(path: Path) -> ToolResult:
     """Pass rate of a JUnit XML report (Schemathesis, any test runner)."""
-    from defusedxml import ElementTree
-
     try:
-        root = ElementTree.parse(str(path)).getroot()
+        root = _xml_root(path)
     except Exception as exc:  # noqa: BLE001 - any parse error means "not JUnit"
         raise ReportError(f"{path.name} is not JUnit XML: {exc}") from exc
     cases = list(root.iter("testcase"))
@@ -664,10 +675,8 @@ def parse_junit(path: Path) -> ToolResult:
 
 def parse_coverage(path: Path) -> ToolResult:
     if path.suffix.lower() == ".xml":
-        from defusedxml import ElementTree
-
         try:
-            root = ElementTree.parse(str(path)).getroot()
+            root = _xml_root(path)
         except Exception as exc:  # noqa: BLE001
             raise ReportError(f"{path.name} is not Cobertura XML: {exc}") from exc
         rate = root.get("line-rate")
