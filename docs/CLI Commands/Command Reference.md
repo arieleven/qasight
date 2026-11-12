@@ -91,6 +91,7 @@ qasight ingest allure-results --cycle api                    # a folder: the fil
 qasight ingest                                               # find the result files, cycle = folder name
 qasight ingest 'reports/*.xml' --cycle web-unit \
   --server https://qasight.example.com --token "$TESTO_API_TOKEN"   # team server
+qasight ingest --from-github --runs 50 --workflow ci.yml     # history from past CI runs
 ```
 
 | Flag | Default | Meaning |
@@ -108,6 +109,12 @@ qasight ingest 'reports/*.xml' --cycle web-unit \
 | `--coverage` | none | Code coverage report to store with the run (repeatable, relative to `--repo`), as `qasight run --coverage`. Checked first: no match or an unknown format is exit `2`. With `--server` only the totals are sent (the server recomputes the percentage) |
 | `--env KEY=VALUE` | `$TESTO_ENV` | What the results were tested on, as `qasight run --env`. With `--server` it is sent with the upload |
 | `--release NAME` | `$TESTO_RELEASE` | The release the results tested, as `qasight run --release`. With `--server` it is sent with the upload |
+| `--from-github` | off | Fill the history from past GitHub Actions runs (below). Not with `--server` or file arguments (exit `2`) |
+| `--runs N` | `20` | With `--from-github`: how many recent completed runs to read |
+| `--workflow` | all | With `--from-github`: only this workflow (name or file name) |
+| `--branch` | all | With `--from-github`: only runs on this branch |
+
+**History from day one.** Flaky detection, "got slower" and the trends need runs to compare. `qasight ingest --from-github` lists the repository's recent completed workflow runs with the [GitHub CLI](https://cli.github.com) (`gh auth login` first; it handles tokens and GitHub Enterprise), downloads each run's artifacts, finds the result files in them by content and records each run as one run of the cycle, with its commit, branch and CI run id, dated when it ran. A run without artifacts or result files is skipped and counted; a run already recorded (same CI run id) is skipped, so running it again adds only what is new. Exit `2` when `gh` is missing or can't list the runs, otherwise `0`. Code: `qasight/services/github_backfill.py`.
 
 Files it reads, with the command that writes each one (no extra package needed except where noted):
 
