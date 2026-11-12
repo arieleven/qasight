@@ -10,6 +10,7 @@ import {
   type ScorecardToolScoreItem
 } from "../../lib/api-client";
 import { Badge, Button, Card, EmptyState, PageHeader, Spinner, Switch } from "../../components/ui";
+import { ReleasesTabs } from "../releases/ReleasesTabs";
 import { MuscleShrug } from "../../components/mascot";
 import { copyText } from "../../lib/clipboard";
 import { formatRunTime } from "../../lib/format";
@@ -617,8 +618,9 @@ export function ScorecardPage() {
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Release scorecard"
-        subtitle="MegaLinter picks the linters and scanners that fit any repository; with the API, web, load and test tools they score a version 0-100 and compare it with the version before."
+        title="Releases"
+        documentTitle="Code quality"
+        subtitle="Each release in one place: what its tests did, and how its code scores."
         actions={
           <Pickers
             project={data?.project ?? project}
@@ -629,6 +631,14 @@ export function ScorecardPage() {
           />
         }
       />
+      <div>
+        <ReleasesTabs />
+        <p className="-mt-2 text-sm text-ink-300">
+          The code of each version, graded A-E: MegaLinter picks the linters and scanners that fit the repository, and with the API, web,
+          load and test tools they score it 0-100 against the version before. How the tests themselves are doing is under Tests → Test
+          health.
+        </p>
+      </div>
 
       {card.isLoading ? (
         <div className="flex items-center gap-2 text-sm text-ink-300">

@@ -561,6 +561,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/live-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Live Runs
+         * @description Test sessions running now (and ones that ended in the last two minutes).
+         */
+        get: operations["list_live_runs_api_v1_live_runs_get"];
+        put?: never;
+        /**
+         * Start Live Run
+         * @description Start a live session; send results to ``/live-runs/{id}/results``.
+         */
+        post: operations["start_live_run_api_v1_live_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live-runs/{session_id}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish Live Run
+         * @description Mark a live session ended; its report upload records it as a run.
+         */
+        post: operations["finish_live_run_api_v1_live_runs__session_id__finish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live-runs/{session_id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Live Results
+         * @description Add finished tests to a live session.
+         */
+        post: operations["add_live_results_api_v1_live_runs__session_id__results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/project-health": {
         parameters: {
             query?: never;
@@ -1140,6 +1204,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scorecard/badge.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Badge Json
+         * @description The same badge as a shields.io endpoint (``img.shields.io/endpoint?url=...``).
+         */
+        get: operations["get_scorecard_badge_json_api_v1_scorecard_badge_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/badge.svg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Badge
+         * @description A README badge with the latest version's grade and score (``quality | B 87``).
+         */
+        get: operations["get_scorecard_badge_api_v1_scorecard_badge_svg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scorecard/markdown": {
         parameters: {
             query?: never;
@@ -1194,6 +1298,26 @@ export interface paths {
          * @description Record one tool's result that a client parsed (``qasight scorecard import|scan --server``).
          */
         post: operations["record_scorecard_result_api_v1_scorecard_results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/sarif": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Sarif
+         * @description A version's findings as SARIF 2.1.0, for GitHub code scanning or any SARIF viewer.
+         */
+        get: operations["get_scorecard_sarif_api_v1_scorecard_sarif_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2629,6 +2753,87 @@ export interface components {
             tests: number;
             /** Value */
             value: string;
+        };
+        /** LiveFailureItem */
+        LiveFailureItem: {
+            /** Message */
+            message: string;
+            /** Test */
+            test: string;
+        };
+        /** LiveResult */
+        LiveResult: {
+            /** Message */
+            message?: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "passed" | "failed" | "skipped" | "error";
+            /** Test */
+            test: string;
+        };
+        /** LiveResultsRequest */
+        LiveResultsRequest: {
+            /** Results */
+            results: components["schemas"]["LiveResult"][];
+        };
+        /** LiveRunItem */
+        LiveRunItem: {
+            /** Branch */
+            branch: string | null;
+            /** Commit */
+            commit: string | null;
+            /** Current */
+            current: string | null;
+            /** Cycle */
+            cycle: string;
+            /** Done */
+            done: number;
+            /** Elapsed S */
+            elapsed_s: number;
+            /** Errors */
+            errors: number;
+            /** Failed */
+            failed: number;
+            /** Failures */
+            failures: components["schemas"]["LiveFailureItem"][];
+            /** Finished */
+            finished: boolean;
+            /** Id */
+            id: string;
+            /** Passed */
+            passed: number;
+            /** Skipped */
+            skipped: number;
+            /** Started At */
+            started_at: number;
+            /** Total */
+            total: number | null;
+        };
+        /** LiveRunListResponse */
+        LiveRunListResponse: {
+            /** Items */
+            items: components["schemas"]["LiveRunItem"][];
+        };
+        /** LiveRunStartRequest */
+        LiveRunStartRequest: {
+            /** Branch */
+            branch?: string | null;
+            /** Commit */
+            commit?: string | null;
+            /** Cycle */
+            cycle: string;
+            /**
+             * Total
+             * @description Tests collected, when known
+             */
+            total?: number | null;
+        };
+        /** LiveRunStarted */
+        LiveRunStarted: {
+            /** Id */
+            id: string;
         };
         /**
          * ManagerReportResponse
@@ -5138,6 +5343,121 @@ export interface operations {
             };
         };
     };
+    list_live_runs_api_v1_live_runs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveRunListResponse"];
+                };
+            };
+        };
+    };
+    start_live_run_api_v1_live_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveRunStartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveRunStarted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finish_live_run_api_v1_live_runs__session_id__finish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_live_results_api_v1_live_runs__session_id__results_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveResultsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_project_health_api_v1_project_health_get: {
         parameters: {
             query?: {
@@ -6123,6 +6443,70 @@ export interface operations {
             };
         };
     };
+    get_scorecard_badge_json_api_v1_scorecard_badge_json_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                label?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scorecard_badge_api_v1_scorecard_badge_svg_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                label?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_scorecard_markdown_api_v1_scorecard_markdown_get: {
         parameters: {
             query?: {
@@ -6195,6 +6579,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScorecardToolScoreItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scorecard_sarif_api_v1_scorecard_sarif_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

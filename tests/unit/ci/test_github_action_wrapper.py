@@ -604,3 +604,43 @@ def test_empty_history_restore_is_said_in_the_job_summary(tmp_path: Path, monkey
         is None
     )
     assert module.history_note({"TESTO_HISTORY_CACHED": "false"}) is None
+
+
+def test_scorecard_publishes_summary_comment_and_files_then_keeps_the_gate(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **_kwargs):
+        calls.append(list(cmd))
+        if cmd[1:3] == ["scorecard", "show"] and "-o" in cmd:
+            Path(cmd[cmd.index("-o") + 1]).write_text("x", encoding="utf-8")
+        stdout = "## Scorecard: B 81\n" if cmd[-1] == "markdown" else ""
+        code = 1 if cmd[2] == "scan" else 0
+        return subprocess.CompletedProcess(cmd, code, stdout=stdout, stderr="")
+
+    comments: list[str] = []
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setattr(module, "pull_request_number", lambda env: 7)
+    monkeypatch.setattr(
+        module, "upsert_pr_comment", lambda **kw: comments.append(kw["markdown"]) or "created"
+    )
+    summary, output = tmp_path / "summary.md", tmp_path / "out.txt"
+    env = {
+        "RUNNER_TEMP": str(tmp_path),
+        "GITHUB_STEP_SUMMARY": str(summary),
+        "GITHUB_OUTPUT": str(output),
+        "TESTO_GITHUB_TOKEN": "t",
+    }
+    code = module.run_scorecard(
+        path=".", min_score="70", no_new=False, tools="", job_summary=True, comment=True, env=env
+    )
+    assert code == 1  # the failed gate still fails the step
+    assert calls[0][:4] == ["qasight", "scorecard", "scan", "."] and "70" in calls[0]
+    assert summary.read_text().startswith("<!-- qasight-scorecard -->\n## Scorecard: B 81")
+    assert comments == [summary.read_text()]
+    outputs = output.read_text()
+    folder = tmp_path / "qasight-scorecard"
+    assert f"scorecard_sarif={folder / 'scorecard.sarif'}" in outputs
+    assert "scorecard_exit_code=1" in outputs and (folder / "badge.svg").exists()

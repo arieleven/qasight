@@ -116,7 +116,11 @@ export function HistoryPage() {
               >
                 Compare latest two
               </Link>
-            ) : null}
+            ) : (
+              <Link to="/compare" className={buttonClasses("secondary", "sm")}>
+                Compare runs
+              </Link>
+            )}
             {!IS_STATIC_BUILD && items.length > 0 ? (
               <Button
                 variant="secondary"

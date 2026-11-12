@@ -403,6 +403,26 @@ jobs:
       - run: python -m pip install .
       - run: bash scripts/team_server_smoke.sh
 
+  helm_chart:
+    name: helm chart (lint + template)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # helm is on GitHub's Ubuntu runners.
+      - run: helm lint deploy/helm/qasight --set auth.token=ci-token
+      - run: |
+          helm template ci deploy/helm/qasight --set auth.token=ci-token > /tmp/default.yaml
+          helm template ci deploy/helm/qasight --set auth.existingSecret=qasight \
+            --set auth.mode=accounts --set auth.oidc.issuer=https://idp.example.com \
+            --set auth.oidc.clientId=qasight --set ingress.enabled=true \
+            --set persistence.enabled=false --set env.TESTO_RETENTION_DAYS=90 > /tmp/sso.yaml
+          grep -q "kind: Deployment" /tmp/default.yaml
+          grep -q "TESTO_OIDC_ISSUER" /tmp/sso.yaml
+          ! helm template ci deploy/helm/qasight 2>/dev/null
+
   package:
     name: package (build + clean install)
     runs-on: ubuntu-latest

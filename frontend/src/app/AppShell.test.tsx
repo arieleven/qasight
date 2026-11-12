@@ -15,7 +15,10 @@ function renderShell() {
         children: [
           { index: true, element: page("Dashboard") },
           { path: "cycles", element: page("Cycles") },
-          { path: "quick-run", element: page("Quick Run") }
+          { path: "runs", element: page("Runs") },
+          { path: "quick-run", element: page("Quick Run") },
+          { path: "compare", element: page("Compare") },
+          { path: "code-quality", element: page("Code quality") }
         ]
       }
     ],
@@ -49,7 +52,13 @@ describe("AppShell mobile menu", () => {
     const labels = within(panel)
       .getAllByRole("link")
       .map((link) => link.textContent);
-    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Releases", "Project health", "Scorecard", "Report", "Ask", "Quick run", "Resources", "Try a file", "AI settings"]);
+    expect(labels).toEqual(["Overview", "Runs", "Cycles", "Test health", "Releases", "Report", "Ask", "Resources", "AI settings"]);
+    expect(within(panel).getAllByText(/^(Tests|Releases|Share|Settings)$/, { selector: "p" }).map((p) => p.textContent)).toEqual([
+      "Tests",
+      "Releases",
+      "Share",
+      "Settings"
+    ]);
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -61,9 +70,9 @@ describe("AppShell mobile menu", () => {
     fireEvent.click(toggle);
     const panel = screen.getByRole("navigation", { name: "Main" });
 
-    fireEvent.click(within(panel).getByRole("link", { name: "Quick run" }));
+    fireEvent.click(within(panel).getByRole("link", { name: "Cycles" }));
 
-    expect(await screen.findByRole("heading", { name: "Quick Run page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Cycles page" })).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
   });
@@ -139,7 +148,7 @@ describe("AppShell eye logo", () => {
       )
     );
     const router = createMemoryRouter(
-      [{ path: "/", element: <AppShell />, children: [{ index: true, element: <h1>Dashboard page</h1> }, { path: "health", element: <h1>Health page</h1> }] }],
+      [{ path: "/", element: <AppShell />, children: [{ index: true, element: <h1>Dashboard page</h1> }, { path: "test-health", element: <h1>Health page</h1> }] }],
       { initialEntries: [path] }
     );
     render(
@@ -153,7 +162,7 @@ describe("AppShell eye logo", () => {
   });
 
   it("tints the iris with the health score colour on the health page", async () => {
-    renderAt("/health", 50);
+    renderAt("/test-health", 50);
     await waitFor(() => expect(screen.getAllByTestId("eye-logo-iris")[0]).toHaveAttribute("fill", "#f87171"));
   });
 
@@ -161,5 +170,36 @@ describe("AppShell eye logo", () => {
     renderAt("/", 50);
     await waitFor(() => expect(screen.getAllByTestId("eye-logo")[0]).toHaveAttribute("data-spinning", "false"));
     expect(screen.getAllByTestId("eye-logo-iris")[0]).toHaveAttribute("fill", "#34d399");
+  });
+});
+
+describe("AppShell pages without a menu entry", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: false, status: 404, json: async () => ({}) })));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ["/compare", "Runs", "Compare"],
+    ["/quick-run", "Cycles", "Quick run"],
+    ["/code-quality", "Releases", "Code quality"]
+  ])("%s keeps %s highlighted and shows it in the breadcrumb", async (path, parent, crumb) => {
+    const router = createMemoryRouter(
+      [{ path: "/", element: <AppShell />, children: [{ path: path.slice(1), element: <h1>Sub page</h1> }] }],
+      { initialEntries: [path] }
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
+    await screen.findByRole("heading", { name: "Sub page" });
+    const sidebar = screen.getByRole("navigation", { name: "Sections" });
+    expect(within(sidebar).getByRole("link", { name: parent }).className).toContain("bg-ink-800/80");
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(breadcrumb).getByRole("link", { name: parent })).toBeInTheDocument();
+    expect(within(breadcrumb).getByText(crumb)).toBeInTheDocument();
   });
 });
