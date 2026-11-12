@@ -22,7 +22,7 @@ from typing import Literal
 
 from qasight.services.scorecard.parsers import PARSERS, ToolResult
 
-Kind = Literal["repo", "app", "import"]
+Kind = Literal["engine", "repo", "app", "import"]
 
 CATEGORIES: dict[str, str] = {
     "security": "Security",
@@ -81,6 +81,9 @@ class Tool:
     command: Callable[[ScanContext], Command | None] | None = None
     # Added to the error when the tool leaves no report (what usually went wrong).
     failure_hint: str = ""
+    # MegaLinter runs this tool (or one that does its job) for every language, so a scan
+    # that ran the engine skips it; it runs on its own when the engine can't.
+    in_engine: bool = False
 
     def installed(self) -> bool:
         return self.binary is not None and shutil.which(self.binary) is not None
@@ -325,6 +328,22 @@ def _schemathesis(ctx: ScanContext) -> Command | None:
 
 
 TOOLS: tuple[Tool, ...] = (
+    Tool(
+        id="megalinter",
+        name="MegaLinter",
+        category="code",
+        tagline="Picks and runs the linters and scanners that fit the repository, for about 65 languages",
+        how=(
+            "Each linter it ran is scored on its own: security and dependency scanners by their worst finding, "
+            "linters by issues per 1,000 lines of source code. Tests, vendored and generated code don't count."
+        ),
+        homepage="https://megalinter.io",
+        kind="engine",
+        report="megalinter-reports/megalinter-report.sarif",
+        parser="sarif",
+        binary="docker",
+        install="install Docker or Podman; the MegaLinter image is pulled on the first scan",
+    ),
     # --- Security -------------------------------------------------------------
     Tool(
         id="bandit",
@@ -334,6 +353,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW,
         homepage="https://bandit.readthedocs.io",
         kind="repo",
+        in_engine=True,
         report="Bandit JSON (bandit -f json)",
         parser="bandit",
         languages=frozenset({"python"}),
@@ -349,6 +369,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW,
         homepage="https://semgrep.dev",
         kind="repo",
+        in_engine=True,
         report="SARIF (semgrep --sarif)",
         parser="sarif",
         binary="semgrep",
@@ -366,6 +387,7 @@ TOOLS: tuple[Tool, ...] = (
         + " Private and cloud keys are critical, provider tokens high, generic matches medium; each secret counts once.",
         homepage="https://gitleaks.io",
         kind="repo",
+        in_engine=True,
         report="gitleaks JSON (--report-format json)",
         parser="gitleaks",
         binary="gitleaks",
@@ -380,6 +402,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW,
         homepage="https://dwheeler.com/flawfinder/",
         kind="repo",
+        in_engine=True,
         report="SARIF (flawfinder --sarif)",
         parser="sarif",
         languages=frozenset({"c"}),
@@ -411,6 +434,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW + " Each vulnerable package is high.",
         homepage="https://github.com/pypa/pip-audit",
         kind="repo",
+        in_engine=True,
         report="pip-audit JSON (pip-audit -f json)",
         parser="pip-audit",
         languages=frozenset({"python"}),
@@ -426,6 +450,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW,
         homepage="https://docs.npmjs.com/cli/commands/npm-audit",
         kind="repo",
+        in_engine=True,
         report="npm audit --json",
         parser="npm-audit",
         languages=frozenset({"node"}),
@@ -441,6 +466,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW,
         homepage="https://trivy.dev",
         kind="repo",
+        in_engine=True,
         report="Trivy JSON or SARIF (trivy fs --format json)",
         parser="trivy",
         binary="trivy",
@@ -486,6 +512,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW + " Most lint issues are low.",
         homepage="https://docs.astral.sh/ruff/",
         kind="repo",
+        in_engine=True,
         report="Ruff JSON (ruff check --output-format json)",
         parser="ruff",
         languages=frozenset({"python"}),

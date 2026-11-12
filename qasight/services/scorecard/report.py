@@ -1,8 +1,12 @@
 """A version's scorecard: tool scores rolled up by category, compared with the version before.
 
-The overall score is the mean of the category scores, and a category's score
-is the mean of its switched-on tools that have a result, so a category with ten
-linters weighs the same as one with a single load test. Tools that are switched
+The overall score is the mean of the category scores; a category with nothing
+measured is left out, not counted as zero. Inside a category, the findings of
+all its switched-on scanners and linters are rated together the way SonarQube
+and Codacy rate a codebase (:mod:`qasight.services.scorecard.rating`): security
+and dependencies by the worst finding, code quality by issues per 1,000 source
+lines. Tools that measure something else (a Lighthouse score, coverage, a load
+test) keep their own 0-100 and are averaged in. Tools that are switched
 off are still shown but don't count. A scan also keeps its **coverage**: the
 tools that fit the repository and which of them ran. When fewer than half ran,
 the grade is capped at C, so a 98 from one linter doesn't read as an A. The previous version is the one before it: by version number when
@@ -17,7 +21,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from qasight.services.project_health import grade_for
-from qasight.services.scorecard.store import ScorecardStore, StoredCoverage, StoredResult
+from qasight.services.scorecard.megalinter import name_from_id
+from qasight.services.scorecard.rating import findings_score
+from qasight.services.scorecard.store import (
+    ScorecardStore,
+    StoredCoverage,
+    StoredResult,
+    is_engine_tool,
+)
 from qasight.services.scorecard.tools import CATEGORIES, TOOLS, TOOLS_BY_ID
 
 
@@ -36,6 +47,8 @@ class ToolScore:
     recorded_at: float = 0.0
     source: str = "import"
     commit_sha: str | None = None
+    # Findings not in the version before (by what they are and which file), when known.
+    new_counts: dict[str, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +79,11 @@ class Coverage:
 MIN_COVERAGE = 0.5
 GRADE_CAP = "C"
 _GRADE_ORDER = "ABCDF"
+
+
+def _with_engine(tools: set[str]) -> set[str]:
+    """The tools with a result, counting the engine as one when any linter it ran has one."""
+    return tools | ({"megalinter"} if any(is_engine_tool(t) for t in tools) else set())
 
 
 def coverage_of(stored: StoredCoverage | None, tools_with_results: set[str]) -> Coverage | None:
@@ -120,22 +138,95 @@ class Scorecard:
     tools: list[ToolScore]
     versions: list[VersionSummary]
     coverage: Coverage | None = None
+    source_lines: int | None = None
+
+
+def category_of(result: StoredResult) -> str | None:
+    tool = TOOLS_BY_ID.get(result.tool)
+    return tool.category if tool is not None else result.category
+
+
+def name_of(result: StoredResult) -> str:
+    tool = TOOLS_BY_ID.get(result.tool)
+    return tool.name if tool is not None else (result.name or result.tool)
+
+
+def _is_on(result: StoredResult, enabled: dict[str, bool]) -> bool:
+    tool = TOOLS_BY_ID.get(result.tool)
+    if tool is not None:
+        return enabled.get(result.tool, tool.default_on)
+    return is_engine_tool(result.tool) and enabled.get(result.tool, True)
+
+
+def source_lines(results: Iterable[StoredResult]) -> int | None:
+    """The repository's source lines, as the scan that made ``results`` counted them."""
+    values = [int(r.metrics.get("source_lines") or 0) for r in results]
+    best = max(values, default=0)
+    return best or None
+
+
+def _is_findings(result: StoredResult) -> bool:
+    return "findings" in result.metrics
+
+
+def is_advisory(result: StoredResult) -> bool:
+    """A linter shown but not scored: it repeats the project's own choice on default rules."""
+    return bool(result.metrics.get("advisory"))
+
+
+def rated_score(result: StoredResult, lines: int | None) -> int:
+    """A tool's score: its findings rated against the repository's size, else its own score."""
+    category = category_of(result)
+    if lines and category and _is_findings(result):
+        return findings_score(category, result.counts, lines)
+    return result.score
 
 
 def overall_score(
     results: Iterable[StoredResult], enabled: dict[str, bool]
 ) -> tuple[int | None, dict[str, int]]:
     """The overall score and each category's, from the switched-on tools' results."""
+    rows = [r for r in results if _is_on(r, enabled) and category_of(r) and not is_advisory(r)]
+    lines = source_lines(rows)
     by_category: dict[str, list[int]] = {}
-    for result in results:
-        tool = TOOLS_BY_ID.get(result.tool)
-        if tool is None or not enabled.get(result.tool, tool.default_on):
-            continue
-        by_category.setdefault(tool.category, []).append(result.score)
+    counts: dict[str, dict[str, int]] = {}
+    for result in rows:
+        category = category_of(result)
+        assert category is not None
+        if lines and _is_findings(result):
+            total = counts.setdefault(category, {})
+            for sev, n in result.counts.items():
+                total[sev] = total.get(sev, 0) + int(n)
+        else:
+            by_category.setdefault(category, []).append(result.score)
+    for category, total in counts.items():
+        assert lines is not None
+        by_category.setdefault(category, []).append(findings_score(category, total, lines))
     categories = {key: _half_up(sum(scores) / len(scores)) for key, scores in by_category.items()}
     if not categories:
         return None, {}
     return _half_up(sum(categories.values()) / len(categories)), categories
+
+
+def new_counts(current: StoredResult, before: StoredResult | None) -> dict[str, int] | None:
+    """Findings of ``current`` not in ``before``, by severity; None when it can't be told."""
+    if before is None:
+        return None
+    if not before.fingerprints and any(before.counts.values()):
+        return None  # scored before fingerprints were kept
+    if not current.fingerprints and any(current.counts.values()):
+        return None
+    left: dict[str, int] = {}
+    for fp in before.fingerprints:
+        left[fp] = left.get(fp, 0) + 1
+    out: dict[str, int] = {}
+    for fp in current.fingerprints:
+        if left.get(fp):
+            left[fp] -= 1
+            continue
+        severity = fp.split(":", 1)[0]
+        out[severity] = out.get(severity, 0) + 1
+    return out
 
 
 def _half_up(value: float) -> int:
@@ -154,7 +245,7 @@ def _versions(
     out = []
     for version, rows in grouped.items():
         score, _ = overall_score(rows, enabled)
-        cov = coverage_of((coverages or {}).get(version), {r.tool for r in rows})
+        cov = coverage_of((coverages or {}).get(version), _with_engine({r.tool for r in rows}))
         out.append(
             VersionSummary(
                 version=version,
@@ -237,14 +328,16 @@ def build_scorecard(
     prev_score, prev_cats = overall_score(before.values(), enabled) if previous else (None, {})
 
     order = {tool.id: i for i, tool in enumerate(TOOLS)}
+    lines = source_lines(current)
+    prev_lines = source_lines(before.values())
     tools = [
         ToolScore(
             tool=r.tool,
-            name=TOOLS_BY_ID[r.tool].name,
-            category=TOOLS_BY_ID[r.tool].category,
-            enabled=enabled.get(r.tool, True),
-            score=r.score,
-            previous_score=before[r.tool].score if r.tool in before else None,
+            name=name_of(r),
+            category=category_of(r) or "code",
+            enabled=_is_on(r, enabled),
+            score=rated_score(r, lines),
+            previous_score=rated_score(before[r.tool], prev_lines) if r.tool in before else None,
             summary=r.summary,
             metrics=r.metrics,
             counts=r.counts,
@@ -252,9 +345,13 @@ def build_scorecard(
             recorded_at=r.recorded_at,
             source=r.source,
             commit_sha=r.commit_sha,
+            new_counts=new_counts(r, before.get(r.tool)),
         )
-        for r in sorted(current, key=lambda r: order.get(r.tool, 999))
-        if r.tool in TOOLS_BY_ID
+        for r in sorted(
+            current,
+            key=lambda r: (order.get(r.tool.split(":", 1)[0], 999), name_of(r).lower()),
+        )
+        if r.tool in TOOLS_BY_ID or is_engine_tool(r.tool)
     ]
     categories = [
         CategoryScore(
@@ -268,7 +365,7 @@ def build_scorecard(
         if any(t.category == key for t in tools)
     ]
     commits = [r.commit_sha for r in current if r.commit_sha]
-    coverage = coverage_of(coverages.get(version), {r.tool for r in current})
+    coverage = coverage_of(coverages.get(version), _with_engine({r.tool for r in current}))
     grade, uncapped = capped_grade(score, coverage)
     if coverage is not None and uncapped is not None:
         coverage = Coverage(
@@ -290,6 +387,7 @@ def build_scorecard(
         tools=tools,
         versions=versions,
         coverage=coverage,
+        source_lines=lines,
     )
 
 
@@ -299,8 +397,13 @@ def gate_failures(
     min_score: int | None = None,
     min_tool: int | None = None,
     no_drop: bool = False,
+    no_new: bool = False,
 ) -> list[str]:
-    """Why ``card`` fails the release gate, one sentence each; empty when it passes."""
+    """Why ``card`` fails the release gate, one sentence each; empty when it passes.
+
+    ``no_new`` fails on any new high or critical finding since the version before
+    (SonarQube's "new code" and Trunk's "hold the line": old debt doesn't block a release).
+    """
     failures: list[str] = []
     if min_score is not None and (card.score is None or card.score < min_score):
         failures.append(
@@ -315,6 +418,13 @@ def gate_failures(
             failures.append(
                 f"{tool.name} dropped from {tool.previous_score} to {tool.score} since {card.previous_version}"
             )
+        if no_new and tool.new_counts:
+            serious = {s: n for s, n in tool.new_counts.items() if s in ("critical", "high") and n}
+            if serious:
+                what = ", ".join(f"{n} {s}" for s, n in serious.items())
+                failures.append(
+                    f"{tool.name} has new findings since {card.previous_version}: {what}"
+                )
     return failures
 
 
@@ -381,7 +491,8 @@ def to_markdown(card: Scorecard, *, skipped: dict[str, str] | None = None) -> st
     if not_run:
         lines += ["", "## Not run", ""]
         for tool_id, why in not_run.items():
-            lines.append(f"- {TOOLS_BY_ID[tool_id].name}: {why}")
+            known = TOOLS_BY_ID.get(tool_id)
+            lines.append(f"- {known.name if known else name_from_id(tool_id)}: {why}")
     lines += [
         "",
         "_Made by `qasight scorecard`. Scores are computed from the tools' own reports, no AI._",

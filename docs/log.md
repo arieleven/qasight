@@ -248,3 +248,7 @@ New ADR [Release Scorecard - 2026-11-12](Specs%20&%20ADRs/Release%20Scorecard%20
 ## 2026-11-12: added Release Gate
 
 New ADR [Release Gate - 2026-11-12](Specs%20&%20ADRs/Release%20Gate%20-%202026-11-12.md): which third-party checks run on every pull request and which gate a release. Linked from the Specs README and the docs site menu.
+
+## 2026-11-12: added Scorecard on MegaLinter
+
+New ADR [Scorecard on MegaLinter - 2026-11-12](Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md): MegaLinter as the scorecard's engine and Sonar and Codacy style scores. Linked from the Index, the Specs README and the docs site menu.

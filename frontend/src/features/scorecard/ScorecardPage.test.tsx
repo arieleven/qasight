@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-import { ScorecardPage, cappedGrade, gradeFor, rollUp } from "./ScorecardPage";
+import { ScorecardPage, cappedGrade, findingsScore, gradeFor, rollUp } from "./ScorecardPage";
 
 function tool(id: string, name: string, category: string, extra: Record<string, unknown> = {}) {
   return {
@@ -28,7 +28,7 @@ function tool(id: string, name: string, category: string, extra: Record<string, 
 const tools = { items: [tool("bandit", "Bandit", "security"), tool("zap", "OWASP ZAP", "security", { kind: "app" }), tool("ruff", "Ruff", "code")] };
 
 function result(id: string, name: string, category: string, score: number, previous: number | null) {
-  return { tool: id, name, category, enabled: true, score, previous_score: previous, summary: `${name} said ${score}`, metrics: {}, counts: {}, findings: [{ severity: "high", title: "B602", detail: "shell=True", location: "a.py:3" }], recorded_at: 1, source: "scan", commit_sha: "abcdef1234" };
+  return { tool: id, name, category, enabled: true, score, previous_score: previous, summary: `${name} said ${score}`, metrics: {}, counts: {}, findings: [{ severity: "high", title: "B602", detail: "shell=True", location: "a.py:3" }], recorded_at: 1, source: "scan", commit_sha: "abcdef1234", new_counts: null as Record<string, number> | null };
 }
 
 const card = {
@@ -85,6 +85,29 @@ describe("rollUp", () => {
   });
 });
 
+describe("findingsScore", () => {
+  it("rates security by the worst finding and code by issues per 1,000 lines, like the server", () => {
+    expect(findingsScore("security", {}, 5000)).toBe(100);
+    expect(findingsScore("security", { low: 3, high: 1 }, 5000)).toBe(69);
+    expect(findingsScore("security", { critical: 4 }, 5000)).toBe(55);
+    // 10 low issues = 5 points in 5,000 lines = 1 per 1,000: still an A.
+    expect(findingsScore("code", { low: 10 }, 5000)).toBe(95);
+    // A tiny repository counts as 1,000 lines.
+    expect(findingsScore("code", { medium: 5 }, 40)).toBe(70);
+  });
+
+  it("rates the findings of a category's tools together when the repository's size is known", () => {
+    const linter = (id: string, counts: Record<string, number>) => ({
+      ...result(id, id, "code", 0, null),
+      metrics: { findings: 1 },
+      counts
+    });
+    const items = [linter("megalinter:PYTHON_RUFF", { low: 10 }), linter("megalinter:YAML_YAMLLINT", { low: 10 })];
+    expect(rollUp(items, () => true, (t) => t.score, 5000).score).toBe(90);
+    expect(rollUp(items, (id) => id !== "megalinter:YAML_YAMLLINT", (t) => t.score, 5000).score).toBe(95);
+  });
+});
+
 describe("cappedGrade", () => {
   it("caps the grade at C when fewer than half of the fitting tools ran", () => {
     expect(cappedGrade(98, { ran: 1, expected: 3, missing: {}, capped_from: null })).toEqual({ grade: "C", cappedFrom: "A" });
@@ -120,6 +143,17 @@ describe("ScorecardPage", () => {
     expect(String(put?.[0])).toContain("/api/v1/scorecard/tools/bandit");
     // With Bandit off, only Ruff counts.
     await waitFor(() => expect(screen.getByRole("img", { name: "Release score: 100 out of 100, grade A" })).toBeInTheDocument());
+  });
+
+  it("lists the linters MegaLinter ran for the version, each with a switch", async () => {
+    const ruff = { ...result("megalinter:PYTHON_RUFF", "ruff (Python)", "code", 95, null), metrics: { findings: 2, source_lines: 5000 }, counts: { low: 2 }, new_counts: { low: 2 } };
+    const fetchMock = stub({ ...card, tools: [...card.tools, ruff], source_lines: 5000 });
+    const section = await screen.findByTestId("scorecard-engine-linters");
+    const tile = within(section).getByTestId("scorecard-tool-megalinter:PYTHON_RUFF");
+    expect(within(tile).getByText("ruff (Python)")).toBeInTheDocument();
+    expect(within(tile).getByText("2 new")).toBeInTheDocument();
+    fireEvent.click(within(tile).getByRole("switch", { name: "Use ruff (Python)" }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => init?.method === "PUT" && /megalinter(%3A|:)PYTHON_RUFF/.test(String(url)))).toBe(true));
   });
 
   it("scans a repository and shows each tool's progress", async () => {

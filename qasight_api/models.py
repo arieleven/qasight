@@ -1445,6 +1445,8 @@ class ScorecardToolItem(ApiModel):
     # Whether this server can run it; None for import-only tools.
     installed: bool | None = None
     install: str = ""
+    # MegaLinter runs it (or a tool that does its job); it runs on its own only without the engine.
+    in_engine: bool = False
 
 
 class ScorecardToolsResponse(ApiModel):
@@ -1476,6 +1478,8 @@ class ScorecardToolScoreItem(ApiModel):
     recorded_at: float
     source: str
     commit_sha: str | None = None
+    # Findings not in the version before, by severity; null when it can't be told.
+    new_counts: dict[str, int] | None = None
 
 
 class ScorecardCategoryItem(ApiModel):
@@ -1531,6 +1535,8 @@ class ScorecardResponse(ApiModel):
     tools: list[ScorecardToolScoreItem] = Field(default_factory=list)
     coverage: ScorecardCoverageItem | None = None
     versions: list[ScorecardVersionItem] = Field(default_factory=list)
+    # The repository's source lines when it was scanned: findings are rated per 1,000 of them.
+    source_lines: int | None = None
 
 
 class ScorecardMarkdownResponse(ApiModel):
@@ -1542,13 +1548,17 @@ class ScorecardResultRequest(BaseModel):
 
     project: str = Field(min_length=1, max_length=255)
     version: str = Field(min_length=1, max_length=128)
-    tool: str = Field(min_length=1, max_length=64)
+    tool: str = Field(min_length=1, max_length=96)
     score: int = Field(ge=0, le=100)
     summary: str = Field(default="", max_length=500)
     metrics: dict[str, float | int | str] = Field(default_factory=dict)
     counts: dict[str, int] = Field(default_factory=dict)
     findings: list[ScorecardFindingItem] = Field(default_factory=list, max_length=200)
     commit_sha: str | None = Field(default=None, max_length=64)
+    # For a linter an engine ran (megalinter:PYTHON_RUFF): its name and category.
+    name: str | None = Field(default=None, max_length=120)
+    category: str | None = Field(default=None, max_length=32)
+    fingerprints: list[str] = Field(default_factory=list, max_length=5000)
 
 
 class ScorecardScanRequest(BaseModel):
