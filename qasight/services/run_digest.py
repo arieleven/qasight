@@ -74,18 +74,15 @@ def _coverage(runs: list[CompletedRunView]) -> float | None:
     return next((r.coverage_pct for r in runs if r.coverage_pct is not None), None)
 
 
-def _cases(runs: list[CompletedRunView]) -> list[dict[str, dict[str, Any]]]:
-    """Each run's per-test cases, oldest run first (runs without a snapshot are left out)."""
-    out = [flaky_service._cases_for_run(r) for r in reversed(runs)]
-    return [c for c in out if c]
+def _run_cases(runs: list[CompletedRunView]) -> list[flaky_service.RunCases]:
+    """Each run with its per-test cases, oldest run first (runs without a snapshot are left out)."""
+    return [(r, c) for r in reversed(runs) if (c := flaky_service._cases_for_run(r))]
 
 
-def _flaky(cases: list[dict[str, dict[str, Any]]]) -> dict[str, str]:
-    per_test: dict[str, list[dict[str, Any]]] = {}
-    for run_cases in cases:
-        for key, case in run_cases.items():
-            per_test.setdefault(key, []).append(case)
-    return {key: t.name for key, obs in per_test.items() if (t := flaky_service.classify(key, obs))}
+def _flaky(run_cases: list[flaky_service.RunCases]) -> dict[str, str]:
+    # The flaky page's rule: branch, commit and environment count, so a pull request
+    # that broke and fixed a test between green runs on main is not flaky.
+    return {key: t.name for key, t in flaky_service.flaky_tests(run_cases).items()}
 
 
 def _failing(run_cases: dict[str, dict[str, Any]]) -> dict[str, str]:
@@ -128,10 +125,12 @@ def _slower(
 def _cycle_digest(
     cycle: str, now_runs: list[CompletedRunView], prev_runs: list[CompletedRunView]
 ) -> CycleDigest:
-    now_cases = _cases(now_runs)
-    prev_cases = _cases(prev_runs)
-    flaky_now = _flaky(now_cases)
-    flaky_before = _flaky(prev_cases)
+    now_runs_cases = _run_cases(now_runs)
+    prev_runs_cases = _run_cases(prev_runs)
+    now_cases = [c for _, c in now_runs_cases]
+    prev_cases = [c for _, c in prev_runs_cases]
+    flaky_now = _flaky(now_runs_cases)
+    flaky_before = _flaky(prev_runs_cases)
     latest = now_cases[-1] if now_cases else {}
     failing_now = _failing(latest)
     failing_before = _failing(prev_cases[-1]) if prev_cases else {}

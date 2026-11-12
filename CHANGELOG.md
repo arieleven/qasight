@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Release scorecard: the scorecard shows how many of the tools that fit the repository ran and caps the grade at C when fewer than half did; gitleaks leaves out test and fixture files, counts each secret once and ranks it by rule; a failed tool says why; `scorecard-ignore.yml` (or `--ignore`) accepts known false positives; each tool is listed once under "Not run"; `scan`, `import` and `show` print the history database they use
 - Release gate: before a release, `release-gate.yml` runs Schemathesis, OWASP ZAP and a load test against a running API, Lighthouse CI on the demo site, fuzzing of every report importer and mutation testing, and the PyPI publish stops without a pass. Every pull request now also runs gitleaks, Bandit, pip-audit and `npm audit`. See `docs/Specs & ADRs/Release Gate - 2026-11-12.md`
 - Release scorecard on MegaLinter: when Docker is available, `qasight scorecard scan` runs MegaLinter on the repository (any of its 50+ languages) and scores each linter it ran; Bandit, Semgrep, gitleaks and the other built-in scanners it covers run only as a fallback. Security and supply chain are rated by the worst finding (like SonarQube), code quality by issues per 1,000 source lines (like Codacy); tests, vendored and generated code and docs don't count; linters that repeat the project's own choice on default rules are shown but not scored. Each tool shows its new findings since the previous version, and `--no-new` fails the gate on a new high or critical one. `--megalinter-image` picks the image. See `docs/Specs & ADRs/Scorecard on MegaLinter - 2026-11-12.md`
+- A CI job that builds a git tag records the tag as the run's release, and a CI run with no environment gets the runner's OS (`os=linux`), so the Releases page and an OS matrix work with no setup. `TESTO_AUTO_METADATA=0` turns it off.
 
 ### Security
 - Uploaded and stage JUnit, TRX, Robot Framework and coverage XML, and the XML reports `qasight scorecard` reads, are parsed with `defusedxml`: a file that declares entities is reported as unreadable instead of being expanded. `defusedxml` is a new dependency
@@ -20,6 +21,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The web UI sends a full Content Security Policy (everything from its own origin, no plugins, no foreign forms). The Plus Jakarta Sans font is bundled with the app instead of loaded from Google Fonts
 
 ### Fixed
+- The weekly digest and the run page's failing tests judge flakiness with the Flaky page's rule (per branch, commit and environment); the digest listed a pull request that broke and fixed a test as newly flaky.
 - API: a `config_path` or `artifacts_root` that is not a usable path (a NUL byte, an unknown `~user`) answers 400 instead of 500. Found by the first full run of the release gate.
 - The API answers a dashboard `limit` / `recent_limit` too large for the database, and a request body it cannot parse, with a 422 instead of a 500 (found by Schemathesis)
 - Needs attention and project health count a run marked failed as red even when its exit code is 0

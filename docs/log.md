@@ -252,3 +252,7 @@ New ADR [Release Gate - 2026-11-12](Specs%20&%20ADRs/Release%20Gate%20-%202026-1
 ## 2026-11-12: added Scorecard on MegaLinter
 
 New ADR [Scorecard on MegaLinter - 2026-11-12](Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md): MegaLinter as the scorecard's engine and Sonar and Codacy style scores. Linked from the Index, the Specs README and the docs site menu.
+
+## 2026-11-12: added Automation and Unification
+
+New ADR [Automation and Unification - 2026-11-12](Specs%20&%20ADRs/Automation%20and%20Unification%20-%202026-11-12.md): one flaky rule across every page, release and environment filled in from CI, and the plan for the next waves. Linked from the Specs README and the docs site menu.

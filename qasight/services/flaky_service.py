@@ -24,6 +24,7 @@ snapshot once and stored), so this works on every database backend. The CLI (``q
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -226,6 +227,37 @@ def _cases_for_run(run: CompletedRunView) -> dict[str, dict[str, Any]]:
     return cases_for_run(run)
 
 
+RunCases = tuple[CompletedRunView, dict[str, dict[str, Any]]]
+
+
+def observations_by_test(runs: Iterable[RunCases]) -> dict[str, list[dict[str, Any]]]:
+    """Per-test :func:`observation` lists from ``(run, cases)`` pairs given oldest first.
+
+    The one way every page builds what :func:`classify` reads, so the flaky page,
+    the digest, releases, the team view and the report all judge a test the same way
+    (branch, commit and environment included).
+    """
+    per_test: dict[str, list[dict[str, Any]]] = {}
+    for run, cases in runs:
+        for key, case in cases.items():
+            per_test.setdefault(key, []).append(observation(run, case))
+    return per_test
+
+
+def flaky_tests(runs: Iterable[RunCases]) -> dict[str, FlakyTest]:
+    """The flaky tests among ``(run, cases)`` pairs (oldest first), by test key."""
+    return {
+        key: t
+        for key, obs in observations_by_test(runs).items()
+        if (t := classify(key, obs)) is not None
+    }
+
+
+def flaky_keys(runs: Iterable[RunCases]) -> set[str]:
+    """Keys of the flaky tests among ``(run, cases)`` pairs (oldest first)."""
+    return set(flaky_tests(runs))
+
+
 @dataclass(frozen=True)
 class FlakyCost:
     """What one flaky test cost over some runs (see :func:`flaky_costs`)."""
@@ -295,15 +327,9 @@ def _cycle_runs(cycle: str, *, limit: int | None = None) -> list[CompletedRunVie
 
 def _report(cycle: str, runs: list[CompletedRunView], window: int) -> FlakyReport:
     """Score the tests in ``runs`` (newest first, already cut to the window)."""
-    per_test: dict[str, list[dict[str, Any]]] = {}
-    with_cases: list[tuple[CompletedRunView, dict[str, dict[str, Any]]]] = []
-    for run in reversed(runs):  # oldest first, so flips are counted in order
-        cases = _cases_for_run(run)
-        if not cases:
-            continue
-        with_cases.append((run, cases))
-        for key, case in cases.items():
-            per_test.setdefault(key, []).append(observation(run, case))
+    # Oldest first, so flips are counted in order.
+    with_cases = [(run, rc) for run in reversed(runs) if (rc := _cases_for_run(run))]
+    per_test = observations_by_test(with_cases)
     analyzed = len(with_cases)
 
     found = {key: t for key, obs in per_test.items() if (t := classify(key, obs)) is not None}

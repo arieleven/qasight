@@ -33,14 +33,13 @@ def client_run_metadata(env: Mapping[str, str] | None = None) -> dict[str, str]:
     repository = ci_repository(source)
     if repository:
         metadata["repository"] = repository
-    from qasight.services.run_environment import from_environ
+    # The same order a local run uses, so a CI tag or runner OS reaches the server too.
+    from qasight.services.run_environment import resolve as resolve_environment
+    from qasight.services.run_release import resolve as resolve_release
 
-    if environment := from_environ(source):
+    if environment := resolve_environment(None, source, None):
         metadata["environment"] = environment
-    from qasight.services.run_release import ENV_VAR as RELEASE_VAR
-    from qasight.services.run_release import clean as clean_release
-
-    if release := clean_release(source.get(RELEASE_VAR)):
+    if release := resolve_release(None, source):
         metadata["release"] = release
     return metadata
 
