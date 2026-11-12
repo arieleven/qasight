@@ -260,3 +260,7 @@ New ADR [Adoption Blockers - 2026-11-12](Specs%20&%20ADRs/Adoption%20Blockers%20
 ## 2026-11-12: added Menu by Question
 
 New ADR [Menu by Question - 2026-11-12](Specs%20&%20ADRs/Menu%20by%20Question%20-%202026-11-12.md): the UI menu grouped by question, Project health renamed Test health and Scorecard renamed Code quality. Linked from the Specs README and the docs site menu.
+
+## 2026-11-12: added Plug and Play
+
+New ADR [Plug and Play - 2026-11-12](Specs%20&%20ADRs/Plug%20and%20Play%20-%202026-11-12.md): seven setup-friction fixes in three waves, starting with `qasight init --attach`. Linked from the Index, the Specs README and the docs site menu.

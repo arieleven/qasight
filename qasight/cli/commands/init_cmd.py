@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import difflib
 import json
 import os
 from collections.abc import Iterator
@@ -210,6 +211,13 @@ def init(
         help="GitHub: also comment on pull requests from forks (their token is read-only): "
         "the test workflow uploads the comment and a second workflow posts it.",
     ),
+    attach: bool = typer.Option(
+        False,
+        "--attach",
+        help="GitHub: add QASight to the workflows that already run your tests (a result "
+        "flag on the test command, one QASight step after it) instead of writing a second "
+        "workflow that runs them again.",
+    ),
     dependabot: bool = typer.Option(
         False,
         "--dependabot",
@@ -274,7 +282,22 @@ def init(
         (config_path, project_setup.config_yaml(facts, cycle=cycle_name), keep_config)
     ]
     ci_hint = ""
-    if ci_kind != "none":
+    edited: set[Path] = set()
+    if attach and ci_kind != "github":
+        raise typer.BadParameter("works with GitHub Actions workflows only", param_hint="--attach")
+    if attach:
+        edited = _attach(
+            console, repo=repo, cycle=cycle_name, files=files, forks=forks or bool(server_url)
+        )
+    elif ci_kind == "github" and not (repo / ci_templates.GITHUB_WORKFLOW_PATH).exists():
+        from qasight.services.ci_attach import has_test_steps
+
+        if has_test_steps(repo):
+            console.print(
+                "[muted]Your workflows already run tests: `qasight init --attach` adds QASight "
+                "to them instead of a second workflow that runs them again.[/]"
+            )
+    if ci_kind != "none" and not edited:
         main_file, side_file = ci_templates.CI_FILES[ci_kind]
         target = repo / main_file
         if target.exists() and not force and side_file != main_file:
@@ -299,6 +322,17 @@ def init(
     if dry_run:
         for target, text, keep in files:
             rel = target.relative_to(repo)
+            if target in edited:
+                console.print(f"\n[bold]--- {rel} (your workflow, changed like this)[/]")
+                before = target.read_text(encoding="utf-8")
+                diff = difflib.unified_diff(
+                    before.splitlines(keepends=True),
+                    text.splitlines(keepends=True),
+                    fromfile=f"a/{rel.as_posix()}",
+                    tofile=f"b/{rel.as_posix()}",
+                )
+                console.print("".join(diff), markup=False, highlight=False, end="")
+                continue
             state = " (exists, would be kept; --force overwrites)" if keep else ""
             console.print(f"\n[bold]--- {rel}{state}[/]")
             if not keep:
@@ -315,7 +349,7 @@ def init(
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
-        console.print(f"[ok]Wrote {rel}[/]")
+        console.print(f"[ok]{'Updated' if target in edited else 'Wrote'} {rel}[/]")
     if ci_hint:
         console.print(f"Your CI file exists, so it was left alone; to use the new one, {ci_hint}")
 
@@ -402,6 +436,45 @@ def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle
         for line in result.todo:
             console.print(f"  {line}", markup=False, highlight=False)
     return False
+
+
+def _attach(
+    console: Console,
+    *,
+    repo: Path,
+    cycle: str,
+    files: list[tuple[Path, str, bool]],
+    forks: bool,
+) -> set[Path]:
+    """``--attach``: queue the edited workflows in *files*; empty when no workflow runs tests."""
+    from qasight.services.ci_attach import plan_attach
+
+    plan = plan_attach(repo, cycle=cycle)
+    if not plan.steps:
+        console.print(
+            "No workflow step runs a test command QASight knows, so a workflow of its own "
+            "is written instead."
+        )
+        for note in plan.notes:
+            console.print(f"  [muted]{note}[/]")
+        return set()
+    console.print("Recording the tests your workflows already run:")
+    for step in plan.steps:
+        change = "adds a result file" if step.edited else "writes results already"
+        console.print(
+            f"  {step.workflow} job {step.job!r}: {step.runner} ({change}: {step.result})",
+            highlight=False,
+        )
+    for note in plan.notes:
+        console.print(f"  [muted]{note}[/]")
+    if forks:
+        console.print(
+            "  [muted]--forks and --server aren't added to existing workflows; add the "
+            "Action's comment-artifact or server-url inputs to the QASight step yourself.[/]"
+        )
+    for path, text in plan.texts.items():
+        files.append((path, text, False))
+    return set(plan.texts)
 
 
 def _print_stages(console: Console, facts: ProjectFacts) -> None:
