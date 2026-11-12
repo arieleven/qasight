@@ -305,7 +305,7 @@ export function ReportDocument({ report, brand = "QASight", copy = true }: { rep
 
       <footer className="mt-10 border-t pt-3 text-[11px]" style={{ borderColor: PAPER.rule, color: PAPER.faint }}>
         Pass rate counts passed tests out of passed, failed and broken ones. Green builds are runs that exited 0. The health score is the same
-        0-100 score as the Project health page. Time to fix is how long a failing test stayed red on the default branch before it passed again
+        0-100 score as the Test health page. Time to fix is how long a failing test stayed red on the default branch before it passed again
         (flaky tests and reruns of the same commit left out). Red time runs from a red run to the next green one.
       </footer>
     </article>

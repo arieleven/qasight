@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-06-25
-updated: 2026-11-04
+updated: 2026-11-12
 ---
 
 # Product Roadmap
@@ -26,6 +26,10 @@ Where QASight (`qasight`, CLI `qasight`) stands today and what comes next. Open 
 | Distribution | 1.2.0 is released: PyPI (`qasight`), GHCR images, and the `v1` Action tag; a GitHub Release publishes all of them ([Publishing to PyPI](../Processes%20&%20Guides/Publishing%20to%20PyPI.md)) |
 
 ## Next
+
+The current ranked list is [Adoption Blockers - 2026-11-12](../Specs%20&%20ADRs/Adoption%20Blockers%20-%202026-11-12.md): what keeps teams from picking QASight first, and which of those code can fix (single sign-on, one-click hosting, live results from pytest, the scorecard in pull requests). What stays stable while it changes is in the [Stability and Deprecation Policy](../Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md).
+
+Earlier lists, mostly done:
 
 The product-side priorities are the Now / Next / Later roadmap in the [Product Review](../product-review.md) (2026-10-24): failing tests first on the run page, the UI shipped in the wheel (`qasight ui`), a main-branch baseline for diffs and the PR comment, and a per-test page. Since this note was last updated, ingest, the team server, parallel stages (`max_parallel_stages`), the API run queue and the security switches all shipped; see the [Specs & ADRs](../Specs%20&%20ADRs/README.md).
 
