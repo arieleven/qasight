@@ -46,6 +46,12 @@ Version 1.1.1 is the first release meant for PyPI; 1.1.0 was never published and
 
 It is released by hand, only when its own version changes (`version` in its `pyproject.toml` and `__version__` in `pytest_qasight/__init__.py`): run **Publish pytest-qasight to PyPI** (`publish-pytest-qasight.yml`) from the Actions tab. It builds, runs `twine check`, installs the wheel with `qasight` from PyPI and records a one-test `pytest --qasight` run, then uploads. Before the first run the PyPI account owner adds a pending publisher like the one above, with project `pytest-qasight`, workflow `publish-pytest-qasight.yml` and environment `pypi`.
 
+## npm: qasight
+
+[`integrations/npm-qasight/`](https://github.com/arieleven/qasight/tree/main/integrations/npm-qasight) is the npm package `qasight`, so JavaScript projects can run `npx qasight init` without Python. It holds one script, `bin/qasight.js`, that runs `uv tool run --from qasight qasight ...` (uv fetches a Python and the package; it installs uv into its cache folder when there is none) and has its own version, independent of qasight's. `tests/unit/qasight/test_npm_wrapper.py` checks the command it builds with a fake uv.
+
+It is released by hand when its version in `package.json` changes: run **Publish qasight to npm** (`publish-npm-qasight.yml`) from the Actions tab. It packs the package, installs the tarball in an empty project and runs `npx qasight --version` against qasight on PyPI, then publishes with provenance. Before the first run the npmjs.com account owner creates the package's trusted publisher (repository `arieleven/qasight`, workflow `publish-npm-qasight.yml`, environment `npm`); as of 2026-11-12 the name `qasight` is free on npm.
+
 ## Version management
 
 - Version is set in `pyproject.toml` under `[project] version`.

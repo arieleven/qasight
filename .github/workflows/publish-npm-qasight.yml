@@ -1,0 +1,47 @@
+name: Publish qasight to npm
+
+# The npm package (integrations/npm-qasight/) only runs the qasight CLI through
+# uv, so it is released by hand when its own version changes, not on every
+# qasight release. Trusted publishing: npmjs.com needs a trusted publisher for
+# package qasight, repository arieleven/qasight, workflow publish-npm-qasight.yml,
+# environment npm.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    name: Publish qasight to npm
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+    defaults:
+      run:
+        working-directory: integrations/npm-qasight
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Run it from the packed tarball
+        run: |
+          npm pack
+          mkdir -p /tmp/smoke && cd /tmp/smoke
+          npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/integrations/npm-qasight/qasight-*.tgz
+          npx --no-install qasight --version | tee out.txt
+          grep -q "^qasight " out.txt
+
+      - name: Publish to npm
+        run: |
+          npm install -g npm@11
+          npm publish --provenance --access public

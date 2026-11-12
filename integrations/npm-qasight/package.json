@@ -1,0 +1,21 @@
+{
+  "name": "qasight",
+  "version": "1.0.0",
+  "description": "QASight without installing Python: npx qasight init records your tests' history, flaky tests and slowdowns.",
+  "keywords": ["testing", "flaky-tests", "test-history", "ci", "junit", "jest", "vitest", "playwright", "cypress"],
+  "homepage": "https://arieleven.github.io/qasight/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arieleven/qasight.git",
+    "directory": "integrations/npm-qasight"
+  },
+  "bugs": "https://github.com/arieleven/qasight/issues",
+  "license": "MIT",
+  "bin": {
+    "qasight": "bin/qasight.js"
+  },
+  "files": ["bin/", "README.md"],
+  "engines": {
+    "node": ">=18"
+  }
+}
