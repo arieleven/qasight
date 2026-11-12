@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient, type CycleSummary } from "../../lib/api-client";
-import { Badge, Button, Card, EmptyState, HealthBar, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { Badge, Button, Card, EmptyState, HealthBar, PageHeader, Spinner, StatusPill, buttonClasses } from "../../components/ui";
 import { formatPercent, formatProvenance, formatRelativeTime } from "../../lib/format";
 import { MuscleShrug } from "../../components/mascot";
 import { IS_STATIC_BUILD, STATIC_LABEL } from "../../lib/static-backend";
@@ -49,6 +49,13 @@ export function CyclesPage() {
             : query.data?.config_path
               ? `Defined in ${query.data.config_path}, plus cycles that only have recorded runs.`
               : "Cycles with recorded runs."
+        }
+        actions={
+          IS_STATIC_BUILD ? undefined : (
+            <Link to="/quick-run" className={buttonClasses("secondary", "sm")} title="Run one framework directly, without a cycle">
+              Quick run
+            </Link>
+          )
         }
       />
       {cycles.length === 0 ? (

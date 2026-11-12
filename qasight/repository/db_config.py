@@ -52,7 +52,7 @@ def resolve_database_url() -> str:
 
     explicit = (os.getenv("DATABASE_URL") or "").strip()
     if explicit:
-        return explicit
+        return normalize_database_url(explicit)
 
     file_url = database_url_from_discovered_config(cwd=Path.cwd())
     if file_url:
@@ -67,6 +67,15 @@ def resolve_database_url() -> str:
         return f"postgresql+psycopg://{user}:{pwd}@{host}:{port}/{db}"
 
     return _DEFAULT_SQLITE_URL
+
+
+def normalize_database_url(url: str) -> str:
+    """Use psycopg 3 for the bare ``postgres://`` / ``postgresql://`` URLs that hosts such as
+    Render, Heroku, Railway and Fly hand out (SQLAlchemy would pick psycopg2, not installed)."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix) :]
+    return url
 
 
 def _dialect(url: str) -> str:

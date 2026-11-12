@@ -252,3 +252,11 @@ New ADR [Release Gate - 2026-11-12](Specs%20&%20ADRs/Release%20Gate%20-%202026-1
 ## 2026-11-12: added Scorecard on MegaLinter
 
 New ADR [Scorecard on MegaLinter - 2026-11-12](Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md): MegaLinter as the scorecard's engine and Sonar and Codacy style scores. Linked from the Index, the Specs README and the docs site menu.
+
+## 2026-11-12: added Adoption Blockers and the Stability Policy
+
+New ADR [Adoption Blockers - 2026-11-12](Specs%20&%20ADRs/Adoption%20Blockers%20-%202026-11-12.md) and guide [Stability and Deprecation Policy](Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md). Linked from the Index, the Specs README and the docs site menu.
+
+## 2026-11-12: added Menu by Question
+
+New ADR [Menu by Question - 2026-11-12](Specs%20&%20ADRs/Menu%20by%20Question%20-%202026-11-12.md): the UI menu grouped by question, Project health renamed Test health and Scorecard renamed Code quality. Linked from the Specs README and the docs site menu.
