@@ -19,11 +19,12 @@ import subprocess
 import tempfile
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from qasight.services.scorecard import megalinter
 from qasight.services.scorecard.ignore import (
     IgnoreRule,
     apply_ignores,
@@ -31,6 +32,7 @@ from qasight.services.scorecard.ignore import (
     load_ignores,
 )
 from qasight.services.scorecard.parsers import ReportError, ToolResult
+from qasight.services.scorecard.paths import RepoProfile, profile
 from qasight.services.scorecard.tools import TOOLS, TOOLS_BY_ID, ScanContext, Tool
 
 DEFAULT_TOOL_TIMEOUT_S = 900
@@ -73,6 +75,9 @@ class ScanOutcome:
     # one): the ones planned plus the ones not installed here. The scorecard's coverage.
     expected: list[str] = field(default_factory=list)
     ignore_file: Path | None = None
+    profile: RepoProfile | None = None
+    # The MegaLinter image the scan ran, when it ran one.
+    engine_image: str | None = None
 
     def not_run(self) -> dict[str, str]:
         """Every tool that gave no result and why, each once: skipped first, then failed."""
@@ -236,6 +241,12 @@ def plan_tools(
         if wanted is None and not enabled.get(tool.id, tool.default_on):
             skipped[tool.id] = "switched off"
             continue
+        if tool.kind == "engine":
+            if megalinter.docker() is None:
+                skipped[tool.id] = f"{NOT_INSTALLED} ({tool.install})"
+            else:
+                run.append(tool)
+            continue
         if tool.kind == "import" or tool.command is None:
             if wanted is not None:
                 skipped[tool.id] = "import only: run it yourself, then `qasight scorecard import`"
@@ -317,6 +328,7 @@ def run_scan(
     on_event: Callable[[Event], None] | None = None,
     ignore_file: Path | None = None,
     record_coverage: Callable[[ScanOutcome], None] | None = None,
+    engine_image: str | None = None,
 ) -> ScanOutcome:
     """Scan ``target`` with every tool that fits; ``record`` stores each result as it comes.
 
@@ -328,17 +340,19 @@ def run_scan(
     ignore_path = ignore_file or find_ignore_file(target.repo)
     ignores: list[IgnoreRule] = load_ignores(ignore_path) if ignore_path else []
     languages = detect_languages(target.repo)
+    repo_profile = profile(target.repo)
     tools, skipped = plan_tools(
         languages=languages, enabled=enabled, only=only, url=url, openapi=openapi
     )
     outcome = ScanOutcome(
         target=target,
         out_dir=out_dir,
-        languages=languages,
+        languages=languages | set(repo_profile.languages),
         skipped=dict(skipped),
         expected=[t.id for t in tools]
         + [t for t, why in skipped.items() if why.startswith(NOT_INSTALLED)],
         ignore_file=ignore_path,
+        profile=repo_profile,
     )
     emit = on_event or (lambda _e: None)
     emit(
@@ -346,9 +360,41 @@ def run_scan(
             "type": "plan",
             "tools": [t.id for t in tools],
             "skipped": skipped,
-            "languages": sorted(languages),
+            "languages": repo_profile.languages or sorted(languages),
+            "source_lines": repo_profile.source_lines,
         }
     )
+
+    def keep(tool_id: str, result: ToolResult) -> ToolResult:
+        result = replace(
+            apply_ignores(tool_id, result, ignores), name=result.name, category=result.category
+        )
+        if "findings" in result.metrics:
+            # Findings are scored per 1,000 lines of the repository's source code.
+            result = replace(
+                result, metrics={**result.metrics, "source_lines": repo_profile.source_lines}
+            )
+        record(tool_id, result)
+        outcome.results[tool_id] = result
+        return result
+
+    engine = next((t for t in tools if t.kind == "engine"), None)
+    if engine is not None:
+        tools.remove(engine)
+        if _run_engine(engine.id, target, outcome, enabled, keep, emit, timeout_s, engine_image):
+            for tool in TOOLS:
+                if not tool.in_engine or tool.id in outcome.results:
+                    continue
+                if tool in tools:
+                    tools.remove(tool)
+                if tool.id in outcome.expected:
+                    outcome.expected.remove(tool.id)
+                outcome.skipped.pop(tool.id, None)
+                if wanted_all(only, tool.id):
+                    outcome.skipped[tool.id] = "MegaLinter ran it (or a tool that does its job)"
+        else:
+            # Without the engine, the scanners installed here run instead (and count).
+            outcome.expected.remove(engine.id)
     for tool in tools:
         tool_dir = out_dir / tool.id
         tool_dir.mkdir(parents=True, exist_ok=True)
@@ -375,9 +421,7 @@ def run_scan(
             continue
         finally:
             outcome.seconds[tool.id] = round(time.monotonic() - started, 1)
-        result = apply_ignores(tool.id, result, ignores)
-        record(tool.id, result)
-        outcome.results[tool.id] = result
+        result = keep(tool.id, result)
         emit(
             {
                 "type": "tool",
@@ -390,6 +434,78 @@ def run_scan(
     if record_coverage is not None:
         record_coverage(outcome)
     return outcome
+
+
+def wanted_all(only: list[str] | None, tool_id: str) -> bool:
+    return only is not None and tool_id in only
+
+
+def _run_engine(
+    engine_id: str,
+    target: ScanTarget,
+    outcome: ScanOutcome,
+    enabled: dict[str, bool],
+    keep: Callable[[str, ToolResult], ToolResult],
+    emit: Callable[[Event], None],
+    timeout_s: int,
+    image: str | None = None,
+) -> bool:
+    """Run MegaLinter and keep a result per linter it ran; False when it ran nothing."""
+    assert outcome.profile is not None
+    off = [
+        tool.removeprefix(megalinter.PREFIX)
+        for tool, on in enabled.items()
+        if tool.startswith(megalinter.PREFIX) and not on
+    ]
+    image = megalinter.image_for(
+        outcome.profile.main_language(), image or os.environ.get("QASIGHT_MEGALINTER_IMAGE")
+    )
+    emit({"type": "tool", "tool": engine_id, "status": "running", "message": image})
+    result = megalinter.run(
+        target.repo,
+        outcome.out_dir / engine_id,
+        main_language=outcome.profile.main_language(),
+        image=image,
+        disabled=off,
+        timeout_s=max(timeout_s, megalinter.DEFAULT_TIMEOUT_S),
+        on_line=lambda line: emit(
+            {"type": "tool", "tool": engine_id, "status": "running", "message": line}
+        ),
+    )
+    outcome.seconds[engine_id] = result.seconds
+    outcome.engine_image = result.image
+    if result.error:
+        outcome.errors[engine_id] = result.error
+        emit({"type": "tool", "tool": engine_id, "status": "error", "message": result.error})
+        return False
+    # The coverage counts each linter MegaLinter ran (or tried to), not the engine as one tool.
+    if engine_id in outcome.expected:
+        outcome.expected.remove(engine_id)
+    outcome.expected += [f"{megalinter.PREFIX}{run.key}" for run in result.runs]
+    for run in result.runs:
+        tool_id = f"{megalinter.PREFIX}{run.key}"
+        if run.error or run.result is None:
+            outcome.errors[tool_id] = run.error or "no result"
+            continue
+        kept = keep(tool_id, replace(run.result, name=run.name, category=run.category))
+        emit(
+            {
+                "type": "tool",
+                "tool": tool_id,
+                "status": "done",
+                "score": kept.score,
+                "message": kept.summary,
+            }
+        )
+    emit(
+        {
+            "type": "tool",
+            "tool": engine_id,
+            "status": "done",
+            "message": f"{len(result.runs)} linters and scanners ran",
+        }
+    )
+    return True
 
 
 def finish(target: ScanTarget) -> None:

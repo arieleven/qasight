@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -12,6 +13,16 @@ from qasight.services.scorecard.tools import TOOLS, TOOLS_BY_ID
 
 MAX_NAME = 255
 MAX_VERSION = 128
+# A linter an engine ran: "megalinter:PYTHON_RUFF".
+_ENGINE_TOOL = re.compile(r"^megalinter:[A-Z0-9][A-Z0-9_]{0,80}$")
+
+
+def is_engine_tool(tool: str) -> bool:
+    return bool(_ENGINE_TOOL.match(tool))
+
+
+def known_tool(tool: str) -> bool:
+    return tool in TOOLS_BY_ID or is_engine_tool(tool)
 
 
 class ScorecardError(ValueError):
@@ -31,6 +42,10 @@ class StoredResult:
     commit_sha: str | None = None
     source: str = "import"
     recorded_at: float = 0.0
+    # Set for a linter an engine ran (not in the tool list): its name and category.
+    name: str | None = None
+    category: str | None = None
+    fingerprints: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -59,7 +74,7 @@ def clean_names(project: str, version: str, tool: str) -> tuple[str, str, str]:
         raise ScorecardError(
             f"project is limited to {MAX_NAME} characters and version to {MAX_VERSION}"
         )
-    if tool not in TOOLS_BY_ID:
+    if not known_tool(tool):
         raise ScorecardError(f"unknown tool {tool!r}; known tools: {', '.join(TOOLS_BY_ID)}")
     return project, version, tool
 
@@ -78,6 +93,9 @@ def _stored(row: Any) -> StoredResult:
         commit_sha=row.commit_sha,
         source=row.source,
         recorded_at=_aware(row.recorded_at).timestamp(),
+        name=details.get("name") or None,
+        category=details.get("category") or None,
+        fingerprints=[str(f) for f in details.get("fingerprints") or []],
     )
 
 
@@ -101,6 +119,8 @@ class ScorecardStore:
         result: ToolResult,
         commit_sha: str | None = None,
         source: str = "import",
+        name: str | None = None,
+        category: str | None = None,
     ) -> StoredResult:
         """Save ``tool``'s result for ``project`` at ``version``, replacing an earlier one."""
         return self.record_raw(
@@ -114,6 +134,9 @@ class ScorecardStore:
             findings=[f.to_dict() for f in result.findings],
             commit_sha=commit_sha,
             source=source,
+            name=name or result.name,
+            category=category or result.category,
+            fingerprints=list(result.fingerprints),
         )
 
     def record_raw(
@@ -129,6 +152,9 @@ class ScorecardStore:
         findings: list[dict[str, str]] | None = None,
         commit_sha: str | None = None,
         source: str = "import",
+        name: str | None = None,
+        category: str | None = None,
+        fingerprints: list[str] | None = None,
     ) -> StoredResult:
         from sqlmodel import Session
 
@@ -154,6 +180,13 @@ class ScorecardStore:
                     }
                     for f in (findings or [])[:50]
                 ],
+                **({"name": name[:120]} if name else {}),
+                **({"category": category[:32]} if category else {}),
+                **(
+                    {"fingerprints": [str(f)[:40] for f in fingerprints[:5000]]}
+                    if fingerprints
+                    else {}
+                ),
             },
             commit_sha=(commit_sha or None) and commit_sha[:64],
             source=source[:32],
@@ -199,8 +232,8 @@ class ScorecardStore:
             project=project,
             version=version,
             details={
-                "expected": [t for t in expected if t in TOOLS_BY_ID],
-                "missing": {t: str(why)[:300] for t, why in missing.items() if t in TOOLS_BY_ID},
+                "expected": [t for t in expected if known_tool(t)],
+                "missing": {t: str(why)[:300] for t, why in missing.items() if known_tool(t)},
                 "languages": list(languages or []),
             },
             recorded_at=datetime.now(tz=UTC),
@@ -271,14 +304,17 @@ class ScorecardStore:
             stored = {
                 row.tool: row.enabled for row in session.exec(select(ScorecardToolSetting)).all()
             }
-        return {tool.id: stored.get(tool.id, tool.default_on) for tool in TOOLS}
+        out = {tool.id: stored.get(tool.id, tool.default_on) for tool in TOOLS}
+        # Linters an engine ran are on unless switched off.
+        out.update({k: v for k, v in stored.items() if is_engine_tool(k)})
+        return out
 
     def set_enabled(self, tool: str, enabled: bool) -> None:
         from sqlmodel import Session
 
         from qasight.repository.models import ScorecardToolSetting
 
-        if tool not in TOOLS_BY_ID:
+        if not known_tool(tool):
             raise ScorecardError(f"unknown tool {tool!r}; known tools: {', '.join(TOOLS_BY_ID)}")
         with Session(self._engine) as session:
             session.merge(

@@ -7438,6 +7438,17 @@
             ],
             "title": "Score"
           },
+          "source_lines": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Lines"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -7481,7 +7492,8 @@
           "categories",
           "tools",
           "coverage",
-          "versions"
+          "versions",
+          "source_lines"
         ],
         "title": "ScorecardResponse",
         "type": "object"
@@ -7489,6 +7501,18 @@
       "ScorecardResultRequest": {
         "description": "A tool result parsed by the client (``qasight scorecard import|scan --server``).",
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "commit_sha": {
             "anyOf": [
               {
@@ -7516,6 +7540,14 @@
             "title": "Findings",
             "type": "array"
           },
+          "fingerprints": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5000,
+            "title": "Fingerprints",
+            "type": "array"
+          },
           "metrics": {
             "additionalProperties": {
               "anyOf": [
@@ -7532,6 +7564,18 @@
             },
             "title": "Metrics",
             "type": "object"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "project": {
             "maxLength": 255,
@@ -7552,7 +7596,7 @@
             "type": "string"
           },
           "tool": {
-            "maxLength": 64,
+            "maxLength": 96,
             "minLength": 1,
             "title": "Tool",
             "type": "string"
@@ -7823,6 +7867,11 @@
             "title": "Id",
             "type": "string"
           },
+          "in_engine": {
+            "default": false,
+            "title": "In Engine",
+            "type": "boolean"
+          },
           "install": {
             "default": "",
             "title": "Install",
@@ -7877,7 +7926,8 @@
           "default_on",
           "enabled",
           "installed",
-          "install"
+          "install",
+          "in_engine"
         ],
         "title": "ScorecardToolItem",
         "type": "object"
@@ -7938,6 +7988,20 @@
             "title": "Name",
             "type": "string"
           },
+          "new_counts": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Counts"
+          },
           "previous_score": {
             "anyOf": [
               {
@@ -7983,7 +8047,8 @@
           "findings",
           "recorded_at",
           "source",
-          "commit_sha"
+          "commit_sha",
+          "new_counts"
         ],
         "title": "ScorecardToolScoreItem",
         "type": "object"
@@ -12342,7 +12407,7 @@
     },
     "/api/v1/scorecard/tools/{tool_id}": {
       "put": {
-        "description": "Switch a tool on or off: scans skip it and scores leave it out.",
+        "description": "Switch a tool (or a linter MegaLinter ran) on or off: scans skip it and scores leave it out.",
         "operationId": "set_scorecard_tool_api_v1_scorecard_tools__tool_id__put",
         "parameters": [
           {

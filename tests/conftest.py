@@ -453,3 +453,15 @@ def isolated_history_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
     yield
     db.reset_repository_cache()
     db_config.reset_engine_cache()
+
+
+@pytest.fixture(autouse=True)
+def no_megalinter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scorecard scans in tests never start MegaLinter, even where Docker is installed.
+
+    A real run pulls a multi-GB image and lints for minutes (CI runners have Docker).
+    Tests of the engine patch ``megalinter.docker`` and ``megalinter.run`` themselves.
+    """
+    from qasight.services.scorecard import megalinter
+
+    monkeypatch.setattr(megalinter, "docker", lambda: None)

@@ -200,7 +200,7 @@ environment; it is never written to the site.
 
 The same site also carries the docs: the `build` job runs `mkdocs build --strict --site-dir public/docs`, so the vault is at `https://arieleven.github.io/qasight/docs/` ([Docs Site](../Specs%20&%20ADRs/Docs%20Site%20-%202026-10-19.md)). Pull requests that touch `mkdocs.yml` or `scripts/mkdocs_hooks.py` build it too.
 
-The GitHub build also fills the Scorecard page: `qasight scorecard scan` on QASight's last two release tags, on `main` and on fake-api, with the tools that install from PyPI (Bandit, pip-audit, zizmor, Ruff). A scan that fails doesn't fail the build.
+The GitHub build also fills the Scorecard page: `qasight scorecard scan` on QASight's last two release tags, on `main` and on fake-api, with the tools that install from PyPI (Bandit, pip-audit, npm audit, zizmor, Ruff; `--tools`, so MegaLinter doesn't run there). A scan that fails doesn't fail the build.
 
 Run history is restored from and saved to the Actions cache under a fresh key
 per run (`testo-demo-history-<run_id>`, restored by prefix), because Actions

@@ -245,6 +245,10 @@ New ADR [External Audit Tools - 2026-11-11](Specs%20&%20ADRs/External%20Audit%20
 
 New ADR [Release Scorecard - 2026-11-12](Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md): the `qasight scorecard` tools, scores, scans of any repository and the release gate. Linked from the Index, the Specs README and the docs site menu.
 
+## 2026-11-12: added Scorecard on MegaLinter
+
+New ADR [Scorecard on MegaLinter - 2026-11-12](Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md): MegaLinter as the scorecard's engine and Sonar and Codacy style scores. Linked from the Index, the Specs README and the docs site menu.
+
 ## 2026-11-12: added Adoption Blockers and the Stability Policy
 
 New ADR [Adoption Blockers - 2026-11-12](Specs%20&%20ADRs/Adoption%20Blockers%20-%202026-11-12.md) and guide [Stability and Deprecation Policy](Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md). Linked from the Index, the Specs README and the docs site menu.

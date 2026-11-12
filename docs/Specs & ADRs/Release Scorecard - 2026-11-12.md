@@ -3,7 +3,7 @@ type: spec
 status: current
 created: 2026-11-12
 updated: 2026-11-12
-related: "Command Reference, CI-CD Pipeline Setup, Releases"
+related: "Scorecard on MegaLinter - 2026-11-12, Command Reference, CI-CD Pipeline Setup, Releases"
 ---
 
 # Release Scorecard
@@ -17,7 +17,7 @@ The same should work on any repository, not only the one QASight tests: a git UR
 ## Decision
 
 - **One score per tool, per version, per project.** `qasight/services/scorecard/` keeps a registry of 20 tools (`tools.py`), a parser per report format (`parsers.py`: SARIF, Bandit, Ruff, pip-audit, npm audit, gitleaks, Trivy, OpenSSF Scorecard, ZAP, axe, Lighthouse, k6, Locust, JUnit, coverage, mutation). Results live in the run-history database, table `scorecard_result` (revision `0007`), one row per project, version and tool; a newer report replaces it.
-- **Scores are computed, not judged.** Findings tools lose points per kind of finding by severity (critical 25, high 10, medium 4, low 1), repeats on a log scale, on a curve where 100 points halve the score: never a flat 0, so a big repository's versions stay comparable. Ratio tools (Lighthouse, coverage, mutation, Schemathesis, Scorecard, load) use their own share. A category's score is the mean of its switched-on tools; the overall score is the mean of the categories, so ten linters don't outweigh one load test. No AI.
+- **Scores are computed, not judged.** (How findings are scored and which tools run changed the same day: see [Scorecard on MegaLinter](Scorecard%20on%20MegaLinter%20-%202026-11-12.md).) Findings tools lose points per kind of finding by severity (critical 25, high 10, medium 4, low 1), repeats on a log scale, on a curve where 100 points halve the score: never a flat 0, so a big repository's versions stay comparable. Ratio tools (Lighthouse, coverage, mutation, Schemathesis, Scorecard, load) use their own share. A category's score is the mean of its switched-on tools; the overall score is the mean of the categories, so ten linters don't outweigh one load test. No AI.
 - **Versions compare by number.** The previous version is the one before by PEP 440 order (`1.10` after `1.9`) when every version parses, else by when it was first scored.
 - **Tools switch on and off** (table `scorecard_tool`): a switched-off tool is skipped by scans and left out of the score, but still shown.
 - **Scans run tools, not cycles.** `qasight scorecard scan TARGET` (and the UI's "Scan a repository", `POST /api/v1/scorecard/scans`) clones a git URL shallow or uses a folder, detects its languages (python, node, c, GitHub Actions), and runs the switched-on tools that fit and are installed, each with a time limit. App tools (ZAP, Lighthouse, axe, k6, Schemathesis) run only with `--url` / `--openapi`. A scan is not a cycle on purpose: these tools aren't test runners, their exit codes mean "found something", and their results are scores, not test cases. Cycles still go through `CycleRunService` only. QASight never installs a tool; a missing one is listed with its install command.

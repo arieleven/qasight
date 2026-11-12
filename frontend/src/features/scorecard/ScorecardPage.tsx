@@ -35,18 +35,80 @@ function saveLocalChoices(choices: Record<string, boolean>) {
   }
 }
 
-/** The same roll-up as the server (qasight/services/scorecard/report.py): category = mean of its on tools, overall = mean of categories. */
-export function rollUp(tools: ScorecardToolScoreItem[], isOn: (tool: string) => boolean, pick: (t: ScorecardToolScoreItem) => number | null | undefined) {
+// Same rating as the server (qasight/services/scorecard/rating.py): security and dependencies by their
+// worst finding (SonarQube's security rating), code quality by weighted issues per 1,000 source lines.
+const DENSITY_WEIGHTS: Record<string, number> = { critical: 10, high: 5, medium: 2, low: 0.5, info: 0.1 };
+const DENSITY_CURVE: [number, number][] = [
+  [0, 100],
+  [2, 90],
+  [5, 80],
+  [10, 70],
+  [25, 60],
+  [100, 30]
+];
+const WORST_BANDS: [string, number, number][] = [
+  ["critical", 59, 20],
+  ["high", 69, 60],
+  ["medium", 79, 70],
+  ["low", 89, 80]
+];
+const WORST_FINDING_CATEGORIES = new Set(["security", "supply-chain"]);
+const MIN_LINES = 1000;
+const halfUp = (value: number) => Math.floor(value + 0.5);
+
+export function findingsScore(category: string, counts: Record<string, number>, sourceLines: number): number {
+  if (WORST_FINDING_CATEGORIES.has(category)) {
+    for (const [severity, top, bottom] of WORST_BANDS) {
+      const n = counts[severity] ?? 0;
+      if (n) return halfUp(Math.max(bottom, top - 2 * Math.log2(n)));
+    }
+    return 100;
+  }
+  const points = Object.entries(counts).reduce((sum, [severity, n]) => sum + (DENSITY_WEIGHTS[severity] ?? 0) * n, 0);
+  const density = (points * 1000) / Math.max(sourceLines, MIN_LINES);
+  for (let i = 1; i < DENSITY_CURVE.length; i += 1) {
+    const [x0, y0] = DENSITY_CURVE[i - 1];
+    const [x1, y1] = DENSITY_CURVE[i];
+    if (density <= x1) return halfUp(y0 + ((y1 - y0) * (density - x0)) / (x1 - x0));
+  }
+  const [lastX, lastY] = DENSITY_CURVE[DENSITY_CURVE.length - 1];
+  return Math.max(0, halfUp((lastY * lastX) / density));
+}
+
+const isFindingsTool = (tool: ScorecardToolScoreItem) => "findings" in (tool.metrics ?? {});
+
+/**
+ * The same roll-up as the server (qasight/services/scorecard/report.py): in a category, the findings of all its
+ * on scanners are rated together against the repository's size; tools that measure something else keep their own
+ * score and are averaged in. Overall = mean of the categories that have a score.
+ */
+export function rollUp(
+  tools: ScorecardToolScoreItem[],
+  isOn: (tool: string) => boolean,
+  pick: (t: ScorecardToolScoreItem) => number | null | undefined,
+  sourceLines?: number | null
+) {
   const byCategory = new Map<string, number[]>();
+  const counts = new Map<string, Record<string, number>>();
   for (const tool of tools) {
     const value = pick(tool);
-    if (!isOn(tool.tool) || value == null) continue;
-    byCategory.set(tool.category, [...(byCategory.get(tool.category) ?? []), value]);
+    // Advisory linters repeat the project's own choice on default rules: shown, not scored.
+    if (!isOn(tool.tool) || value == null || tool.metrics?.advisory) continue;
+    if (sourceLines && isFindingsTool(tool)) {
+      const total = counts.get(tool.category) ?? {};
+      for (const [severity, n] of Object.entries(tool.counts ?? {})) total[severity] = (total[severity] ?? 0) + n;
+      counts.set(tool.category, total);
+    } else {
+      byCategory.set(tool.category, [...(byCategory.get(tool.category) ?? []), value]);
+    }
+  }
+  for (const [category, total] of counts) {
+    byCategory.set(category, [...(byCategory.get(category) ?? []), findingsScore(category, total, sourceLines ?? 0)]);
   }
   const categories = new Map<string, number>();
-  for (const [key, values] of byCategory) categories.set(key, Math.round(values.reduce((a, b) => a + b, 0) / values.length));
+  for (const [key, values] of byCategory) categories.set(key, halfUp(values.reduce((a, b) => a + b, 0) / values.length));
   const all = [...categories.values()];
-  const score = all.length ? Math.round(all.reduce((a, b) => a + b, 0) / all.length) : null;
+  const score = all.length ? halfUp(all.reduce((a, b) => a + b, 0) / all.length) : null;
   return { score, categories };
 }
 
@@ -80,8 +142,11 @@ function Delta({ score, previous, label }: { score: number | null | undefined; p
 
 const SEVERITY_TONE: Record<string, "danger" | "warn" | "neutral"> = { critical: "danger", high: "danger", medium: "warn", low: "neutral", info: "neutral" };
 
-function toolStatus(tool: ScorecardToolItem): string | null {
+function toolStatus(tool: ScorecardToolItem, engineRan: boolean): string | null {
   if (tool.kind === "import") return "Import its report";
+  if (tool.kind === "engine" && tool.installed === false) return "Needs Docker or Podman on this machine";
+  if (tool.in_engine && engineRan) return "MegaLinter ran it for this version";
+  if (tool.in_engine) return "Runs on its own when MegaLinter can't";
   if (tool.installed === false) return "Not installed here";
   if (tool.kind === "app") return "Needs a running app";
   return null;
@@ -92,17 +157,20 @@ function ToolTile({
   result,
   on,
   previousVersion,
+  engineRan = false,
   onToggle
 }: {
   tool: ScorecardToolItem;
   result?: ScorecardToolScoreItem;
   on: boolean;
   previousVersion?: string | null;
+  engineRan?: boolean;
   onToggle: (on: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
-  const status = toolStatus(tool);
+  const status = toolStatus(tool, engineRan);
+  const fresh = Object.entries(result?.new_counts ?? {}).reduce((sum, [, n]) => sum + n, 0);
   const tone = scoreTone(result?.score);
   return (
     <li
@@ -126,6 +194,11 @@ function ToolTile({
                   {result.score}
                 </span>
                 <Delta score={result.score} previous={result.previous_score} label={previousVersion ?? undefined} />
+                {fresh > 0 ? (
+                  <Badge tone="warn" title={previousVersion ? `Not found in ${previousVersion}` : undefined}>
+                    {fresh} new
+                  </Badge>
+                ) : null}
               </span>
             ) : null}
           </span>
@@ -148,10 +221,12 @@ function ToolTile({
             <span className="font-semibold text-ink-200">Score: </span>
             {tool.how}
           </p>
-          <p>
-            <span className="font-semibold text-ink-200">Reads: </span>
-            {tool.report}
-          </p>
+          {tool.report ? (
+            <p>
+              <span className="font-semibold text-ink-200">Reads: </span>
+              {tool.report}
+            </p>
+          ) : null}
           {tool.install ? (
             <p>
               <span className="font-semibold text-ink-200">Install: </span>
@@ -187,9 +262,17 @@ function ToolTile({
   );
 }
 
-function ScoreSummary({ card, isOn }: { card: ScorecardResponse; isOn: (tool: string) => boolean }) {
-  const now = rollUp(card.tools, isOn, (t) => t.score);
-  const before = rollUp(card.tools, isOn, (t) => t.previous_score);
+function ScoreSummary({ card, isOn, allOn }: { card: ScorecardResponse; isOn: (tool: string) => boolean; allOn: boolean }) {
+  const now = rollUp(card.tools, isOn, (t) => t.score, card.source_lines);
+  // With every tool as the server scored it, its numbers for the version before are exact; after a switch,
+  // the version before is re-estimated from each tool's own score.
+  const estimate = rollUp(card.tools, isOn, (t) => t.previous_score);
+  const before = allOn
+    ? {
+        score: card.previous_score ?? null,
+        categories: new Map(card.categories.filter((c) => c.previous_score != null).map((c) => [c.key, c.previous_score as number]))
+      }
+    : estimate;
   const graded = cappedGrade(now.score, card.coverage);
   const [copied, setCopied] = useState<string | null>(null);
   const copyMarkdown = async () => {
@@ -482,7 +565,9 @@ export function ScorecardPage() {
   });
 
   const items = useMemo(() => tools.data?.items ?? [], [tools.data]);
-  const isOn = (tool: string) => local[tool] ?? items.find((t) => t.id === tool)?.enabled ?? true;
+  const data = card.data?.status === "available" ? card.data : null;
+  const results = new Map((data?.tools ?? []).map((t) => [t.tool, t]));
+  const isOn = (tool: string) => local[tool] ?? items.find((t) => t.id === tool)?.enabled ?? results.get(tool)?.enabled ?? true;
   const setOn = (tool: string, on: boolean) => {
     if (IS_STATIC_BUILD) {
       const next = { ...local, [tool]: on };
@@ -493,10 +578,34 @@ export function ScorecardPage() {
     }
   };
 
-  const data = card.data?.status === "available" ? card.data : null;
-  const results = new Map((data?.tools ?? []).map((t) => [t.tool, t]));
   const categories = [...new Set(items.map((t) => t.category))];
-  const onCount = items.filter((t) => isOn(t.id)).length;
+  const engineName = items.find((t) => t.kind === "engine")?.name ?? "MegaLinter";
+  const engineHow = items.find((t) => t.kind === "engine")?.how ?? "";
+  const categoryNames = new Map(items.map((t) => [t.category, t.category_name]));
+  // The linters MegaLinter ran for this version: not a fixed list, they depend on the repository.
+  const ranByEngine: ScorecardToolItem[] = (data?.tools ?? [])
+    .filter((t) => t.tool.startsWith("megalinter:"))
+    .map((t) => ({
+      id: t.tool,
+      name: t.name,
+      category: t.category,
+      category_name: categoryNames.get(t.category) ?? t.category,
+      tagline: `${categoryNames.get(t.category) ?? t.category}, run by ${engineName}`,
+      how: engineHow,
+      homepage: `https://megalinter.io/latest/descriptors/${t.tool.slice("megalinter:".length).toLowerCase()}/`,
+      kind: "linter",
+      report: "",
+      languages: [],
+      default_on: true,
+      enabled: t.enabled,
+      installed: null,
+      install: "",
+      in_engine: false
+    }));
+  const engineRan = ranByEngine.length > 0;
+  const allTiles = [...items, ...ranByEngine];
+  const onCount = allTiles.filter((t) => isOn(t.id)).length;
+  const allOn = Object.keys(local).every((tool) => local[tool] === (items.find((t) => t.id === tool)?.enabled ?? results.get(tool)?.enabled ?? true));
 
   const pick = (nextProject: string, nextVersion: string) => {
     const next: Record<string, string> = {};
@@ -509,7 +618,7 @@ export function ScorecardPage() {
     <section className="space-y-6">
       <PageHeader
         title="Release scorecard"
-        subtitle="Security, dependency, API, web, load and test tools run on a version of any repository, scored 0-100 and compared with the version before."
+        subtitle="MegaLinter picks the linters and scanners that fit any repository; with the API, web, load and test tools they score a version 0-100 and compare it with the version before."
         actions={
           <Pickers
             project={data?.project ?? project}
@@ -529,7 +638,7 @@ export function ScorecardPage() {
         <EmptyState mascot={<MuscleShrug />} title="Couldn't load the scorecard" message={card.error instanceof Error ? card.error.message : undefined} />
       ) : data ? (
         <>
-          <ScoreSummary card={data} isOn={isOn} />
+          <ScoreSummary card={data} isOn={isOn} allOn={allOn} />
           <Versions card={data} onPick={(v) => pick(data.project ?? "", v)} />
         </>
       ) : (
@@ -546,7 +655,7 @@ export function ScorecardPage() {
 
       <Card
         title="Tools"
-        actions={<span className="text-xs text-ink-400">{`${onCount} of ${items.length} on`}</span>}
+        actions={<span className="text-xs text-ink-400">{`${onCount} of ${allTiles.length} on`}</span>}
         data-testid="scorecard-tools"
       >
         <p className="text-sm text-ink-300">
@@ -572,6 +681,7 @@ export function ScorecardPage() {
                         result={results.get(tool.id)}
                         on={isOn(tool.id)}
                         previousVersion={data?.previous_version}
+                        engineRan={engineRan}
                         onToggle={(on) => setOn(tool.id, on)}
                       />
                     ))}
@@ -579,6 +689,26 @@ export function ScorecardPage() {
                 </div>
               );
             })}
+            {engineRan ? (
+              <div data-testid="scorecard-engine-linters">
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">Run by {engineName} for this version</h3>
+                <p className="mb-2 text-xs text-ink-400">
+                  {engineName} picked these from the repository&apos;s files. Switch one off and the next scan skips it.
+                </p>
+                <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {ranByEngine.map((tool) => (
+                    <ToolTile
+                      key={tool.id}
+                      tool={tool}
+                      result={results.get(tool.id)}
+                      on={isOn(tool.id)}
+                      previousVersion={data?.previous_version}
+                      onToggle={(on) => setOn(tool.id, on)}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         )}
         {toggle.error instanceof Error ? (

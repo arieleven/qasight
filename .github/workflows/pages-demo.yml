@@ -109,16 +109,19 @@ jobs:
 
       # The Scorecard page: QASight's last two releases and this commit, and fake-api,
       # scanned with the tools that install from PyPI (no account, no network service).
+      # MegaLinter is left out here: four full scans would add half an hour to every deploy.
       - name: Score QASight and fake-api
+        env:
+          TOOLS: bandit,pip-audit,npm-audit,zizmor,ruff
         run: |
           python -m pip install bandit pip-audit zizmor
           for tag in $(git ls-remote --tags --refs origin 'v*' | awk -F/ '{print $3}' | sort -V | tail -n 2); do
             git fetch --quiet --depth 1 origin tag "$tag"
             git worktree add -q "../qasight-$tag" "$tag"
-            qasight scorecard scan "../qasight-$tag" --project qasight --version "${tag#v}" --out "scorecard/$tag" || true
+            qasight scorecard scan "../qasight-$tag" --project qasight --version "${tag#v}" --out "scorecard/$tag" --tools "$TOOLS" || true
           done
-          qasight scorecard scan . --project qasight --version main --out scorecard/main || true
-          qasight scorecard scan .demo/fake-api --project fake-api --out scorecard/fake-api || true
+          qasight scorecard scan . --project qasight --version main --out scorecard/main --tools "$TOOLS" || true
+          qasight scorecard scan .demo/fake-api --project fake-api --out scorecard/fake-api --tools "$TOOLS" || true
 
       - name: Export the API as static JSON
         env:
