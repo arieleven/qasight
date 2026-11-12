@@ -143,7 +143,6 @@ class ScorecardScanManager:
                 url=request.url or None,
                 openapi=request.openapi or None,
                 on_event=lambda e: self._event(state, e),
-                semgrep_config=getattr(request, "semgrep_config", None) or None,
                 record_coverage=lambda o: store.record_coverage(
                     project=target.project,
                     version=target.version,

@@ -1561,8 +1561,6 @@ class ScorecardScanRequest(BaseModel):
     url: str | None = Field(default=None, max_length=1024)
     openapi: str | None = Field(default=None, max_length=1024)
     tools: list[str] | None = None
-    # Semgrep rules on the server (a folder of semgrep-rules) instead of p/default from semgrep.dev.
-    semgrep_config: str | None = Field(default=None, max_length=1024)
 
 
 class ScorecardScanToolItem(ApiModel):

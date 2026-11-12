@@ -325,46 +325,11 @@ def parse_pip_audit(path: Path) -> ToolResult:
 # --- JavaScript ------------------------------------------------------------------
 
 
-def _yarn_audit(path: Path) -> dict[str, Any] | None:
-    """``yarn audit --json`` (yarn 1) prints one JSON object per line: the advisories, as npm 6's shape."""
-    try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return None
-    advisories: dict[str, Any] = {}
-    seen_yarn = False
-    for line in lines:
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(event, dict) or "type" not in event:
-            continue
-        seen_yarn = True
-        advisory = ((event.get("data") or {}) if event["type"] == "auditAdvisory" else {}).get(
-            "advisory"
-        )
-        if isinstance(advisory, dict):
-            # yarn repeats an advisory once per path to it; count it once.
-            key = str(advisory.get("id") or advisory.get("url") or advisory.get("title"))
-            advisories[key] = advisory
-    return {"advisories": advisories} if seen_yarn else None
-
-
 def parse_npm_audit(path: Path) -> ToolResult:
-    """npm audit, ``pnpm audit --json`` (npm 6's shape) or ``yarn audit --json`` (NDJSON)."""
-    try:
-        data = _load_json(path)
-    except ReportError:
-        data = _yarn_audit(path)
-        if data is None:
-            raise
+    data = _load_json(path)
     _expect(
         isinstance(data, dict) and ("vulnerabilities" in data or "advisories" in data),
-        "expected npm audit --json, pnpm audit --json or yarn audit --json output",
+        "expected npm audit --json output",
     )
     findings: list[Finding] = []
     for name, vuln in (data.get("vulnerabilities") or {}).items():
@@ -475,77 +440,6 @@ def _with_note(result: ToolResult, note: str) -> ToolResult:
     from dataclasses import replace
 
     return replace(result, summary=f"{result.summary}; {note}")
-
-
-def parse_bundler_audit(path: Path) -> ToolResult:
-    """bundler-audit's JSON (``bundle-audit check --format json``): Ruby gems with advisories."""
-    data = _load_json(path)
-    _expect(
-        isinstance(data, dict) and isinstance(data.get("results"), list),
-        "expected bundler-audit's JSON report (bundle-audit check --format json)",
-    )
-    findings: list[Finding] = []
-    for r in data["results"]:
-        if not isinstance(r, dict):
-            continue
-        gem = r.get("gem") or {}
-        adv = r.get("advisory") or {}
-        if r.get("type") == "insecure_source":
-            findings.append(
-                Finding("medium", "insecure gem source", _short(r.get("source")), "Gemfile.lock")
-            )
-            continue
-        ident = adv.get("cve") and f"CVE-{adv['cve']}" or adv.get("ghsa") or adv.get("id") or ""
-        patched = ", ".join(adv.get("patched_versions") or [])
-        findings.append(
-            Finding(
-                severity_of(adv.get("criticality"), "high"),
-                f"{gem.get('name', '')} {gem.get('version', '')}".strip(),
-                _short(f"{ident}: {adv.get('title', '')}. Fixed in {patched or 'no release yet'}"),
-                str(gem.get("name") or ""),
-            )
-        )
-    return from_findings(findings, what="vulnerable gem", clean="No known vulnerabilities")
-
-
-def _cvss_severity(raw: Any) -> str | None:
-    try:
-        value = float(raw)
-    except (TypeError, ValueError):
-        return None
-    return "critical" if value >= 9 else "high" if value >= 7 else "medium" if value >= 4 else "low"
-
-
-def parse_osv_scanner(path: Path) -> ToolResult:
-    """osv-scanner's JSON (``--format json``): packages in any lock file with known vulnerabilities."""
-    data = _load_json(path)
-    _expect(
-        isinstance(data, dict) and "results" in data,
-        "expected osv-scanner's JSON output (osv-scanner --format json)",
-    )
-    findings: list[Finding] = []
-    for result in data.get("results") or []:
-        source = str(((result or {}).get("source") or {}).get("path") or "")
-        for pkg in (result or {}).get("packages") or []:
-            info = (pkg or {}).get("package") or {}
-            name = f"{info.get('name', '')} {info.get('version', '')}".strip()
-            vulns = {str(v.get("id")): v for v in pkg.get("vulnerabilities") or [] if v}
-            groups = pkg.get("groups") or [{"ids": [i]} for i in vulns]
-            for group in groups:
-                ids = [str(i) for i in group.get("ids") or []]
-                first = vulns.get(ids[0], {}) if ids else {}
-                severity = _cvss_severity(group.get("max_severity")) or severity_of(
-                    (first.get("database_specific") or {}).get("severity"), "medium"
-                )
-                findings.append(
-                    Finding(
-                        severity,
-                        name or "package",
-                        _short(f"{', '.join(ids)}: {first.get('summary', '')}"),
-                        source,
-                    )
-                )
-    return from_findings(findings, what="vulnerable package", clean="No known vulnerabilities")
 
 
 def parse_trivy(path: Path) -> ToolResult:
@@ -939,8 +833,6 @@ PARSERS: dict[str, Callable[[Path], ToolResult]] = {
     "pip-audit": parse_pip_audit,
     "npm-audit": parse_npm_audit,
     "gitleaks": parse_gitleaks,
-    "bundler-audit": parse_bundler_audit,
-    "osv-scanner": parse_osv_scanner,
     "trivy": parse_trivy,
     "openssf-scorecard": parse_openssf_scorecard,
     "zap": parse_zap,

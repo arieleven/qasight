@@ -290,11 +290,6 @@ def scan_cmd(
     no_drop: bool = typer.Option(
         False, "--no-drop", help="Exit 1 when a tool scores lower than on the previous version."
     ),
-    semgrep_config: str | None = typer.Option(
-        None,
-        "--semgrep-config",
-        help="Semgrep rules: a local folder or file (a clone of semgrep-rules) or a registry name. Default p/default, which needs semgrep.dev.",
-    ),
     ignore: Path | None = typer.Option(
         None,
         "--ignore",
@@ -360,7 +355,6 @@ def scan_cmd(
             openapi=openapi,
             timeout_s=timeout,
             on_event=show,
-            semgrep_config=semgrep_config,
             ignore_file=ignore,
             record_coverage=(
                 (

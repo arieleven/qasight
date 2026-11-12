@@ -3774,8 +3774,6 @@ export interface components {
             project?: string | null;
             /** Ref */
             ref?: string | null;
-            /** Semgrep Config */
-            semgrep_config?: string | null;
             /** Target */
             target: string;
             /** Tools */

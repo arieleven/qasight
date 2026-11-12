@@ -46,8 +46,6 @@ class ScanContext:
     openapi: str | None = None
     # "owner/name" when the code is on GitHub (OpenSSF Scorecard reads it there).
     github_repo: str | None = None
-    # Semgrep rules: a registry name (p/default) or a local folder or file of rules.
-    semgrep_config: str | None = None
 
 
 @dataclass(frozen=True)
@@ -97,43 +95,6 @@ _FINDINGS_HOW = (
 )
 
 
-# Folders never searched for manifests: vendored code and build output.
-SKIP_DIRS = frozenset(
-    {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".tox", "vendor"}
-)
-
-
-def manifest_dirs(repo: Path, names: tuple[str, ...], depth: int = 2) -> list[Path]:
-    """Folders up to ``depth`` levels below ``repo`` (the root first) holding any of ``names``."""
-    found: list[Path] = []
-    level = [repo]
-    for _ in range(depth + 1):
-        found += [d for d in level if any((d / n).is_file() for n in names)]
-        nxt: list[Path] = []
-        for d in level:
-            try:
-                children = sorted(p for p in d.iterdir() if p.is_dir())
-            except OSError:
-                continue
-            nxt += [c for c in children if c.name not in SKIP_DIRS and not c.name.startswith(".")]
-        level = nxt
-    return found
-
-
-def has_ruff_config(repo: Path) -> bool:
-    """A ruff.toml, .ruff.toml or a pyproject.toml with [tool.ruff] in the repository's top two levels."""
-    for folder in manifest_dirs(repo, ("ruff.toml", ".ruff.toml", "pyproject.toml")):
-        if (folder / "ruff.toml").is_file() or (folder / ".ruff.toml").is_file():
-            return True
-        try:
-            text = (folder / "pyproject.toml").read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        if "[tool.ruff" in text:
-            return True
-    return False
-
-
 def _bandit(ctx: ScanContext) -> Command:
     skip = ",".join(
         f"./{d}"
@@ -146,59 +107,36 @@ def _bandit(ctx: ScanContext) -> Command:
 
 
 def _ruff(ctx: ScanContext) -> Command:
-    argv = ["ruff", "check", ".", "--output-format", "json", "--exit-zero", "--no-cache"]
-    if not has_ruff_config(ctx.repo):
-        # No config of its own: Ruff's default rules only, never a config from a folder above
-        # the repository or the user's own (it would judge the repo by someone else's style).
-        argv.append("--isolated")
-    return Command(argv, ctx.repo, stdout_is_report=True)
+    return Command(
+        ["ruff", "check", ".", "--output-format", "json", "--exit-zero", "--no-cache"],
+        ctx.repo,
+        stdout_is_report=True,
+    )
 
 
 def _pip_audit(ctx: ScanContext) -> Command | None:
-    # The root, else the first folder up to two levels down with a requirements file or project.
-    folders = manifest_dirs(ctx.repo, ("requirements.txt", "pyproject.toml", "setup.py"))
-    if not folders:
+    if (ctx.repo / "requirements.txt").is_file():
+        target = ["-r", "requirements.txt"]
+    elif (ctx.repo / "pyproject.toml").is_file() or (ctx.repo / "setup.py").is_file():
+        target = ["."]
+    else:
         return None
-    folder = folders[0]
-    target = ["-r", "requirements.txt"] if (folder / "requirements.txt").is_file() else ["."]
     return Command(
         ["pip-audit", *target, "-f", "json", "-o", str(ctx.out), "--progress-spinner", "off"],
-        folder,
+        ctx.repo,
     )
-
-
-# Lock file -> the audit that reads it. pnpm's output is npm 6's JSON; yarn 1 prints NDJSON.
-_JS_AUDITS: tuple[tuple[str, list[str]], ...] = (
-    ("package-lock.json", ["npm", "audit", "--json", "--package-lock-only"]),
-    ("npm-shrinkwrap.json", ["npm", "audit", "--json", "--package-lock-only"]),
-    ("pnpm-lock.yaml", ["pnpm", "audit", "--json"]),
-    ("yarn.lock", ["yarn", "audit", "--json"]),
-)
 
 
 def _npm_audit(ctx: ScanContext) -> Command | None:
-    # The root, else the first folder up to two levels down with a lock file (frontend/, client/).
-    folders = manifest_dirs(ctx.repo, tuple(lock for lock, _ in _JS_AUDITS))
-    if not folders:
+    # The repository's root, else the first folder one level down that has a lock file (frontend/).
+    candidates = [
+        ctx.repo,
+        *sorted(p for p in ctx.repo.iterdir() if p.is_dir() and not p.name.startswith(".")),
+    ]
+    folder = next((p for p in candidates if (p / "package-lock.json").is_file()), None)
+    if folder is None:
         return None
-    folder = folders[0]
-    argv = next(argv for lock, argv in _JS_AUDITS if (folder / lock).is_file())
-    return Command(list(argv), folder, stdout_is_report=True)
-
-
-def _bundler_audit(ctx: ScanContext) -> Command | None:
-    folders = manifest_dirs(ctx.repo, ("Gemfile.lock",))
-    if not folders:
-        return None
-    return Command(
-        ["bundle-audit", "check", "--format", "json", "--output", str(ctx.out)], folders[0]
-    )
-
-
-def _osv_scanner(ctx: ScanContext) -> Command:
-    return Command(
-        ["osv-scanner", "--format", "json", "--recursive", "."], ctx.repo, stdout_is_report=True
-    )
+    return Command(["npm", "audit", "--json", "--package-lock-only"], folder, stdout_is_report=True)
 
 
 def _gitleaks(ctx: ScanContext) -> Command:
@@ -222,18 +160,18 @@ def _gitleaks(ctx: ScanContext) -> Command:
 
 
 def _semgrep(ctx: ScanContext) -> Command:
-    config = ctx.semgrep_config or "p/default"
     return Command(
         [
             "semgrep",
             "scan",
             "--config",
-            config,
+            "p/default",
             "--sarif",
             "--output",
             str(ctx.out),
             "--metrics",
             "off",
+            "--quiet",
             "--timeout",
             "30",
             ".",
@@ -407,7 +345,7 @@ TOOLS: tuple[Tool, ...] = (
         id="semgrep",
         name="Semgrep",
         category="security",
-        tagline="Security rules for 30+ languages (the p/default rule set, or your own rules).",
+        tagline="Security rules for 30+ languages (the p/default rule set).",
         how=_FINDINGS_HOW,
         homepage="https://semgrep.dev",
         kind="repo",
@@ -417,11 +355,7 @@ TOOLS: tuple[Tool, ...] = (
         install="pip install semgrep",
         report_name="report.sarif",
         command=_semgrep,
-        failure_hint=(
-            "The p/default rules download from semgrep.dev. Offline, clone "
-            "github.com/semgrep/semgrep-rules and pass --semgrep-config with a folder of it "
-            "(python, java, ruby, javascript, ...)."
-        ),
+        failure_hint="The p/default rules download from semgrep.dev, so Semgrep needs network.",
     ),
     Tool(
         id="gitleaks",
@@ -488,48 +422,16 @@ TOOLS: tuple[Tool, ...] = (
         id="npm-audit",
         name="npm audit",
         category="supply-chain",
-        tagline="JavaScript dependencies with known vulnerabilities (npm, pnpm or yarn lock file).",
+        tagline="JavaScript dependencies with known vulnerabilities.",
         how=_FINDINGS_HOW,
         homepage="https://docs.npmjs.com/cli/commands/npm-audit",
         kind="repo",
-        report="npm audit --json, pnpm audit --json or yarn audit --json",
+        report="npm audit --json",
         parser="npm-audit",
         languages=frozenset({"node"}),
         binary="npm",
-        install="Node.js (npm comes with it; pnpm or yarn for their lock files)",
+        install="Node.js (npm comes with it)",
         command=_npm_audit,
-    ),
-    Tool(
-        id="bundler-audit",
-        name="bundler-audit",
-        category="supply-chain",
-        tagline="Ruby gems in Gemfile.lock with known vulnerabilities.",
-        how=_FINDINGS_HOW,
-        homepage="https://github.com/rubysec/bundler-audit",
-        kind="repo",
-        report="bundler-audit JSON (bundle-audit check --format json)",
-        parser="bundler-audit",
-        languages=frozenset({"ruby"}),
-        binary="bundle-audit",
-        install="gem install bundler-audit",
-        command=_bundler_audit,
-        failure_hint="It needs the ruby-advisory-db: run `bundle-audit update` once with network.",
-    ),
-    Tool(
-        id="osv-scanner",
-        name="OSV-Scanner",
-        category="supply-chain",
-        tagline="Known vulnerabilities in any lock file: Maven, Gradle, Go, Ruby, Rust, PHP, ...",
-        how=_FINDINGS_HOW,
-        homepage="https://google.github.io/osv-scanner/",
-        kind="repo",
-        report="osv-scanner JSON (--format json)",
-        parser="osv-scanner",
-        languages=frozenset({"java", "go", "ruby"}),
-        binary="osv-scanner",
-        install="brew install osv-scanner, or go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest",
-        command=_osv_scanner,
-        failure_hint="It reads the vulnerability database from osv.dev, so it needs network.",
     ),
     Tool(
         id="trivy",

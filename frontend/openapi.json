@@ -7344,18 +7344,6 @@
             ],
             "title": "Ref"
           },
-          "semgrep_config": {
-            "anyOf": [
-              {
-                "maxLength": 1024,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Semgrep Config"
-          },
           "target": {
             "maxLength": 1024,
             "minLength": 1,

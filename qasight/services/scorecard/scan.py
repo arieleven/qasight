@@ -31,20 +31,13 @@ from qasight.services.scorecard.ignore import (
     load_ignores,
 )
 from qasight.services.scorecard.parsers import ReportError, ToolResult
-from qasight.services.scorecard.tools import (
-    SKIP_DIRS,
-    TOOLS,
-    TOOLS_BY_ID,
-    ScanContext,
-    Tool,
-    manifest_dirs,
-)
+from qasight.services.scorecard.tools import TOOLS, TOOLS_BY_ID, ScanContext, Tool
 
 DEFAULT_TOOL_TIMEOUT_S = 900
 CLONE_TIMEOUT_S = 1800
 # Files looked at to guess the languages; enough for the Linux kernel's top folders.
 _DETECT_LIMIT = 20000
-_SKIP_DIRS = SKIP_DIRS
+_SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".tox"}
 _URL = re.compile(r"^(https?://|ssh://|git@)[^\s]+$")
 _SHORT_GITHUB = re.compile(r"^(github\.com|gitlab\.com)/[\w.-]+/[\w.-]+/?$")
 
@@ -196,53 +189,31 @@ def resolve_target(
     )
 
 
-# Manifests that mark a language, wherever they sit in the top levels of the repository.
-_MANIFESTS: dict[str, tuple[str, ...]] = {
-    "python": ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"),
-    "node": ("package.json",),
-    "java": ("pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle"),
-    "ruby": ("Gemfile", "Gemfile.lock"),
-    "go": ("go.mod",),
-}
-# Source files that mark a language; node needs a package.json too (a few .js files in a
-# Java project's static folder are not a Node project).
-_SUFFIXES: dict[str, str] = {
-    ".py": "python",
-    ".c": "c",
-    ".h": "c",
-    ".cc": "c",
-    ".cpp": "c",
-    ".cxx": "c",
-    ".hpp": "c",
-    ".java": "java",
-    ".kt": "java",
-    ".rb": "ruby",
-    ".go": "go",
-}
-LANGUAGES = ("python", "node", "java", "ruby", "go", "c", "github-actions")
-
-
 def detect_languages(repo: Path) -> set[str]:
-    """The languages the scan's tools care about: :data:`LANGUAGES`.
-
-    A language counts when its manifest is in the repository's top three levels
-    (``client/package.json``, ``server/Gemfile``) or its source files are anywhere.
-    """
+    """The languages the scan's tools care about: python, node, c, github-actions."""
     found: set[str] = set()
     if (repo / ".github" / "workflows").is_dir():
         found.add("github-actions")
-    for language, names in _MANIFESTS.items():
-        if manifest_dirs(repo, names):
-            found.add(language)
+    if (repo / "package.json").is_file():
+        found.add("node")
+    if any(
+        (repo / f).is_file()
+        for f in ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt")
+    ):
+        found.add("python")
     seen = 0
     for _root, dirs, files in os.walk(repo):
         dirs[:] = [d for d in dirs if d not in _SKIP_DIRS and not d.startswith(".")]
         for name in files:
             seen += 1
-            lang = _SUFFIXES.get(Path(name).suffix.lower())
-            if lang:
-                found.add(lang)
-        if seen >= _DETECT_LIMIT or set(LANGUAGES) <= found:
+            suffix = Path(name).suffix.lower()
+            if suffix == ".py":
+                found.add("python")
+            elif suffix in {".c", ".h", ".cc", ".cpp", ".cxx", ".hpp"}:
+                found.add("c")
+            elif suffix in {".js", ".ts", ".tsx", ".jsx"} and (repo / "package.json").is_file():
+                found.add("node")
+        if seen >= _DETECT_LIMIT or {"python", "c", "node"} <= found:
             break
     return found
 
@@ -344,7 +315,6 @@ def run_scan(
     openapi: str | None = None,
     timeout_s: int = DEFAULT_TOOL_TIMEOUT_S,
     on_event: Callable[[Event], None] | None = None,
-    semgrep_config: str | None = None,
     ignore_file: Path | None = None,
     record_coverage: Callable[[ScanOutcome], None] | None = None,
 ) -> ScanOutcome:
@@ -388,7 +358,6 @@ def run_scan(
             url=url,
             openapi=openapi,
             github_repo=target.github_repo,
-            semgrep_config=semgrep_config,
         )
         emit({"type": "tool", "tool": tool.id, "status": "running"})
         started = time.monotonic()

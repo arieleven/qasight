@@ -1,8 +1,7 @@
 """The scorecard's fixes from its first run on outside repositories (CIViC, cBioPortal).
 
-Languages beyond Python and Node, coverage that caps the grade, gitleaks noise,
-Semgrep offline, pnpm and yarn audits, Ruff on someone else's repo, the ignore
-file, and the "Not run" list.
+Coverage that caps the grade, gitleaks noise, why a tool failed, the ignore
+file, the "Not run" list and the history database.
 """
 
 from __future__ import annotations
@@ -31,9 +30,9 @@ from qasight.services.scorecard.report import (
     coverage_of,
     to_markdown,
 )
-from qasight.services.scorecard.scan import detect_languages, resolve_target, run_scan
+from qasight.services.scorecard.scan import resolve_target, run_scan
 from qasight.services.scorecard.store import ScorecardStore, StoredCoverage
-from qasight.services.scorecard.tools import TOOLS_BY_ID, ScanContext, has_ruff_config
+from qasight.services.scorecard.tools import TOOLS_BY_ID
 
 pytestmark = [pytest.mark.unit, pytest.mark.tier_fast]
 
@@ -64,77 +63,6 @@ def _fake_tool(bin_dir: Path, name: str, body: str) -> None:
     path.chmod(path.stat().st_mode | stat.S_IEXEC)
 
 
-# --- 1. languages and nested manifests ------------------------------------------
-
-
-def test_detects_java_ruby_go_and_nested_manifests(tmp_path: Path) -> None:
-    _write(tmp_path / "pom.xml")
-    _write(tmp_path / "server" / "Gemfile")
-    _write(tmp_path / "client" / "package.json", "{}")
-    _write(tmp_path / "tools" / "go.mod")
-    assert detect_languages(tmp_path) == {"java", "ruby", "node", "go"}
-
-
-def test_detects_languages_from_sources(tmp_path: Path) -> None:
-    _write(tmp_path / "src" / "main" / "java" / "User.java")
-    _write(tmp_path / "app" / "jobs" / "x.rb")
-    assert detect_languages(tmp_path) == {"java", "ruby"}
-
-
-def test_audits_find_lock_files_below_the_root(tmp_path: Path) -> None:
-    _write(tmp_path / "client" / "yarn.lock")
-    _write(tmp_path / "server" / "Gemfile.lock")
-    ctx = ScanContext(repo=tmp_path, out=tmp_path / "out.json")
-    npm = TOOLS_BY_ID["npm-audit"].command(ctx)  # type: ignore[misc]
-    assert npm is not None and npm.argv[:2] == ["yarn", "audit"] and npm.cwd == tmp_path / "client"
-    gems = TOOLS_BY_ID["bundler-audit"].command(ctx)  # type: ignore[misc]
-    assert gems is not None and gems.argv[0] == "bundle-audit" and gems.cwd == tmp_path / "server"
-    _write(tmp_path / "web" / "pnpm-lock.yaml")
-    (tmp_path / "client" / "yarn.lock").unlink()
-    npm = TOOLS_BY_ID["npm-audit"].command(ctx)  # type: ignore[misc]
-    assert npm is not None and npm.argv[:2] == ["pnpm", "audit"]
-
-
-def test_bundler_audit_report(tmp_path: Path) -> None:
-    report = {
-        "results": [
-            {
-                "type": "unpatched_gem",
-                "gem": {"name": "graphql", "version": "2.2.17"},
-                "advisory": {
-                    "cve": "2025-27407",
-                    "title": "unsafe Marshal",
-                    "criticality": "high",
-                    "patched_versions": [">= 2.4.13"],
-                },
-            }
-        ]
-    }
-    result = TOOLS_BY_ID["bundler-audit"].parse(_json(tmp_path / "r.json", report))
-    assert result.counts["high"] == 1
-    assert result.findings[0].title == "graphql 2.2.17"
-    assert "CVE-2025-27407" in result.findings[0].detail
-
-
-def test_osv_scanner_report(tmp_path: Path) -> None:
-    report = {
-        "results": [
-            {
-                "source": {"path": "pom.xml"},
-                "packages": [
-                    {
-                        "package": {"name": "log4j-core", "version": "2.14.0"},
-                        "vulnerabilities": [{"id": "GHSA-jfh8", "summary": "Log4Shell"}],
-                        "groups": [{"ids": ["GHSA-jfh8"], "max_severity": "10.0"}],
-                    }
-                ],
-            }
-        ]
-    }
-    result = TOOLS_BY_ID["osv-scanner"].parse(_json(tmp_path / "r.json", report))
-    assert result.counts["critical"] == 1 and result.findings[0].location == "pom.xml"
-
-
 # --- 2. coverage caps the grade --------------------------------------------------
 
 
@@ -155,8 +83,8 @@ def test_scorecard_carries_coverage(store: ScorecardStore) -> None:
     store.record_coverage(
         project="p",
         version="1",
-        expected=["bandit", "semgrep", "bundler-audit"],
-        missing={"semgrep": "failed: offline", "bundler-audit": "not installed"},
+        expected=["bandit", "semgrep", "gitleaks"],
+        missing={"semgrep": "failed: offline", "gitleaks": "not installed"},
     )
     card = build_scorecard("p", "1", store=store)
     assert card is not None and card.score == 98 and card.grade == "C"
@@ -202,16 +130,10 @@ def test_gitleaks_skips_fixtures_dedupes_and_ranks_rules(tmp_path: Path) -> None
     assert "1 in test or fixture files not counted" in result.summary
 
 
-# --- 4. semgrep --------------------------------------------------------------------
+# --- 4. why a tool failed -----------------------------------------------------------
 
 
-def test_semgrep_uses_a_local_config_and_explains_failures(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    ctx = ScanContext(repo=tmp_path, out=tmp_path / "o.sarif", semgrep_config="/rules/python")
-    cmd = TOOLS_BY_ID["semgrep"].command(ctx)  # type: ignore[misc]
-    assert cmd is not None and cmd.argv[cmd.argv.index("--config") + 1] == "/rules/python"
-
+def test_a_failed_tool_says_why(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     _fake_tool(
@@ -229,33 +151,7 @@ def test_semgrep_uses_a_local_config_and_explains_failures(
         only=["semgrep"],
     )
     message = outcome.errors["semgrep"]
-    assert "Failed to download configuration" in message and "--semgrep-config" in message
-
-
-# --- 5. yarn and pnpm ---------------------------------------------------------------
-
-
-def test_yarn_ndjson_counts_each_advisory_once(tmp_path: Path) -> None:
-    advisory = {"id": 1, "module_name": "xmldom", "severity": "critical", "title": "proto"}
-    lines = [
-        {"type": "auditAdvisory", "data": {"advisory": advisory}},
-        {"type": "auditAdvisory", "data": {"advisory": advisory}},
-        {"type": "auditSummary", "data": {"vulnerabilities": {"critical": 2}}},
-    ]
-    path = _write(tmp_path / "yarn.json", "\n".join(json.dumps(line) for line in lines))
-    result = TOOLS_BY_ID["npm-audit"].parse(path)
-    assert result.metrics["findings"] == 1 and result.counts["critical"] == 1
-
-
-# --- 6. ruff --------------------------------------------------------------------------
-
-
-def test_ruff_is_isolated_without_the_repos_own_config(tmp_path: Path) -> None:
-    ctx = ScanContext(repo=tmp_path, out=tmp_path / "o.json")
-    assert "--isolated" in TOOLS_BY_ID["ruff"].command(ctx).argv  # type: ignore[misc,union-attr]
-    _write(tmp_path / "python" / "pyproject.toml", "[tool.ruff]\nline-length = 100\n")
-    assert has_ruff_config(tmp_path)
-    assert "--isolated" not in TOOLS_BY_ID["ruff"].command(ctx).argv  # type: ignore[misc,union-attr]
+    assert "Failed to download configuration" in message and "needs network" in message
 
 
 # --- 9. ignore file -------------------------------------------------------------------
@@ -317,7 +213,7 @@ def test_bad_ignore_files(tmp_path: Path, text: str) -> None:
         load_ignores(_write(tmp_path / "i.yml", text))
 
 
-# --- 7, 8: the CLI: one "Not run" list, the history file, coverage --------------------
+# --- the CLI: one "Not run" list, the history file, coverage --------------------
 
 
 @pytest.fixture
