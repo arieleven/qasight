@@ -20,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The web UI sends a full Content Security Policy (everything from its own origin, no plugins, no foreign forms). The Plus Jakarta Sans font is bundled with the app instead of loaded from Google Fonts
 
 ### Fixed
+- API: a `config_path` or `artifacts_root` that is not a usable path (a NUL byte, an unknown `~user`) answers 400 instead of 500. Found by the first full run of the release gate.
 - The API answers a dashboard `limit` / `recent_limit` too large for the database, and a request body it cannot parse, with a 422 instead of a 500 (found by Schemathesis)
 - Needs attention and project health count a run marked failed as red even when its exit code is 0
 - A JSON report with a wrong-typed field says which format it looked like and that a field is missing or has an unexpected type, instead of a bare `TypeError`

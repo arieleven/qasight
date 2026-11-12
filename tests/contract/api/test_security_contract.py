@@ -188,6 +188,14 @@ def test_read_config_path_only_loads_config_file_names(tmp_path: Path) -> None:
         assert "hunter2" not in resp.text and "notes.txt" not in resp.text
 
 
+def test_read_config_path_rejects_unparseable_paths() -> None:
+    # Found by the release gate's Schemathesis run: a NUL byte made Path.resolve() raise (500).
+    client = TestClient(create_app())
+    for raw in ("\x001qasight.yaml", "~no-such-user-xyz/qasight.yaml"):
+        resp = client.get("/api/v1/cycles", params={"config_path": raw})
+        assert resp.status_code == 400
+
+
 # --- TESTO_PROTECT_READS and the /login session cookie ---------------------------
 
 _READ = "/api/v1/runs"
@@ -400,3 +408,13 @@ def test_allowed_hosts_and_token_lift_the_host_check(monkeypatch: pytest.MonkeyP
     monkeypatch.delenv("TESTO_API_TOKEN")
     monkeypatch.setenv("TESTO_ALLOW_UNAUTHENTICATED", "1")
     assert _client().get("/api/v1/health/live", headers={"Host": "other.lan"}).status_code == 200
+
+
+def test_run_paths_that_cannot_be_parsed_are_a_400() -> None:
+    from fastapi import HTTPException
+
+    from qasight_api.routes.cycles import _optional_path
+
+    with pytest.raises(HTTPException) as caught:
+        _optional_path("\x00qasight.yaml")
+    assert caught.value.status_code == 400

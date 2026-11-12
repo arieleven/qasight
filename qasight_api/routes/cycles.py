@@ -89,7 +89,12 @@ def _history_summary(name: str, run: CompletedRunView) -> CycleSummary:
 
 
 def _optional_path(raw: str | None) -> Path | None:
-    return Path(raw).expanduser().resolve() if raw else None
+    if not raw:
+        return None
+    try:
+        return Path(raw).expanduser().resolve()
+    except (OSError, RuntimeError, ValueError) as exc:  # a NUL byte, an unknown ~user, a loop
+        raise HTTPException(status_code=400, detail="not a usable file path") from exc
 
 
 def _accepted(request: Request, execution_id: str) -> CycleExecutionAcceptedResponse:

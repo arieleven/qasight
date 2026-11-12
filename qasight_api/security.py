@@ -482,8 +482,11 @@ def read_config_path(raw: str | None) -> Path | None:
     """
     if not raw:
         return None
-    path = Path(raw).expanduser().resolve()
-    if path.name not in CONFIG_FILE_NAMES:
+    try:
+        path = Path(raw).expanduser().resolve()
+    except (OSError, RuntimeError, ValueError):  # a NUL byte, an unknown ~user, a symlink loop
+        path = None
+    if path is None or path.name not in CONFIG_FILE_NAMES:
         raise HTTPException(
             status_code=400,
             detail="config_path must name a qasight.yaml, qasight.yml or pyproject.toml file.",
