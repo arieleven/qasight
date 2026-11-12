@@ -4,11 +4,13 @@ A run's release is stored under ``release``. It comes from, first to last:
 
 1. ``--release`` on ``qasight run`` / ``qasight ingest`` (or an upload's ``release``
    field, which the client fills from the same places);
-2. the ``TESTO_RELEASE`` variable (handy in CI: ``TESTO_RELEASE: ${{ github.ref_name }}``).
+2. the ``TESTO_RELEASE`` variable;
+3. the git tag a CI job builds (GitHub, GitLab, CircleCI, Buildkite, Jenkins, Azure
+   Pipelines; :func:`~qasight.services.ci_provenance.ci_tag`), so a tag's run lands
+   on the release page with no setup. ``TESTO_AUTO_METADATA=0`` turns this off.
 
-Nothing is guessed from git: a run without one belongs to no release. The
-release page (:mod:`~qasight.services.releases`) groups runs by this value.
-Stdlib only, so the persistence layer can read it.
+A branch or pull request run without one belongs to no release. The release page
+(:mod:`~qasight.services.releases`) groups runs by this value.
 """
 
 from __future__ import annotations
@@ -41,10 +43,15 @@ def clean(value: str | None, *, strict: bool = False) -> str:
 
 
 def resolve(explicit: object, environ: Mapping[str, str]) -> str:
-    """The run's release: the explicit value (``--release`` or an upload), else ``TESTO_RELEASE``."""
+    """The run's release: the explicit value (``--release`` or an upload), else
+    ``TESTO_RELEASE``, else the tag the CI job builds."""
     if isinstance(explicit, str) and (value := clean(explicit)):
         return value
-    return clean(environ.get(ENV_VAR))
+    if value := clean(environ.get(ENV_VAR)):
+        return value
+    from qasight.services.ci_provenance import ci_tag
+
+    return clean(ci_tag(environ))
 
 
 def apply_cli_option(value: str | None, environ: MutableMapping[str, str]) -> None:

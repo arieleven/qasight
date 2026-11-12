@@ -47,8 +47,8 @@ qasight run --cycle sample-pytests --workers 8 --force
 | `--workers` | `-w` | Override parallel workers (e.g. BehaveX); 1 or more |
 | `--force` | `-f` | Run even when trigger would skip the cycle |
 | `--coverage` | | Code coverage report the tests write (repeatable): Cobertura or JaCoCo XML, LCOV, or a Go cover profile. Read when the stages finish; its line coverage is stored with the run and shown on the run page, the [PR comment](#qasight-report) and the [digest](#qasight-notify). A missing file only logs a warning. Not with `--cycle all` |
-| `--env KEY=VALUE` | `$TESTO_ENV` | What the run tests on, repeatable (`--env browser=firefox --env os=linux`). Stored with the run as `browser=firefox, os=linux`; merged into `TESTO_ENV` (the flag wins on the same key), so the stages see it too. Without either, an Allure `environment.properties` in the results is used. Flaky detection, failing streaks and the test page keep environments apart. A flag without `=` is exit `2` |
-| `--release NAME` | `$TESTO_RELEASE` | The release the run tests (`2.3`, `v2.3.0-rc1`): letters, digits, `.`, `-`, `+` and `_`, up to 60. Stored with the run; the Releases page (`GET /api/v1/releases`) groups runs by it. Another character is exit `2` |
+| `--env KEY=VALUE` | `$TESTO_ENV` | What the run tests on, repeatable (`--env browser=firefox --env os=linux`). Stored with the run as `browser=firefox, os=linux`; merged into `TESTO_ENV` (the flag wins on the same key), so the stages see it too. Without either, an Allure `environment.properties` in the results is used. Flaky detection, failing streaks and the test page keep environments apart. A flag without `=` is exit `2`. In CI, a run with no environment gets the runner's OS (`os=linux`) |
+| `--release NAME` | `$TESTO_RELEASE` | The release the run tests (`2.3`, `v2.3.0-rc1`): letters, digits, `.`, `-`, `+` and `_`, up to 60. Stored with the run; the Releases page (`GET /api/v1/releases`) groups runs by it. Another character is exit `2`. A CI job that builds a git tag uses the tag when neither is set |
 | `--test NAME`, `-t` | | Run only this test (repeatable): its name, full name or pytest node id. pytest stages get the node ids (or `-k` when the stage already names a path), Playwright `--grep ... --pass-with-no-tests`, Behave and BehaveX `--name`; every stage also gets Allure's test plan file in `ALLURE_TESTPLAN_PATH` (read by Allure's own adapters) and the names in `TESTO_SELECTED_TESTS`. A pytest stage that holds none of them counts as passed. The run records `selected_tests` and `selected_from`. Not with `--cycle all` (exit `2`) |
 | `--rerun-failed RUN_ID` | | Run only the tests that failed in that recorded run, each in the stage it failed in; stages with none are skipped. A run that doesn't exist or has no failures is exit `2`. The run page's "Run these tests again" link does the same through `POST /api/v1/cycles/{cycle}/executions` with `rerun_failed` (or `tests`) |
 
@@ -56,6 +56,32 @@ qasight run --cycle sample-pytests --workers 8 --force
 > `--tag`, `--fail-fast`, `--dry-run` and `--reporter` were previously listed here but are **not present in `qasight/cli/commands/run.py`**. The API layer already accepts `fail_fast` and `reporter_override` on `POST /api/v1/cycles/{cycle}/executions` (surfaced in the React Run panel); the CLI flags remain roadmap items. (Doc corrected 2026-07-04 during the Phase 5 UI redesign.)
 
 Only one run of a cycle uses its artifacts folder at a time. A second `qasight run` of the same cycle (another terminal, another CI job on the runner, the API) waits and says `another run of cycle 'x' is using ... (pid N); waiting for it to finish`; see [Engine Fixes - 2026-11-01](../Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md).
+
+### Any test command, no config
+
+Everything after `--` is a test command to run instead of a cycle. QASight works out the runner, adds what it needs to write a result file into a new `.testo/wrap/<time>/` folder, runs the command with its normal output, and records the results as a run (as `qasight ingest` would). No `qasight.yaml` is needed; the exit code is the command's own.
+
+```bash
+qasight run -- pytest -q tests                # adds --junitxml
+qasight run -- npm test                       # a Jest / Vitest / Playwright script: npm gets `--` and the flags
+qasight run --cycle api -- go test ./...      # adds -json, prints the usual text, keeps the JSON
+qasight run -- ./mvnw -B test                 # Surefire XML written during the run
+```
+
+| Runner (also through `npx`, `uv run`, `python -m`, an `npm` / `pnpm` / `yarn` script, `VAR=value` in front) | Added |
+|---|---|
+| `pytest` | `--junitxml=<folder>/pytest.xml` (kept as is when you pass `--junitxml`) |
+| `jest` | `--json --outputFile=<folder>/jest.json` |
+| `vitest` | `--reporter=default --reporter=json --outputFile.json=<folder>/vitest.json` |
+| `playwright test` | `--reporter=list,json` and `PLAYWRIGHT_JSON_OUTPUT_NAME` (tier `e2e`) |
+| `go test` | `-json`; its output is printed as plain `go test` text |
+| `dotnet test` | `--logger trx --results-directory <folder>/dotnet` |
+| `mvn` / `./mvnw`, `gradle` / `./gradlew` | nothing: their XML reports written during the run are recorded |
+| `rspec`, `bundle exec rspec` | the JSON formatter next to progress |
+| `phpunit` | `--log-junit <folder>/phpunit.xml` |
+| anything else | nothing: result files written under the folder while it ran (found by content) are recorded |
+
+The cycle is the folder's name unless `--cycle`; the stage is the runner's name. `--config`, `--ci`, `--no-persist` and `--coverage` work as for a cycle; `--test`, `--rerun-failed` and `--workers` are refused (exit `2`; pass the equivalent to the command). One quoted argument with shell syntax (`qasight run -- "pytest && echo ok"`) runs through `sh -c` and is treated as an unknown command. When the command leaves no result file, nothing is recorded and QASight says so.
 
 ### Expected terminal output
 
@@ -1028,6 +1054,7 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_SMTP_HOST`, `TESTO_SMTP_PORT`, `TESTO_SMTP_SECURITY`, `TESTO_SMTP_USER`, `TESTO_SMTP_PASSWORD`, `TESTO_SMTP_FROM` | Mail server for `qasight notify --to email` (`TESTO_SMTP_SECURITY`: `starttls` default, `ssl` or `none`; port 587, or 465 with `ssl`) |
 | `TESTO_REPORT_EMAIL_TO` | Comma-separated recipients for `qasight notify --to email` without `--email-to` |
 | `TESTO_CHROMIUM` | A Chrome or Chromium for `qasight export pdf` / `png`, instead of Playwright's own download |
+| `TESTO_AUTO_METADATA` | `0`: don't fill in a run's release from the CI tag or its environment from the CI runner's OS |
 | `TESTO_ISSUES` | `github`: after every recorded run, open an issue per newly flaky test and close fixed ones ([`qasight issues sync`](#qasight-issues-sync)) |
 | `TESTO_GITHUB_TOKEN`, `GITHUB_TOKEN` | Token for those issues (`issues: write`); the first one set wins |
 | `TESTO_ISSUES_REPO` | `owner/name` for the issues, instead of the repository the runs recorded |

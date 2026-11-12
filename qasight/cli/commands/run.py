@@ -112,6 +112,16 @@ def run(
             "Flaky detection and the test page keep environments apart. Default: $TESTO_ENV."
         ),
     ),
+    command: list[str] = typer.Argument(
+        None,
+        metavar="[-- COMMAND...]",
+        help=(
+            "Run this test command instead of a cycle and record what it ran, no config "
+            "needed: qasight run -- pytest -q, qasight run -- npm test, qasight run -- go test ./... "
+            "The result-file flag the runner needs is added for you; the exit code is the command's."
+        ),
+        show_default=False,
+    ),
     release: str | None = typer.Option(
         None,
         "--release",
@@ -121,7 +131,7 @@ def run(
         ),
     ),
 ) -> None:
-    """Run a plan end-to-end."""
+    """Run a plan end-to-end, or any test command after ``--`` (recorded without a config)."""
     from qasight.engine.exit_codes import EngineExitCode
     from qasight.services.run_environment import InvalidEnvironmentPair, apply_cli_pairs
 
@@ -137,6 +147,26 @@ def run(
     except InvalidRelease as exc:
         typer.echo(f"error: --release: {exc}", err=True)
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
+    if command:
+        if test or rerun_failed or workers:
+            typer.echo(
+                "error: --test, --rerun-failed and --workers pick tests in a cycle; "
+                "with a command, pass them to the command itself.",
+                err=True,
+            )
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+        from qasight.cli.wrap import run_wrapped
+
+        raise typer.Exit(
+            code=run_wrapped(
+                command,
+                cycle=cycle or plan,
+                config=config,
+                ci=ci,
+                persist=not no_persist,
+                coverage=[str(c) for c in coverage or []],
+            )
+        )
     # Deferred imports so `qasight --help` and `qasight plans list` stay light.
     from qasight.cli.runner import execute_plan_command
     from qasight.cli.ui.console import default_console, make_console
