@@ -32,6 +32,8 @@ All seven were approved, built in three waves, one pull request each: 1 and 2, t
 
 - **Setup from the GitHub website** (wave 2). A one-time workflow, `qasight-setup.yml` (`ci_templates.setup_workflow()`), runs the Action's new `setup` mode when it is committed: `qasight init --scan --yes --attach --no-run --ci github --pr` as github-actions[bot], so the scan, the attach and the pull request are the same code as on a laptop. Getting Started shows the file and a button that opens GitHub's new-file editor with it filled in (`/new/<branch>?filename=...&value=...`); the button reads the code block on the page, and a test keeps that block equal to the template. A pull request opened with Actions' token doesn't start other workflows and some repositories forbid it, so the docs say to push a commit to it, and `init --pr` prints the compare link when only the pull request is missing.
 
+- **History from day one** (`qasight ingest --from-github`, `qasight/services/github_backfill.py`; reference: [Command Reference § qasight ingest](../CLI%20Commands/Command%20Reference.md#qasight-ingest)). The GitHub CLI lists recent completed workflow runs and downloads their artifacts; result files are found by content, as `qasight ingest` with no arguments does, and each run is recorded through the same ingest path with the run's commit, branch and CI run id (set as the `GITHUB_*` variables the recorder already reads) and then dated when it ran on CI. A run already recorded (same CI run id) is skipped, so it can be run again safely. `gh` handles sign-in and GitHub Enterprise; workflows that upload no result artifacts get nothing, and the output points at `qasight init --attach`.
+
 The later waves add their decisions here as they land.
 
 ## Consequences
