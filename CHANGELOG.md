@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Single sign-on for the team server with any OpenID Connect provider (Google Workspace, Microsoft Entra ID, Okta, Keycloak, ...): with `TESTO_AUTH=accounts`, set `TESTO_OIDC_ISSUER`, `TESTO_OIDC_CLIENT_ID` and `TESTO_OIDC_CLIENT_SECRET` and `/login` shows a "Sign in with SSO" button. The first sign-in creates an account named after the verified email (`TESTO_OIDC_DEFAULT_ROLE`, default `viewer`); `TESTO_OIDC_ALLOWED_DOMAINS` limits it to your email domains. The `api` extra now installs `pyjwt[crypto]`
 - One-click hosting: a Deploy to Render button (`render.yaml`: the server image, Postgres, a disk and a generated token) and a Helm chart in `deploy/helm/qasight`. `DATABASE_URL` accepts the bare `postgres://` and `postgresql://` URLs that hosts hand out
+- Live results: `pytest --qasight-server` sends each result to the team server while the tests run, and the dashboard shows the session under **Running now** with its progress and first failures until the report is uploaded. `--qasight-no-live` / `TESTO_LIVE=0` turns it off. API: `GET/POST /api/v1/live-runs`, `POST /api/v1/live-runs/{id}/results` and `/finish`
 - A [stability and deprecation policy](docs/Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md): what stays stable in 1.x and how much warning a change gets
 
 ### Security

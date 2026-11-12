@@ -975,6 +975,7 @@ qasight installs a pytest plugin (entry point `pytest11`, `qasight/pytest_plugin
 | `--qasight-cycle NAME` | Cycle to record under; implies `--qasight`. Default: the rootdir's name |
 | `--qasight-tier unit\|integration\|e2e` | Pyramid tier of the tests (default `unit`) |
 | `--qasight-server URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead (default `$TESTO_SERVER_URL`, token from `$TESTO_API_TOKEN`) |
+| `--qasight-no-live` | With `--qasight-server`: don't send each result to the server while the tests run (also `$TESTO_LIVE=0`). By default the server's dashboard shows the session under **Running now**, with its progress and first failures, until the report is uploaded at the end ([Team Server § Live results](../Processes%20&%20Guides/Team%20Server.md#live-results)) |
 | `--qasight-resource POOL` | Give each worker its own key from this [resource pool](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#use-a-pool-in-a-cycle) (from `qasight.yaml`, or `$TESTO_RESOURCE_SPEC` set by a stage's `resources:`). Tests read it from the variables or the `testo_resource` fixture |
 | `--qasight-resource-per worker\|test` | One key per worker (default) or a fresh one per test |
 | `--qasight-resource-label LABEL` | Only keys with this label (repeat for more) |
@@ -1028,6 +1029,7 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_REDACT` | `0` turns off hiding secrets in a run's stored results and logs (on by default: API keys, tokens, passwords, credentials in URLs, private keys) |
 | `TESTO_REDACT_PATTERNS` | Your own regular expressions to hide, one per line |
 | `TESTO_FAILED_FIRST` | `1`: same as [`--qasight-failed-first`](#pytest---qasight) |
+| `TESTO_LIVE` | `0`: same as [`--qasight-no-live`](#pytest---qasight) |
 | `TESTO_CYCLE`, `TESTO_STAGE` | Set by `qasight run` for each stage's process: which cycle and stage it is |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
 

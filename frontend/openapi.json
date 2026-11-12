@@ -3964,6 +3964,274 @@
         "title": "LabelCountItem",
         "type": "object"
       },
+      "LiveFailureItem": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "test": {
+            "title": "Test",
+            "type": "string"
+          }
+        },
+        "required": [
+          "test",
+          "message"
+        ],
+        "title": "LiveFailureItem",
+        "type": "object"
+      },
+      "LiveResult": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "outcome": {
+            "enum": [
+              "passed",
+              "failed",
+              "skipped",
+              "error"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "test": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Test",
+            "type": "string"
+          }
+        },
+        "required": [
+          "test",
+          "outcome"
+        ],
+        "title": "LiveResult",
+        "type": "object"
+      },
+      "LiveResultsRequest": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/LiveResult"
+            },
+            "maxItems": 1000,
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "LiveResultsRequest",
+        "type": "object"
+      },
+      "LiveRunItem": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "elapsed_s": {
+            "title": "Elapsed S",
+            "type": "number"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/LiveFailureItem"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "number"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "cycle",
+          "started_at",
+          "elapsed_s",
+          "total",
+          "done",
+          "passed",
+          "failed",
+          "skipped",
+          "errors",
+          "branch",
+          "commit",
+          "current",
+          "finished",
+          "failures"
+        ],
+        "title": "LiveRunItem",
+        "type": "object"
+      },
+      "LiveRunListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LiveRunItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "LiveRunListResponse",
+        "type": "object"
+      },
+      "LiveRunStartRequest": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit"
+          },
+          "cycle": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Cycle",
+            "type": "string"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tests collected, when known",
+            "title": "Total"
+          }
+        },
+        "required": [
+          "cycle"
+        ],
+        "title": "LiveRunStartRequest",
+        "type": "object"
+      },
+      "LiveRunStarted": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "LiveRunStarted",
+        "type": "object"
+      },
       "ManagerReportResponse": {
         "description": "How testing went over a period: the ``/report`` page and every ``qasight export`` format.",
         "properties": {
@@ -10193,6 +10461,150 @@
         "summary": "Ingest Reports",
         "tags": [
           "ingest"
+        ]
+      }
+    },
+    "/api/v1/live-runs": {
+      "get": {
+        "description": "Test sessions running now (and ones that ended in the last two minutes).",
+        "operationId": "list_live_runs_api_v1_live_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveRunListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Live Runs",
+        "tags": [
+          "live"
+        ]
+      },
+      "post": {
+        "description": "Start a live session; send results to ``/live-runs/{id}/results``.",
+        "operationId": "start_live_run_api_v1_live_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveRunStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveRunStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Live Run",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/v1/live-runs/{session_id}/finish": {
+      "post": {
+        "description": "Mark a live session ended; its report upload records it as a run.",
+        "operationId": "finish_live_run_api_v1_live_runs__session_id__finish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Finish Live Run",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/v1/live-runs/{session_id}/results": {
+      "post": {
+        "description": "Add finished tests to a live session.",
+        "operationId": "add_live_results_api_v1_live_runs__session_id__results_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveResultsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Live Results",
+        "tags": [
+          "live"
         ]
       }
     },

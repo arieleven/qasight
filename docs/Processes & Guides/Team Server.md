@@ -202,6 +202,14 @@ GitHub Actions, with the Action (it keeps the job summary and pull request comme
 
 The upload carries the job's CI provenance (provider, pipeline, job, commit, branch and repository for GitHub Actions, GitLab CI, Buildkite, CircleCI, Jenkins and Azure Pipelines). The step exits `1` when a test failed, like the test step itself, and `3` when the server can't be reached or refuses the token. Use the same `--cycle` name for the same suite every time; that name is what Compare, trends and `qasight flaky` group by.
 
+## Live results
+
+`pytest --qasight-server URL` (or `TESTO_SERVER_URL`) sends each test's result to the server as it finishes, so the dashboard shows the session under **Running now** while it runs: how many of the collected tests are done, the counts, the last test and the first failures with their last lines. When the session ends the report is uploaded as usual and becomes a run; the live entry stays two minutes, then goes. Under pytest-xdist the total isn't known, so only the count shows.
+
+It's best effort: results go in batches (every 2 seconds or 50 tests), and the first error (server unreachable, an older server, a refused token) turns live results off for that session with one line in pytest's summary; it never changes the outcome. `--qasight-no-live` or `TESTO_LIVE=0` turns it off. Starting a live session is a write (the token or a `runner` account); `GET /api/v1/live-runs` is a read. Live sessions are kept in the server's memory only, and one that sends nothing for 15 minutes is dropped.
+
+![The dashboard's Running now card: a session at 153 of 240 tests with two failures](../assets/adoption-blockers-2026-11-12/live-runs-desktop.png)
+
 ## How it works
 
 `POST /api/v1/ingest` (multipart: `files`, `cycle`, optional `stage`, `tier` and provenance fields) writes the files to a scratch directory and records them through `CycleRunService` as a one-stage `junit` cycle, the same path as a local `qasight ingest` and `qasight run`. Nothing in an upload is executed. Limits: 200 files, 20 MB per file, 100 MB per upload. The response has the `run_id`, the counts, the exit code and a link to the run page.
