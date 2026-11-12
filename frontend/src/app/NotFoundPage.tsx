@@ -14,7 +14,7 @@ export function NotFoundPage() {
       message="There is nothing at this address."
       action={
         <Link to="/" className={buttonClasses("primary", "sm")}>
-          Go to dashboard
+          Go to overview
         </Link>
       }
     />

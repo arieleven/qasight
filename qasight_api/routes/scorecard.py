@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from qasight.services.scorecard.report import (
     build_scorecard,
@@ -112,6 +113,46 @@ def get_scorecard(project: str | None = None, version: str | None = None) -> Sco
     if card is None:
         return ScorecardResponse(status="empty", project=project, version=version)
     return ScorecardResponse.model_validate({"status": "available", **asdict(card)})
+
+
+@router.get("/scorecard/badge.svg", response_class=Response)
+def get_scorecard_badge(
+    project: str | None = Query(default=None, max_length=300),
+    label: str = Query(default="quality", max_length=40),
+) -> Response:
+    """A README badge with the latest version's grade and score (``quality | B 87``)."""
+    from qasight.services.scorecard.export import badge_svg
+
+    card = build_scorecard(project, None)
+    return Response(
+        badge_svg(card, label=label),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "max-age=300"},
+    )
+
+
+@router.get("/scorecard/badge.json")
+def get_scorecard_badge_json(
+    project: str | None = Query(default=None, max_length=300),
+    label: str = Query(default="quality", max_length=40),
+) -> dict[str, object]:
+    """The same badge as a shields.io endpoint (``img.shields.io/endpoint?url=...``)."""
+    from qasight.services.scorecard.export import shields_badge
+
+    return shields_badge(build_scorecard(project, None), label=label)
+
+
+@router.get("/scorecard/sarif")
+def get_scorecard_sarif(
+    project: str | None = None, version: str | None = None
+) -> dict[str, object]:
+    """A version's findings as SARIF 2.1.0, for GitHub code scanning or any SARIF viewer."""
+    from qasight.services.scorecard.export import to_sarif
+
+    card = build_scorecard(project, version)
+    if card is None:
+        raise HTTPException(status_code=404, detail="no scorecard for that project and version")
+    return to_sarif(card)
 
 
 @router.get("/scorecard/markdown", response_model=ScorecardMarkdownResponse)

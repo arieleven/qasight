@@ -99,6 +99,7 @@ nav:
       - CI-CD Pipeline Setup: Processes & Guides/CI-CD Pipeline Setup.md
       - Setup Snippets: Processes & Guides/Setup Snippets.md
       - Team Server: Processes & Guides/Team Server.md
+      - Stability and Deprecation Policy: Processes & Guides/Stability and Deprecation Policy.md
       - Shared Resource Pools: Processes & Guides/Shared Resource Pools.md
       - Setup Prompts: Prompts & Snippets/Setup Prompts.md
   - Architecture:
@@ -116,7 +117,9 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Adoption Blockers: Specs & ADRs/Adoption Blockers - 2026-11-12.md
       - Release Scorecard: Specs & ADRs/Release Scorecard - 2026-11-12.md
+      - Menu by Question: Specs & ADRs/Menu by Question - 2026-11-12.md
       - Scorecard on MegaLinter: Specs & ADRs/Scorecard on MegaLinter - 2026-11-12.md
       - Run Deletion and Stop: Specs & ADRs/Run Deletion and Stop - 2026-11-02.md
       - Test Labels, Environments and Releases: Specs & ADRs/Test Labels, Environments and Releases - 2026-11-02.md

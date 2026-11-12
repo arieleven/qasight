@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Team Server
@@ -29,6 +29,23 @@ export TESTO_API_TOKEN="$(openssl rand -hex 32)"   # keep it: CI needs it to upl
 cd deploy/server
 docker compose up -d          # pulls ghcr.io/arieleven/qasight-server; add --build to build from the checkout
 ```
+
+### One-click hosting
+
+No machine to run Docker on? [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/arieleven/qasight) reads [`render.yaml`](https://github.com/arieleven/qasight/blob/main/render.yaml) and creates the server from the published image, a Postgres database and a 5 GB disk for run artifacts, with a generated `TESTO_API_TOKEN` (copy it from the service's Environment tab into your CI secrets). It uses Render's paid plans, because free web services there have no disk. Any host that runs a container image and gives it a Postgres URL works the same way: point it at `ghcr.io/arieleven/qasight-server:1`, port `8000`, a volume on `/data`, and set `TESTO_API_TOKEN` and `DATABASE_URL`. Bare `postgres://` and `postgresql://` URLs, which Render, Heroku, Railway and Fly hand out, are used with psycopg 3 as they are.
+
+### Kubernetes
+
+A Helm chart is in [`deploy/helm/qasight`](https://github.com/arieleven/qasight/tree/main/deploy/helm/qasight):
+
+```bash
+helm install qasight deploy/helm/qasight \
+  --set auth.token="$(openssl rand -hex 32)" \
+  --set database.url="postgresql://qasight:...@postgres:5432/qasight" \
+  --set ingress.enabled=true --set ingress.host=qasight.example.com
+```
+
+Without `database.url` the history is SQLite on the chart's volume. `auth.existingSecret` takes a Secret you manage (key `TESTO_API_TOKEN`, plus `DATABASE_URL` or any other setting), `auth.mode: accounts` and `auth.oidc.*` turn on [accounts](#accounts) and [single sign-on](#single-sign-on), and `env` passes any variable from the table below. The chart runs one replica on purpose ([Limits today](#limits-today)). CI runs `helm lint` and `helm template` on it.
 
 Open <http://localhost:8000> and sign in with the token on the `/login` page. That sets an HttpOnly session cookie (30 days, `SameSite=Strict`), so the UI, report links and the live run stream all work; the cookie is derived from the token, so changing `TESTO_API_TOKEN` signs out everyone who signed in with it ([Rotating the token](#rotating-the-token)). CI and scripts send `Authorization: Bearer $TESTO_API_TOKEN` instead. Signing out only clears that browser's cookie; change the token to sign everyone out. Every write (uploads, starting runs, AI settings) needs one of the two, and so does every read while `TESTO_PROTECT_READS` is on, which the image and the compose file do by default; only the health checks and the login page stay open. Run logs and report files can carry whatever a test printed, so keep reads protected unless the server is on a network you already trust.
 
@@ -87,6 +104,21 @@ People then sign in at `/login` with their username and password. Admins can als
 After five wrong passwords for one name within 15 minutes (`TESTO_LOGIN_MAX_FAILURES`), that name has to wait before trying again, even with the right password; the wait is in the audit log as `429`.
 
 Set `TESTO_AUTH=token` (or unset it) to go back; the accounts stay in the database for next time.
+
+### Single sign-on
+
+With accounts on, people can also sign in with your company's identity provider (any OpenID Connect provider: Google Workspace, Microsoft Entra ID, Okta, Keycloak, Auth0, GitLab, or GitHub through Dex). Register QASight as a web app there with the redirect URL `https://<your server>/api/v1/auth/oidc/callback`, then set:
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `TESTO_OIDC_ISSUER` | unset | The provider's issuer URL, e.g. `https://accounts.google.com` or `https://login.microsoftonline.com/<tenant>/v2.0` |
+| `TESTO_OIDC_CLIENT_ID`, `TESTO_OIDC_CLIENT_SECRET` | unset | The app you registered. SSO is on when the issuer, id and secret are all set |
+| `TESTO_OIDC_ALLOWED_DOMAINS` | any | Comma-separated email domains allowed in, e.g. `example.com`. Set it with public providers such as Google, or anyone with an account there gets in as a viewer |
+| `TESTO_OIDC_DEFAULT_ROLE` | `viewer` | Role of the account a person's first sign-in creates |
+| `TESTO_OIDC_REDIRECT_URL` | worked out | The full callback URL, when the server can't tell its own public address (behind a proxy without `FORWARDED_ALLOW_IPS`) |
+| `TESTO_OIDC_LABEL` | `Sign in with SSO` | The button's text on `/login` |
+
+The sign-in page then shows the SSO button next to the password form. The first sign-in creates an account named after the person's verified email, with the default role; an admin raises it with `qasight users set-role`. The flow is the authorization-code flow with PKCE, and the ID token's signature, issuer, audience and nonce are checked against the provider's published keys. Every SSO sign-in is in the audit log, failed ones as user `sso`.
 
 ## Reports for managers
 
@@ -170,6 +202,14 @@ GitHub Actions, with the Action (it keeps the job summary and pull request comme
 
 The upload carries the job's CI provenance (provider, pipeline, job, commit, branch and repository for GitHub Actions, GitLab CI, Buildkite, CircleCI, Jenkins and Azure Pipelines). The step exits `1` when a test failed, like the test step itself, and `3` when the server can't be reached or refuses the token. Use the same `--cycle` name for the same suite every time; that name is what Compare, trends and `qasight flaky` group by.
 
+## Live results
+
+`pytest --qasight-server URL` (or `TESTO_SERVER_URL`) sends each test's result to the server as it finishes, so the dashboard shows the session under **Running now** while it runs: how many of the collected tests are done, the counts, the last test and the first failures with their last lines. When the session ends the report is uploaded as usual and becomes a run; the live entry stays two minutes, then goes. Under pytest-xdist the total isn't known, so only the count shows.
+
+It's best effort: results go in batches (every 2 seconds or 50 tests), and the first error (server unreachable, an older server, a refused token) turns live results off for that session with one line in pytest's summary; it never changes the outcome. `--qasight-no-live` or `TESTO_LIVE=0` turns it off. Starting a live session is a write (the token or a `runner` account); `GET /api/v1/live-runs` is a read. Live sessions are kept in the server's memory only, and one that sends nothing for 15 minutes is dropped.
+
+![The dashboard's Running now card: a session at 153 of 240 tests with two failures](../assets/adoption-blockers-2026-11-12/live-runs-desktop.png)
+
 ## How it works
 
 `POST /api/v1/ingest` (multipart: `files`, `cycle`, optional `stage`, `tier` and provenance fields) writes the files to a scratch directory and records them through `CycleRunService` as a one-stage `junit` cycle, the same path as a local `qasight ingest` and `qasight run`. Nothing in an upload is executed. Limits: 200 files, 20 MB per file, 100 MB per upload. The response has the `run_id`, the counts, the exit code and a link to the run page.
@@ -214,6 +254,7 @@ They hold password hashes when [accounts](#accounts) are on; keep them as privat
 ## Limits today
 
 - Cycles that exist only as uploads aren't in the server's `qasight.yaml`, so they can't be started from the UI. They still get a cycle page, and show on the Cycles page, Dashboard, Runs and Compare.
+- One server process: the run manager, queued runs and live run streams live in its memory, so the server (and the Helm chart) runs one replica. Uploads and reads are quick, so one replica serves a large team; starting many runs from the UI is what it limits.
 - No projects: everyone who can read sees every cycle. [Accounts](#accounts) give per-person roles, not per-project ones.
 - Starting runs from the server's UI only makes sense for cycles defined in the server's config. Without [throwaway containers](#runs-in-throwaway-containers) they run inside the server container. The team server is mainly meant for uploads.
 

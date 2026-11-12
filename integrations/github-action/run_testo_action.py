@@ -620,6 +620,80 @@ def export_static_site(*, out: Path, base_path: str, env: dict[str, str]) -> int
     return 0
 
 
+SCORECARD_MARKER = "<!-- qasight-scorecard -->"
+
+
+def build_scorecard_scan_command(
+    *, path: str, out: Path, min_score: str, no_new: bool, tools: str
+) -> list[str]:
+    cmd = ["qasight", "scorecard", "scan", path.strip() or ".", "--out", str(out)]
+    if min_score.strip():
+        cmd += ["--min-score", min_score.strip()]
+    if no_new:
+        cmd.append("--no-new")
+    if tools.strip():
+        cmd += ["--tools", tools.strip()]
+    return cmd
+
+
+def run_scorecard(
+    *,
+    path: str,
+    min_score: str,
+    no_new: bool,
+    tools: str,
+    job_summary: bool,
+    comment: bool,
+    env: dict[str, str],
+) -> int:
+    """``qasight scorecard scan`` with the gate, then the Markdown summary (job summary and
+    one pull request comment), and SARIF, HTML and a badge next to it. Returns the scan's
+    exit code, so a failed gate fails the step after everything is published."""
+    out = Path(env.get("RUNNER_TEMP") or ".") / "qasight-scorecard"
+    out.mkdir(parents=True, exist_ok=True)
+    cmd = build_scorecard_scan_command(
+        path=path, out=out, min_score=min_score, no_new=no_new, tools=tools
+    )
+    scan = subprocess.run(cmd, check=False, env=env)  # noqa: S603 - fixed argv, inputs as args
+    written: dict[str, str] = {
+        "scorecard_dir": str(out),
+        "scorecard_exit_code": str(scan.returncode),
+    }
+    for fmt, name in (
+        ("sarif", "scorecard.sarif"),
+        ("html", "scorecard.html"),
+        ("svg", "badge.svg"),
+    ):
+        proc = _testo(["scorecard", "show", "--format", fmt, "-o", str(out / name)], env)
+        if proc.returncode in (0, 1):  # 1 = a gate failed; the file is still written
+            written[f"scorecard_{fmt}"] = str(out / name)
+        else:
+            _warn(
+                f"could not write the scorecard as {fmt}: {proc.stderr.strip() or proc.returncode}"
+            )
+    shown = _testo(["scorecard", "show", "--format", "markdown"], env)
+    markdown = shown.stdout.strip()
+    if markdown:
+        body = f"{SCORECARD_MARKER}\n{markdown}\n"
+        step_summary = env.get("GITHUB_STEP_SUMMARY")
+        if job_summary and step_summary:
+            with Path(step_summary).open("a", encoding="utf-8") as fh:
+                fh.write(body)
+        number = pull_request_number(env)
+        token = env.get("TESTO_GITHUB_TOKEN", "")
+        if comment and number is not None and token:
+            try:
+                upsert_pr_comment(markdown=body, number=number, token=token, env=env)
+            except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
+                _warn(
+                    f"could not comment on pull request #{number} ({exc}); it needs pull-requests: write"
+                )
+    github_output = env.get("GITHUB_OUTPUT")
+    if github_output:
+        _write_github_outputs(Path(github_output), values=written)
+    return scan.returncode
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["export-site"]:
@@ -632,6 +706,24 @@ def main(argv: list[str] | None = None) -> int:
         )
     if argv[:1] == ["prepare-history"]:
         return _prepare_history_main(argv[1:])
+    if argv[:1] == ["scorecard"]:
+        scoring = argparse.ArgumentParser(description="Score the repository (qasight scorecard).")
+        scoring.add_argument("--path", default=".")
+        scoring.add_argument("--min-score", default="")
+        scoring.add_argument("--no-new", default="false")
+        scoring.add_argument("--tools", default="")
+        scoring.add_argument("--job-summary", default="true")
+        scoring.add_argument("--comment-on-pr", default="true")
+        opts = scoring.parse_args(argv[1:])
+        return run_scorecard(
+            path=opts.path,
+            min_score=opts.min_score,
+            no_new=_parse_bool(opts.no_new, default=False),
+            tools=opts.tools,
+            job_summary=_parse_bool(opts.job_summary, default=True),
+            comment=_parse_bool(opts.comment_on_pr, default=True),
+            env=dict(os.environ),
+        )
     if argv[:1] == ["post-comments"]:
         posting = argparse.ArgumentParser(description="Post a fork run's comments.")
         posting.add_argument("--dir", required=True)
