@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # CI Integrations
@@ -136,7 +136,7 @@ What runs on QASight itself, as opposed to the wrappers above that run it in oth
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `qasight` and `qasight_api`, zizmor on the workflows and both `action.yml` files (accepted findings in `.github/zizmor.yml`); the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
+| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `qasight` and `qasight_api`, zizmor on the workflows and both `action.yml` files (accepted findings in `.github/zizmor.yml`); secrets, code and dependency checks (gitleaks over the whole history with `.gitleaks.toml`, Bandit at medium severity, pip-audit on every extra, `npm audit` on the production frontend dependencies); the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
 | `commitlint.yml` | pull request | Conventional commit messages |
 | `changelog-on-main.yml` | push to `main` | Drafts a `CHANGELOG.md` [Unreleased] entry from the pushed commits with Claude and commits it to `main`; skips when its bot secrets are missing |
 | `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles and publishes the read-only UI and the docs site to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |
@@ -144,7 +144,7 @@ What runs on QASight itself, as opposed to the wrappers above that run it in oth
 | `mirror-to-gitlab.yml` | push to `main` | Mirrors the repo to GitLab when `GITLAB_MIRROR_URL` / `GITLAB_MIRROR_TOKEN` are set |
 | `pr-heavy.yml` | labeled pull request, manual | Heavy test tier |
 | `nightly-external.yml` | manual (nightly schedule paused; uncomment its `schedule:` lines to re-enable) | External test tier |
-| `release-gate.yml` | manual | Release checks before publishing |
+| `release-gate.yml` | pull request or push to `main` that changes the version in `pyproject.toml`, manual | The slow third-party checks: Schemathesis, OWASP ZAP and a load test against a running API, Lighthouse CI on the demo site, importer fuzzing, mutation testing, `npm audit` on every dependency; `publish.yml` needs its `release gate` job green on the tag's commit ([Release Gate](../Specs%20&%20ADRs/Release%20Gate%20-%202026-11-12.md)). The external provider suite runs here by hand only |
 | `dependabot.yml` (config, not a workflow) | weekly | Grouped dependency update PRs for pip, npm (`/` and `frontend/`) and GitHub Actions, committed as `chore(deps)` with the `no-changelog` label so commitlint and `changelog_required` pass |
 | `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published (`publish.yml` and `docker-publish.yml` can also be run by hand for an existing tag) | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md), [Publishing Docker Images](Publishing%20Docker%20Images.md)) |
 | `scorecard.yml` | push to `main`, weekly, manual | OpenSSF Scorecard; results go to Security > Code scanning and a workflow artifact. `publish_results` is off, so nothing is published to the public Scorecard API |

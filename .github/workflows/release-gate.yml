@@ -1,19 +1,252 @@
+# Release gate: the slow third-party checks, run before a release.
+#
+# Runs on the pull request that changes the version in pyproject.toml, again
+# on main once that bump lands (the commit a release is cut from), and by hand.
+# publish.yml refuses to publish a tag whose commit has no passing gate.
+# The fast checks (gitleaks, Bandit, pip-audit, npm audit, zizmor) run on every
+# pull request in ci.yml. See docs/Specs & ADRs/Release Gate - 2026-11-12.md.
+#
+#   api        Schemathesis (no 500s), OWASP ZAP (no medium or high finding not
+#              accepted in zap_check.py) and a load test (no failures, p95 limit)
+#              against a running API with real run history
+#   ui         Lighthouse CI on the static demo site (performance, accessibility,
+#              best practices, SEO, layout shift; see lighthouserc.json)
+#   fuzz       Hypothesis feeds every report importer odd files; none may raise
+#   mutation   mutmut on the flaky, attention and retention logic; minimum score
+#   npm_audit  the whole frontend dependency tree, dev tools included
+#   external_release_gate  the real GitHub/GitLab provider suite, by hand only (needs secrets)
+#   gate       "release gate": passes only when every check above passed
 name: release-gate
 
 on:
+  pull_request:
+    paths: [pyproject.toml]
+  push:
+    branches: [main]
+    paths: [pyproject.toml]
   workflow_dispatch:
+    inputs:
+      external:
+        description: Also run the real GitHub/GitLab provider suite (needs the TESTO_E2E_* secrets)
+        type: boolean
+        default: false
 
 concurrency:
-  group: external-e2e
-  cancel-in-progress: false
+  group: release-gate-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  MUTATION_MIN_PCT: "85"
+  LOAD_P95_MS: "2500"
+  FUZZ_EXAMPLES: "200"
+
 jobs:
-  external_release_gate:
+  version:
+    name: version changed?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Compare with the base
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          version() { git show "$1:pyproject.toml" | python -c 'import sys, tomllib; print(tomllib.loads(sys.stdin.read())["project"]["version"])'; }
+          now="$(version HEAD)"
+          echo "version=${now}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          before="$(version "$BASE_SHA" 2>/dev/null || echo none)"
+          if [ "$before" != "$now" ]; then
+            echo "Version ${before} -> ${now}: running the release gate"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version unchanged (${now}): nothing to gate"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  api:
+    name: api (schemathesis, zap, load)
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      DATABASE_URL: sqlite:///${{ github.workspace }}/.gate/gate.db
+      API: http://127.0.0.1:8765
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" schemathesis==4.33.2 locust==2.47.0
+      - name: Run history to test against, and start the API
+        run: |
+          mkdir -p .gate/zap
+          qasight run --cycle sample-pytests --ci > .gate/run.ndjson || true
+          nohup uvicorn qasight_api.main:app --host 127.0.0.1 --port 8765 > .gate/api.log 2>&1 &
+          for _ in $(seq 30); do curl -sf "$API/api/v1/runs?limit=1" > /dev/null && exit 0; sleep 1; done
+          cat .gate/api.log; exit 1
+      # Only 500s fail the gate (not_a_server_error); stricter schema checks are
+      # reported but not enforced yet. Excluded: endpoints that start runs or call
+      # an AI provider, and the PDF export, which answers 501 in a source checkout
+      # without a bundled UI.
+      - name: API fuzzing (Schemathesis)
+        run: >-
+          schemathesis run "$API/openapi.json"
+          --checks not_a_server_error --max-examples 50 -w 4
+          --exclude-path-regex '(executions|adhoc-executions|ai-summary:generate|/ask$|ai-review|/report/export)'
+          --suppress-health-check all --report junit --report-dir .gate/schemathesis
+      - name: Security scan (OWASP ZAP)
+        env:
+          ZAP_IMAGE: ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
+        run: |
+          chmod -R a+rwX .gate/zap
+          docker run --rm --network host -v "$PWD:/zap/wrk:rw" \
+            -e ZAP_TARGET="$API" -e ZAP_REPORT_DIR=/zap/wrk/.gate/zap \
+            "$ZAP_IMAGE" zap.sh -cmd -autorun /zap/wrk/scripts/release_gate/zap-plan.yaml
+          python scripts/release_gate/zap_check.py .gate/zap/zap-report.json
+      - name: Load (Locust, 50 users for 60 s)
+        env:
+          GATE_P95_MS: ${{ env.LOAD_P95_MS }}
+        run: >-
+          locust -f scripts/release_gate/locustfile.py --headless -u 50 -r 10 -t 60s
+          -H "$API" --csv .gate/load --only-summary
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-gate-api
+          path: .gate/
+          retention-days: 30
+
+  ui:
+    name: ui (lighthouse)
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          (cd frontend && npm ci --no-audit --no-fund)
+      - name: Build the demo site
+        run: bash scripts/release_gate/static_site.sh public
+      - name: Lighthouse CI
+        run: |
+          cp scripts/release_gate/lighthouserc.json .
+          npx --yes @lhci/cli@0.15.1 autorun --config=lighthouserc.json
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-gate-lighthouse
+          path: lighthouse/
+          retention-days: 30
+
+  fuzz:
+    name: fuzz (report importers)
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" hypothesis==6.170.15
+      - name: Fuzz every importer
+        run: python scripts/release_gate/fuzz_importers.py --examples "$FUZZ_EXAMPLES"
+
+  mutation:
+    name: mutation (mutmut)
+    needs: version
+    if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      # The dependencies without the package itself: an installed qasight would
+      # be imported instead of the mutated copy under mutants/.
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]" mutmut==3.8.1
+          python -m pip uninstall -y qasight
+      - name: Mutate and test
+        run: mutmut run --max-children 4
+      - name: Score
+        run: |
+          mutmut results || true
+          python scripts/release_gate/mutation_score.py --min "$MUTATION_MIN_PCT"
+
+  npm_audit:
+    name: npm audit (all dependencies)
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - run: npm audit --audit-level=high
+
+  external_release_gate:
+    name: external providers (by hand)
+    if: github.event_name == 'workflow_dispatch' && inputs.external
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: external-e2e
+      cancel-in-progress: false
     env:
       TESTO_E2E_EXTERNAL_DRY_RUN: "false"
       TESTO_E2E_GITHUB_TOKEN: ${{ secrets.TESTO_E2E_GITHUB_TOKEN }}
@@ -47,3 +280,23 @@ jobs:
             **/*api*.json
             **/*.png
 
+  # The job publish.yml looks for: it passes only when every check passed.
+  gate:
+    name: release gate
+    needs: [version, api, ui, fuzz, mutation, npm_audit]
+    if: ${{ !cancelled() && needs.version.outputs.release == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every check passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          failed="$(echo "$RESULTS" | jq -r 'to_entries[] | select(.value.result != "success") | "\(.key): \(.value.result)"')"
+          if [ -n "$failed" ]; then
+            echo "$failed" | sed 's/^/::error::/'
+            echo "release gate for ${VERSION}: FAILED"
+            exit 1
+          fi
+          echo "release gate for ${VERSION}: passed"

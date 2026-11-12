@@ -8,8 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Release gate: before a release, `release-gate.yml` runs Schemathesis, OWASP ZAP and a load test against a running API, Lighthouse CI on the demo site, fuzzing of every report importer and mutation testing, and the PyPI publish stops without a pass. Every pull request now also runs gitleaks, Bandit, pip-audit and `npm audit`. See `docs/Specs & ADRs/Release Gate - 2026-11-12.md`
+
 ### Security
-- Uploaded and stage JUnit, TRX and Robot Framework XML is parsed with `defusedxml`: a file that declares entities is reported as unreadable instead of being expanded. `defusedxml` is a new dependency
+- Uploaded and stage JUnit, TRX, Robot Framework and coverage XML is parsed with `defusedxml`: a file that declares entities is reported as unreadable instead of being expanded. `defusedxml` is a new dependency
 - GitHub Actions hardening: every third-party action is pinned to a commit SHA, checkouts no longer keep the job token unless the workflow pushes, the PyPI release build no longer restores the npm cache, and branch names reach shell scripts through `env:`. CI now runs zizmor on the workflows, and a weekly OpenSSF Scorecard workflow reports to code scanning (results are not published). See `docs/Specs & ADRs/External Audit Tools - 2026-11-11.md`
 - The web UI sends a full Content Security Policy (everything from its own origin, no plugins, no foreign forms). The Plus Jakarta Sans font is bundled with the app instead of loaded from Google Fonts
 

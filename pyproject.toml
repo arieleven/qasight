@@ -297,3 +297,29 @@ ignore_imports = ["qasight.plugins -> qasight.reporting.reporters.base"]
 name = "persistence (write side) and history (read side) do not import each other"
 type = "independence"
 modules = ["qasight.persistence", "qasight.history"]
+
+# Mutation testing (release-gate.yml): mutants of the flaky, attention and
+# retention logic must be caught by their unit tests. Run with the package
+# NOT installed (an installed copy would shadow the mutants).
+[tool.mutmut]
+paths_to_mutate = [
+    "qasight/history/retention.py",
+    "qasight/services/attention.py",
+    "qasight/services/flaky_service.py",
+]
+tests_dir = [
+    "tests/unit/qasight/history/test_retention.py",
+    "tests/unit/qasight/test_attention.py",
+    "tests/unit/qasight/test_flaky_service.py",
+    "tests/unit/qasight/test_flaky_scoring.py",
+]
+also_copy = [
+    "qasight",
+    "qasight_api",
+    "pytest.ini",
+    "tests",
+    "qasight.yaml",
+    "sample_target_repo",
+    "schema",
+]
+pytest_add_cli_args = ["-p", "no:cacheprovider", "--no-cov"]

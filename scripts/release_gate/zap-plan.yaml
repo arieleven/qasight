@@ -1,0 +1,42 @@
+# OWASP ZAP automation plan for the release gate (.github/workflows/release-gate.yml):
+# import the OpenAPI document, passive and active scan, JSON report.
+# zap_check.py then fails the gate on any finding not accepted there.
+# ZAP_TARGET and ZAP_REPORT_DIR come from the environment.
+env:
+  contexts:
+    - name: qasight
+      urls: ["${ZAP_TARGET}"]
+      # Endpoints that start test runs, call an AI provider, delete history or
+      # run configured resource commands: scanning them would do real work.
+      excludePaths:
+        - ".*executions.*"
+        - ".*adhoc-executions.*"
+        - ".*ai-summary:generate.*"
+        - ".*/api/v1/ask.*"
+        - ".*ai-review.*"
+        - ".*runs:delete.*"
+        - ".*/resources/actions.*"
+        # FastAPI's Swagger UI and ReDoc pages load their scripts from a CDN and
+        # keep a looser CSP on purpose (qasight_api/security.py).
+        - ".*/docs.*"
+        - ".*/redoc.*"
+  parameters:
+    failOnError: true
+    progressToStdout: true
+jobs:
+  - type: openapi
+    parameters:
+      apiUrl: "${ZAP_TARGET}/openapi.json"
+      targetUrl: "${ZAP_TARGET}"
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 3
+  - type: activeScan
+    parameters:
+      maxScanDurationInMins: 10
+      maxRuleDurationInMins: 2
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: "${ZAP_REPORT_DIR}"
+      reportFile: zap-report

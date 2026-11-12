@@ -8,14 +8,53 @@ on:
       tag:
         description: "Existing release tag to publish (e.g. v1.1.1)"
         required: true
+      skip_gate:
+        description: "Publish without a passing release gate (release-gate.yml) on the tag's commit"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  # A release is published only from a commit the release gate passed on
+  # (release-gate.yml: API fuzzing, ZAP, load, Lighthouse, importer fuzzing,
+  # mutation testing). It runs on the version bump's pull request and again on
+  # main when the bump lands; to gate another commit, run it there by hand.
+  gate:
+    name: Release gate passed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      SKIP: ${{ inputs.skip_gate || false }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Find a passing release gate for the tag's commit
+        run: |
+          if [ "$SKIP" = "true" ]; then
+            echo "::warning::Publishing ${TAG} without checking the release gate (skip_gate)"
+            exit 0
+          fi
+          sha="$(gh api "repos/${REPO}/commits/${TAG}" --jq .sha)"
+          for run in $(gh api "repos/${REPO}/actions/workflows/release-gate.yml/runs?head_sha=${sha}&per_page=20" --jq '.workflow_runs[].id'); do
+            ok="$(gh api "repos/${REPO}/actions/runs/${run}/jobs" --jq '[.jobs[] | select(.name == "release gate" and .conclusion == "success")] | length')"
+            if [ "$ok" -gt 0 ]; then
+              echo "Release gate passed for ${TAG} (${sha}): https://github.com/${REPO}/actions/runs/${run}"
+              exit 0
+            fi
+          done
+          echo "::error::No passing release gate for ${TAG} (${sha}). Run release-gate.yml on that commit (Actions > release-gate > Run workflow), or publish by hand with skip_gate."
+          exit 1
+
   pypi:
     name: Publish to PyPI
+    needs: gate
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

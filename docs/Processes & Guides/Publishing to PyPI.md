@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-07-01
-updated: 2026-11-04
+updated: 2026-11-12
 ---
 
 # Publishing to PyPI
@@ -28,8 +28,8 @@ Until 1.5.0 the package was `testo-core`. From 1.6.0 every release also publishe
 
 ## Publishing flow
 
-1. Create a GitHub Release with a semver tag matching `pyproject.toml` (e.g. `v1.1.1` for `version = "1.1.1"`).
-2. The `publish.yml` workflow triggers automatically. Its one job waits for the `pypi` environment's reviewer, then checks out the tag, builds the web UI into `qasight_api/ui_dist/` (`scripts/build_ui_bundle.sh`, so `qasight ui` works from the wheel), builds the package, checks the tag matches the package version, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`), publishes with `pypa/gh-action-pypi-publish` over OIDC (no API token), and verifies `pip install`, retrying for up to five minutes while PyPI's index catches up with the upload.
+1. Merge the version bump. Its pull request and its commit on `main` run the release gate (`release-gate.yml`, [Release Gate](../Specs%20&%20ADRs/Release%20Gate%20-%202026-11-12.md)); wait for the run on `main` to pass, then create a GitHub Release with a semver tag matching `pyproject.toml` (e.g. `v1.1.1` for `version = "1.1.1"`) on that commit.
+2. The `publish.yml` workflow triggers automatically. It first checks that a `release gate` job passed on the tag's commit and stops if not. Its publish job then waits for the `pypi` environment's reviewer, then checks out the tag, builds the web UI into `qasight_api/ui_dist/` (`scripts/build_ui_bundle.sh`, so `qasight ui` works from the wheel), builds the package, checks the tag matches the package version, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`), publishes with `pypa/gh-action-pypi-publish` over OIDC (no API token), and verifies `pip install`, retrying for up to five minutes while PyPI's index catches up with the upload.
 3. To publish an existing tag whose automatic run failed (for example after fixing the trusted publisher), run the workflow by hand from the Actions tab with that tag as input. PyPI refuses a version that was already uploaded.
 4. The same Release also triggers `docker-publish.yml` (runner image to GHCR; the first push creates a private package, so set its visibility to public once) and `artifactory-publish.yml` (skipped while `ARTIFACTORY_URL` is unset).
 5. To list the GitHub Action on the Marketplace, tick "Publish this Action to the GitHub Marketplace" on the Release form (category Testing). It lists the root `action.yml`. The account owner accepts the Marketplace Developer Agreement once, and publishing needs two-factor login; after that, each Release with the box ticked updates the listing.
@@ -63,6 +63,7 @@ qasight run --help
 ## Troubleshooting
 
 - **OIDC auth failure**: Verify trusted publisher configuration matches the workflow filename and GitHub environment name exactly.
+- **No passing release gate**: the tag's commit has no green `release gate` job. Run `release-gate.yml` on that commit from the Actions tab, then re-run `publish.yml` by hand with the tag. `skip_gate` on a by-hand run publishes without the gate.
 - **Tag does not match**: the job stops when the tag (minus its `v`) differs from `[project] version`. Fix the version or the tag and create a new Release.
 - **`twine check` failure**: Check `pyproject.toml` for missing metadata fields (`description`, `readme`, `requires-python`).
 - **"Verify install from PyPI" red after a successful upload**: the package is published; the index was slower than the retry window. Check `pip install qasight==X.Y.Z` by hand, and if it installs there is nothing to fix (v1.2.0 hit this before the retry was added).
