@@ -242,7 +242,7 @@ def plan_tools(
             skipped[tool.id] = "switched off"
             continue
         if tool.kind == "engine":
-            if not tool.installed():
+            if megalinter.docker() is None:
                 skipped[tool.id] = f"{NOT_INSTALLED} ({tool.install})"
             else:
                 run.append(tool)

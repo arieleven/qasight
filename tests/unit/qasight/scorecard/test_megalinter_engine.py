@@ -293,6 +293,7 @@ def test_scan_runs_the_engine_skips_what_it_covers_and_scores_by_density(
         )
 
     monkeypatch.setattr(megalinter, "run", fake_run)
+    monkeypatch.setattr(megalinter, "docker", lambda: "/bin/docker")
     monkeypatch.setattr("shutil.which", lambda name: "/bin/x" if name == "docker" else None)
     target = resolve_target(str(repo), project="app", version="1.0")
     outcome = run_scan(
