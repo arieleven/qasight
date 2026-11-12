@@ -104,10 +104,13 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # history.retention in qasight.yaml: prune now and every few hours while the
     # server runs. Without the section this starts nothing.
     stop_retention = _start_retention_timer()
+    # TESTO_SCHEDULE_DIGEST: the weekly or daily digest and report email, sent by the server.
+    stop_schedules = _start_schedule_timer()
     try:
         yield
     finally:
         stop_retention()
+        stop_schedules()
 
 
 def _recover_unfinished_runs() -> int:
@@ -166,6 +169,34 @@ def _start_retention_timer() -> Callable[[], None]:
         retention.days,
         retention.runs_per_cycle,
         RETENTION_INTERVAL_S // 3600,
+    )
+    return stop.set
+
+
+def _start_schedule_timer() -> Callable[[], None]:
+    """Send scheduled digests on a daemon thread (qasight/services/schedules.py)."""
+    from qasight.services import schedules
+
+    schedule = schedules.from_env()
+    if schedule is None:
+        return lambda: None
+    stop = threading.Event()
+
+    def _loop() -> None:
+        while not stop.is_set():
+            try:
+                schedules.tick(schedule)
+            except Exception:
+                # Broad on purpose: a webhook or SMTP failure must not kill the timer or the server.
+                logger.warning("scheduled digest failed", exc_info=True)
+            stop.wait(schedules.CHECK_INTERVAL_S)
+
+    threading.Thread(target=_loop, name="testo-schedules", daemon=True).start()
+    logger.info(
+        "scheduled %s digest on: %s at %02d:00 UTC",
+        schedule.period,
+        ", ".join(schedule.channels),
+        schedule.hour,
     )
     return stop.set
 
