@@ -75,6 +75,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import quarantine as quarantine_mod
     from qasight.cli.commands import report as report_cmd
     from qasight.cli.commands import run as run_cmd
+    from qasight.cli.commands import scorecard as scorecard_mod
     from qasight.cli.commands import server_cmd as server_mod
     from qasight.cli.commands import split as split_mod
     from qasight.cli.commands import try_cmd, ui_cmd
@@ -150,6 +151,13 @@ def _register_commands() -> None:
         help="Write the manager report as a PDF, PNG, HTML, PowerPoint, Excel, CSV or JSON file.",
         rich_help_panel="Run and report",
     )(export_mod.export)
+    app.add_typer(
+        scorecard_mod.app,
+        name="scorecard",
+        help="Score a release with the repo review tools (security, dependencies, API, web, load, "
+        "tests) on any folder or git URL, compare it with the last version and gate it.",
+        rich_help_panel="Run and report",
+    )
     app.command(
         name="badge",
         help="Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",

@@ -116,6 +116,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Release Scorecard: Specs & ADRs/Release Scorecard - 2026-11-12.md
       - Run Deletion and Stop: Specs & ADRs/Run Deletion and Stop - 2026-11-02.md
       - Test Labels, Environments and Releases: Specs & ADRs/Test Labels, Environments and Releases - 2026-11-02.md
       - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md

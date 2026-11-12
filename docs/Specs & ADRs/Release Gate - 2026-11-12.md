@@ -46,6 +46,7 @@ Each run has these jobs:
 | `fuzz` | Hypothesis, 200 generated files per format (`scripts/release_gate/fuzz_importers.py`) | An importer raises instead of reporting the file as unreadable |
 | `mutation` | mutmut on the flaky, attention and retention logic (`[tool.mutmut]` in `pyproject.toml`) | The score is under 85% |
 | `npm_audit` | npm audit on the whole frontend tree | Any high or critical advisory |
+| `release_scorecard` | `qasight scorecard` on this commit and the last release tag ([Release Scorecard](Release%20Scorecard%20-%202026-11-12.md)) | The overall score is under the `min_score` input (default 60), or, with `no_drop`, a tool scored lower than on the last release |
 
 The `api` job tests against the history of one real `sample-pytests` run. Schemathesis and ZAP skip the endpoints that start runs, call an AI provider, delete history or run configured resource commands. Schemathesis also skips the PDF export, which answers 501 in a source checkout without a bundled UI.
 

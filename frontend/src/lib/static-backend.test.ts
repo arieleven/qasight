@@ -24,6 +24,15 @@ describe("resolveStaticPath", () => {
     expect(resolve("/api/v1/project-health/ai-review?cycle=web")).toBe("project-health/ai-review/web.json");
   });
 
+  it("maps the release scorecard, a project and version by the same hash the export uses", () => {
+    expect(resolve("/api/v1/scorecard/tools")).toBe("scorecard/tools.json");
+    expect(resolve("/api/v1/scorecard/projects")).toBe("scorecard/projects.json");
+    expect(resolve("/api/v1/scorecard")).toBe("scorecard/cards/latest.json");
+    expect(resolve("/api/v1/scorecard/markdown")).toBe("scorecard/markdown/latest.json");
+    expect(resolve("/api/v1/scorecard?project=arieleven%2Ffake-api&version=1.0")).toBe(`scorecard/cards/${stableId("arieleven/fake-api\n1.0")}.json`);
+    expect(resolve("/api/v1/scorecard/markdown?project=qasight")).toBe(`scorecard/markdown/${stableId("qasight\n")}.json`);
+  });
+
   it("maps per-run endpoints", () => {
     expect(resolve("/api/v1/runs/abc-123")).toBe("runs/abc-123/detail.json");
     expect(resolve("/api/v1/runs/abc-123/reports")).toBe("runs/abc-123/reports.json");

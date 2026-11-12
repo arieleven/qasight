@@ -36,6 +36,15 @@ export type TriageItem = Schemas["TriageItem"];
 export type TriageRequest = Schemas["TriageRequest"];
 export type TriageCause = TriageItem["cause"];
 export type QuarantineItem = Schemas["QuarantineItem"];
+export type ScorecardToolItem = Schemas["ScorecardToolItem"];
+export type ScorecardToolsResponse = Schemas["ScorecardToolsResponse"];
+export type ScorecardResponse = Schemas["ScorecardResponse"];
+export type ScorecardToolScoreItem = Schemas["ScorecardToolScoreItem"];
+export type ScorecardCategoryItem = Schemas["ScorecardCategoryItem"];
+export type ScorecardProjectsResponse = Schemas["ScorecardProjectsResponse"];
+export type ScorecardMarkdownResponse = Schemas["ScorecardMarkdownResponse"];
+export type ScorecardScanRequest = Schemas["ScorecardScanRequest"];
+export type ScorecardScanResponse = Schemas["ScorecardScanResponse"];
 export type QuarantineRequest = Schemas["QuarantineRequest"];
 export type QuarantineListResponse = Schemas["QuarantineListResponse"];
 export type PyramidShape = RunPyramidResponse["shape"];
@@ -339,6 +348,38 @@ export const apiClient = {
   getProjectHealth(cycle?: string): Promise<ProjectHealthResponse> {
     const query = cycle ? `?${new URLSearchParams({ cycle })}` : "";
     return api<ProjectHealthResponse>(`/api/v1/project-health${query}`);
+  },
+  listScorecardTools(): Promise<ScorecardToolsResponse> {
+    return api<ScorecardToolsResponse>("/api/v1/scorecard/tools");
+  },
+  setScorecardTool(tool: string, enabled: boolean): Promise<ScorecardToolItem> {
+    return api<ScorecardToolItem>(`/api/v1/scorecard/tools/${encodeURIComponent(tool)}`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled })
+    });
+  },
+  listScorecardProjects(): Promise<ScorecardProjectsResponse> {
+    return api<ScorecardProjectsResponse>("/api/v1/scorecard/projects");
+  },
+  getScorecard(project?: string, version?: string): Promise<ScorecardResponse> {
+    const params = new URLSearchParams();
+    if (project) params.set("project", project);
+    if (version) params.set("version", version);
+    const query = params.toString();
+    return api<ScorecardResponse>(`/api/v1/scorecard${query ? `?${query}` : ""}`);
+  },
+  getScorecardMarkdown(project?: string, version?: string): Promise<ScorecardMarkdownResponse> {
+    const params = new URLSearchParams();
+    if (project) params.set("project", project);
+    if (version) params.set("version", version);
+    const query = params.toString();
+    return api<ScorecardMarkdownResponse>(`/api/v1/scorecard/markdown${query ? `?${query}` : ""}`);
+  },
+  startScorecardScan(payload: ScorecardScanRequest): Promise<ScorecardScanResponse> {
+    return api<ScorecardScanResponse>("/api/v1/scorecard/scans", { method: "POST", body: JSON.stringify(payload) });
+  },
+  getScorecardScan(id: string): Promise<ScorecardScanResponse> {
+    return api<ScorecardScanResponse>(`/api/v1/scorecard/scans/${encodeURIComponent(id)}`);
   },
   listReviewSkills(): Promise<ReviewSkillsResponse> {
     return api<ReviewSkillsResponse>("/api/v1/project-health/skills");

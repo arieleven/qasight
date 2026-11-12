@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient, type ReviewSkillItem, type SkillResultItem } from "../../lib/api-client";
-import { Badge, Button, Card, Spinner } from "../../components/ui";
+import { Badge, Button, Card, Spinner, Switch } from "../../components/ui";
 import { formatRunTime } from "../../lib/format";
 import { DEMO_EXAMPLE_PROVIDER, IS_STATIC_BUILD } from "../../lib/static-backend";
 import { DemoExampleNote } from "../../components/DemoExampleNote";
@@ -28,23 +28,6 @@ function saveChoices(choices: Record<string, boolean>) {
 }
 
 const SEVERITY_TONE = { high: "danger", medium: "warn", low: "neutral" } as const;
-
-function Switch({ on, label, onChange }: { on: boolean; label: string; onChange: (on: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={() => onChange(!on)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
-        on ? "border-brand-500 bg-brand-600" : "border-white/10 bg-ink-800"
-      }`}
-    >
-      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${on ? "translate-x-6" : "translate-x-1"}`} />
-    </button>
-  );
-}
 
 function ResultScore({ result }: { result: SkillResultItem }) {
   const tone = scoreTone(result.score);

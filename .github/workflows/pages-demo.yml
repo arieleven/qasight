@@ -107,6 +107,19 @@ jobs:
       - name: QASight tests fake-api (fails on purpose)
         run: qasight run --cycle fake-api --ci | tee fake-api.ndjson || true
 
+      # The Scorecard page: QASight's last two releases and this commit, and fake-api,
+      # scanned with the tools that install from PyPI (no account, no network service).
+      - name: Score QASight and fake-api
+        run: |
+          python -m pip install bandit pip-audit zizmor
+          for tag in $(git ls-remote --tags --refs origin 'v*' | awk -F/ '{print $3}' | sort -V | tail -n 2); do
+            git fetch --quiet --depth 1 origin tag "$tag"
+            git worktree add -q "../qasight-$tag" "$tag"
+            qasight scorecard scan "../qasight-$tag" --project qasight --version "${tag#v}" --out "scorecard/$tag" || true
+          done
+          qasight scorecard scan . --project qasight --version main --out scorecard/main || true
+          qasight scorecard scan .demo/fake-api --project fake-api --out scorecard/fake-api || true
+
       - name: Export the API as static JSON
         env:
           # Optional. With it, failed runs ship a pre-generated AI failure

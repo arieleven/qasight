@@ -8,6 +8,7 @@ export type { RunUiStatus } from "./StatusPill";
 export { PageHeader } from "./PageHeader";
 export { EmptyState } from "./EmptyState";
 export { Spinner } from "./Spinner";
+export { Switch } from "./Switch";
 export { KeyValue } from "./KeyValue";
 export { StackedBar, HealthBar } from "./StackedBar";
 export type { StackedBarSegment } from "./StackedBar";

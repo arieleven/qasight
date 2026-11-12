@@ -53,6 +53,10 @@ export const routes = [
         lazy: () => import("../features/health/ProjectHealthPage").then((m) => ({ Component: m.ProjectHealthPage }))
       },
       {
+        path: "scorecard",
+        lazy: () => import("../features/scorecard/ScorecardPage").then((m) => ({ Component: m.ScorecardPage }))
+      },
+      {
         path: "report",
         lazy: () => import("../features/report/ReportPage").then((m) => ({ Component: m.ReportPage }))
       },

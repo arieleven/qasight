@@ -33,6 +33,7 @@ from qasight_api.routes.project_health import router as project_health_router
 from qasight_api.routes.quarantine import router as quarantine_router
 from qasight_api.routes.report import router as report_router
 from qasight_api.routes.resources import router as resources_router
+from qasight_api.routes.scorecard import router as scorecard_router
 from qasight_api.routes.storage import router as storage_router
 from qasight_api.routes.triage import router as triage_router
 from qasight_api.routes.version import router as version_router
@@ -218,6 +219,7 @@ def create_app() -> FastAPI:
     app.include_router(quarantine_router)
     app.include_router(report_router)
     app.include_router(resources_router)
+    app.include_router(scorecard_router)
     app.include_router(storage_router)
     app.include_router(version_router)
 

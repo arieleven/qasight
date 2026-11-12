@@ -40,6 +40,13 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/issues/<name>.json                GET /api/v1/analytics/issues?cycle={name}
     data/releases.json                     GET /api/v1/releases
     data/releases/<release>.json           GET /api/v1/releases/{release}
+    data/scorecard/tools.json              GET /api/v1/scorecard/tools
+    data/scorecard/projects.json           GET /api/v1/scorecard/projects
+    data/scorecard/cards/latest.json       GET /api/v1/scorecard
+    data/scorecard/cards/<id>.json         GET /api/v1/scorecard?project={p}&version={v}
+                                           (<id> is test_history.stable_id(f"{p}\n{v}"), v may be "")
+    data/scorecard/markdown/latest.json    GET /api/v1/scorecard/markdown
+    data/scorecard/markdown/<id>.json      GET /api/v1/scorecard/markdown?project={p}&version={v}
     data/demo/ask-examples.json            demo only: example Ask turns (demo_examples.py)
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
                                            (<id> is test_history.stable_id(key))
@@ -378,6 +385,25 @@ class Exporter:
             name = str(item["release"])
             self._dump(f"/api/v1/releases/{quote(name, safe='')}", f"releases/{name}.json")
 
+    def export_scorecard(self) -> None:
+        """The release scorecard: tools, projects, and every project's versions (and Markdown)."""
+        from urllib.parse import urlencode
+
+        from qasight.services.test_history import stable_id
+
+        self._dump("/api/v1/scorecard/tools", "scorecard/tools.json")
+        listing = self._dump("/api/v1/scorecard/projects", "scorecard/projects.json") or {}
+        self._dump("/api/v1/scorecard", "scorecard/cards/latest.json")
+        if listing.get("items"):
+            self._dump("/api/v1/scorecard/markdown", "scorecard/markdown/latest.json")
+        for item in listing.get("items") or []:
+            project = item["project"]
+            for version in ["", *(v["version"] for v in item.get("versions") or [])]:
+                query = urlencode({"project": project, **({"version": version} if version else {})})
+                name = stable_id(project + "\n" + version) + ".json"
+                self._dump(f"/api/v1/scorecard?{query}", f"scorecard/cards/{name}")
+                self._dump(f"/api/v1/scorecard/markdown?{query}", f"scorecard/markdown/{name}")
+
     def _example_review(self, scope: str | None, review: Any, health: Any, rel_path: str) -> None:
         """In the demo, an example AI review where the export generated none."""
         if not self.demo or not health or (review or {}).get("status") == "available":
@@ -515,6 +541,7 @@ class Exporter:
         self.export_cycles(runs)
         self.export_dashboard()
         self.export_releases()
+        self.export_scorecard()
         deltas = self.export_deltas(runs)
         copied = self.copy_reports(runs)
 
