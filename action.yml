@@ -111,6 +111,26 @@ inputs:
     description: "The team server's API token. Pass a secret (secrets.TESTO_API_TOKEN)."
     required: false
     default: ""
+  scorecard:
+    description: "Score the repository with `qasight scorecard scan` (MegaLinter in Docker, OSV-Scanner and the other tools that fit): `true` after the tests, `only` instead of them, `false` (default) not at all. Writes the scorecard to the job summary and one pull request comment, and SARIF (`scorecard_sarif` output, for github/codeql-action/upload-sarif), an HTML page and a badge. The history cache keeps earlier scores, so the summary compares with the last one."
+    required: false
+    default: "false"
+  scorecard-path:
+    description: Folder or git URL to score (default the workspace).
+    required: false
+    default: "."
+  scorecard-min-score:
+    description: Fail the step when the overall score is below this (0-100). Empty = no threshold.
+    required: false
+    default: ""
+  scorecard-no-new:
+    description: "`true`: fail the step when a tool has findings the last scored version didn't have (new code only, like SonarQube's quality gate)."
+    required: false
+    default: "false"
+  scorecard-tools:
+    description: Run only these scorecard tools (comma-separated ids from `qasight scorecard tools`). Empty = every switched-on tool that fits.
+    required: false
+    default: ""
   github-token:
     description: Token used for the pull request comment and flaky test issues.
     required: false
@@ -131,6 +151,12 @@ outputs:
   site_dir:
     description: With `static-site`, the folder the read-only site was written to (empty if it wasn't).
     value: ${{ steps.site.outputs.site_dir }}
+  scorecard_dir:
+    description: With `scorecard`, the folder with scorecard.md, scorecard.sarif, scorecard.html and badge.svg.
+    value: ${{ steps.scorecard.outputs.scorecard_dir }}
+  scorecard_sarif:
+    description: With `scorecard`, the SARIF file for github/codeql-action/upload-sarif.
+    value: ${{ steps.scorecard.outputs.scorecard_sarif }}
 runs:
   using: composite
   steps:
@@ -171,7 +197,7 @@ runs:
         restore-keys: ${{ steps.history.outputs.restore_prefix }}
     - name: Run qasight
       id: run_testo
-      if: inputs.post-comments-from == ''
+      if: inputs.post-comments-from == '' && inputs.scorecard != 'only'
       shell: bash
       env:
         DATABASE_URL: ${{ steps.history.outputs.database_url }}
@@ -210,6 +236,25 @@ runs:
           --flaky-issues "$TESTO_INPUT_FLAKY_ISSUES" \
           --results "$TESTO_INPUT_RESULTS" \
           --coverage "$TESTO_INPUT_COVERAGE"
+    - name: Score the repository
+      id: scorecard
+      if: inputs.post-comments-from == '' && (inputs.scorecard == 'true' || inputs.scorecard == 'only')
+      shell: bash
+      env:
+        DATABASE_URL: ${{ steps.history.outputs.database_url }}
+        TESTO_GITHUB_TOKEN: ${{ inputs.github-token }}
+        TESTO_INPUT_SCORECARD_PATH: ${{ inputs.scorecard-path }}
+        TESTO_INPUT_SCORECARD_MIN_SCORE: ${{ inputs.scorecard-min-score }}
+        TESTO_INPUT_SCORECARD_NO_NEW: ${{ inputs.scorecard-no-new }}
+        TESTO_INPUT_SCORECARD_TOOLS: ${{ inputs.scorecard-tools }}
+        TESTO_INPUT_JOB_SUMMARY: ${{ inputs.job-summary }}
+      run: |
+        python "$GITHUB_ACTION_PATH/integrations/github-action/run_testo_action.py" scorecard \
+          --path "$TESTO_INPUT_SCORECARD_PATH" \
+          --min-score "$TESTO_INPUT_SCORECARD_MIN_SCORE" \
+          --no-new "$TESTO_INPUT_SCORECARD_NO_NEW" \
+          --tools "$TESTO_INPUT_SCORECARD_TOOLS" \
+          --job-summary "$TESTO_INPUT_JOB_SUMMARY"
     - name: Save run history
       if: always() && steps.history.outputs.cache == 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

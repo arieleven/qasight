@@ -445,13 +445,20 @@ def scan_cmd(
     _gate(card, min_score=min_score, min_tool=min_tool, no_drop=no_drop, no_new=no_new)
 
 
+_SHOW_FORMATS = ("text", "markdown", "json", "sarif", "html", "svg")
+
+
 @app.command("show")
 def show_cmd(
     project: str | None = typer.Option(
         None, "--project", help="Project (default: the last one scored)."
     ),
     version: str | None = typer.Option(None, "--version", help="Version (default: its latest)."),
-    fmt: str = typer.Option("text", "--format", help="text, markdown or json."),
+    fmt: str = typer.Option(
+        "text",
+        "--format",
+        help="text, markdown, json, sarif (GitHub code scanning), html (one page) or svg (badge).",
+    ),
     output: Path | None = typer.Option(
         None, "--output", "-o", help="Write to this file instead of printing."
     ),
@@ -467,10 +474,11 @@ def show_cmd(
     no_new: bool = typer.Option(False, "--no-new", help=_NO_NEW_HELP),
 ) -> None:
     """Show a version's scorecard; with a threshold it is the release gate."""
+    from qasight.services.scorecard import export
     from qasight.services.scorecard.report import build_scorecard, to_markdown
 
-    if fmt not in ("text", "markdown", "json"):
-        raise _fail("--format is text, markdown or json")
+    if fmt not in _SHOW_FORMATS:
+        raise _fail(f"--format is {', '.join(_SHOW_FORMATS[:-1])} or {_SHOW_FORMATS[-1]}")
     card = build_scorecard(project, version)
     if card is None:
         raise _fail(
@@ -481,11 +489,16 @@ def show_cmd(
         _print_card(card)
         typer.echo(_history_note())
     else:
-        text = (
-            to_markdown(card)
-            if fmt in ("markdown", "text")
-            else json.dumps(asdict(card), indent=2, default=str)
-        )
+        if fmt in ("markdown", "text"):
+            text = to_markdown(card)
+        elif fmt == "sarif":
+            text = json.dumps(export.to_sarif(card), indent=2)
+        elif fmt == "html":
+            text = export.to_html(card)
+        elif fmt == "svg":
+            text = export.badge_svg(card)
+        else:
+            text = json.dumps(asdict(card), indent=2, default=str)
         if output:
             output.write_text(text, encoding="utf-8")
             typer.echo(f"Wrote {output}")

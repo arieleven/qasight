@@ -1204,6 +1204,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scorecard/badge.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Badge Json
+         * @description The same badge as a shields.io endpoint (``img.shields.io/endpoint?url=...``).
+         */
+        get: operations["get_scorecard_badge_json_api_v1_scorecard_badge_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/badge.svg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Badge
+         * @description A README badge with the latest version's grade and score (``quality | B 87``).
+         */
+        get: operations["get_scorecard_badge_api_v1_scorecard_badge_svg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scorecard/markdown": {
         parameters: {
             query?: never;
@@ -1258,6 +1298,26 @@ export interface paths {
          * @description Record one tool's result that a client parsed (``qasight scorecard import|scan --server``).
          */
         post: operations["record_scorecard_result_api_v1_scorecard_results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/sarif": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Sarif
+         * @description A version's findings as SARIF 2.1.0, for GitHub code scanning or any SARIF viewer.
+         */
+        get: operations["get_scorecard_sarif_api_v1_scorecard_sarif_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6383,6 +6443,70 @@ export interface operations {
             };
         };
     };
+    get_scorecard_badge_json_api_v1_scorecard_badge_json_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                label?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scorecard_badge_api_v1_scorecard_badge_svg_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                label?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_scorecard_markdown_api_v1_scorecard_markdown_get: {
         parameters: {
             query?: {
@@ -6455,6 +6579,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScorecardToolScoreItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scorecard_sarif_api_v1_scorecard_sarif_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
