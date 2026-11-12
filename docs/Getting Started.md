@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-11-04
+updated: 2026-11-12
 ---
 
 # Getting Started
@@ -22,6 +22,8 @@ qasight --version          # qasight 1.x.y
 ```
 
 Not a Python project? Run it without a virtualenv: `uvx --from qasight qasight init` (or `pipx run --spec qasight qasight init`). The UI needs the `api` extra: `uvx --from 'qasight[api]' qasight ui`.
+
+No config yet? `qasight run -- pytest -q` (or `-- npm test`, `-- go test ./...`) runs your usual command and records it; see [Command Reference § Any test command](CLI%20Commands/Command%20Reference.md#any-test-command-no-config).
 
 `qasight` is the `qasight` CLI. It doesn't install your test runner, so keep installing pytest (or Behave, Jest...) the way your project already does.
 

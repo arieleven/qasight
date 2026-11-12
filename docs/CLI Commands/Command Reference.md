@@ -57,6 +57,32 @@ qasight run --cycle sample-pytests --workers 8 --force
 
 Only one run of a cycle uses its artifacts folder at a time. A second `qasight run` of the same cycle (another terminal, another CI job on the runner, the API) waits and says `another run of cycle 'x' is using ... (pid N); waiting for it to finish`; see [Engine Fixes - 2026-11-01](../Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md).
 
+### Any test command, no config
+
+Everything after `--` is a test command to run instead of a cycle. QASight works out the runner, adds what it needs to write a result file into a new `.testo/wrap/<time>/` folder, runs the command with its normal output, and records the results as a run (as `qasight ingest` would). No `qasight.yaml` is needed; the exit code is the command's own.
+
+```bash
+qasight run -- pytest -q tests                # adds --junitxml
+qasight run -- npm test                       # a Jest / Vitest / Playwright script: npm gets `--` and the flags
+qasight run --cycle api -- go test ./...      # adds -json, prints the usual text, keeps the JSON
+qasight run -- ./mvnw -B test                 # Surefire XML written during the run
+```
+
+| Runner (also through `npx`, `uv run`, `python -m`, an `npm` / `pnpm` / `yarn` script, `VAR=value` in front) | Added |
+|---|---|
+| `pytest` | `--junitxml=<folder>/pytest.xml` (kept as is when you pass `--junitxml`) |
+| `jest` | `--json --outputFile=<folder>/jest.json` |
+| `vitest` | `--reporter=default --reporter=json --outputFile.json=<folder>/vitest.json` |
+| `playwright test` | `--reporter=list,json` and `PLAYWRIGHT_JSON_OUTPUT_NAME` (tier `e2e`) |
+| `go test` | `-json`; its output is printed as plain `go test` text |
+| `dotnet test` | `--logger trx --results-directory <folder>/dotnet` |
+| `mvn` / `./mvnw`, `gradle` / `./gradlew` | nothing: their XML reports written during the run are recorded |
+| `rspec`, `bundle exec rspec` | the JSON formatter next to progress |
+| `phpunit` | `--log-junit <folder>/phpunit.xml` |
+| anything else | nothing: result files written under the folder while it ran (found by content) are recorded |
+
+The cycle is the folder's name unless `--cycle`; the stage is the runner's name. `--config`, `--ci`, `--no-persist` and `--coverage` work as for a cycle; `--test`, `--rerun-failed` and `--workers` are refused (exit `2`; pass the equivalent to the command). One quoted argument with shell syntax (`qasight run -- "pytest && echo ok"`) runs through `sh -c` and is treated as an unknown command. When the command leaves no result file, nothing is recorded and QASight says so.
+
 ### Expected terminal output
 
 **Interactive (default):** Rich panels for plan start, each stage, and finish. On success:
