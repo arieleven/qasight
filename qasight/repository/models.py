@@ -378,3 +378,44 @@ class ResourceWaiter(SQLModel, table=True):
     holder_user: str = Field(default="", max_length=64)
     created_at: float = Field(default=0.0, index=True)
     heartbeat_at: float = Field(default=0.0)
+
+
+class ScorecardResult(SQLModel, table=True):
+    """One tool's score for one version of a project, on the release scorecard.
+
+    One row per (project, version, tool): a newer report for the same three
+    replaces it. See :mod:`qasight.services.scorecard`.
+    """
+
+    __tablename__ = "scorecard_result"
+    __table_args__ = (
+        Index("ix_scorecard_result_project", "project"),
+        {"extend_existing": True},
+    )
+
+    # sha256 of "<project>\n<version>\n<tool>".
+    id: str = Field(primary_key=True, max_length=64)
+    project: str = Field(max_length=255)
+    version: str = Field(max_length=128)
+    tool: str = Field(max_length=64)
+    score: int = Field(default=0)
+    summary: str = Field(default="", max_length=500)
+    # {"metrics": {...}, "counts": {...}, "findings": [{severity, title, detail, location}]}
+    details: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column("details", _METADATA_JSON_COL, nullable=False)
+    )
+    commit_sha: str | None = Field(default=None, max_length=64)
+    # "scan" | "import" | "server"
+    source: str = Field(default="import", max_length=32)
+    recorded_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
+class ScorecardToolSetting(SQLModel, table=True):
+    """A scorecard tool switched on or off; tools without a row use their default."""
+
+    __tablename__ = "scorecard_tool"
+    __table_args__ = {"extend_existing": True}
+
+    tool: str = Field(primary_key=True, max_length=64)
+    enabled: bool = Field(default=True)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))

@@ -26,6 +26,8 @@ EXPECTED_TABLES = {
     "resource_action",
     "resource_waiter",
     "test_result",
+    "scorecard_result",
+    "scorecard_tool",
 }
 
 

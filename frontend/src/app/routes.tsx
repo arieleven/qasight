@@ -14,6 +14,7 @@ import { HistoryPage } from "../features/history/HistoryPage";
 import { ReleasePage, ReleasesPage } from "../features/releases/ReleasesPage";
 import { ReportPage } from "../features/report/ReportPage";
 import { ResourcesPage } from "../features/resources/ResourcesPage";
+import { ScorecardPage } from "../features/scorecard/ScorecardPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { TestPage } from "../features/tests/TestPage";
 import { TryPage } from "../features/try/TryPage";
@@ -63,6 +64,10 @@ export const routes = [
       {
         path: "health",
         element: <ProjectHealthPage />
+      },
+      {
+        path: "scorecard",
+        element: <ScorecardPage />
       },
       {
         path: "report",

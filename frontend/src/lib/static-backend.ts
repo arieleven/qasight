@@ -114,6 +114,13 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/dashboard/delivery") return "dashboard/delivery.json";
   if (path === "/resources") return "resources.json";
   if (path === "/releases") return "releases.json";
+  if (path === "/scorecard/tools") return "scorecard/tools.json";
+  if (path === "/scorecard/projects") return "scorecard/projects.json";
+  if (path === "/scorecard" || path === "/scorecard/markdown") {
+    const dir = path === "/scorecard" ? "cards" : "markdown";
+    const project = search.get("project");
+    return project ? `scorecard/${dir}/${stableId(`${project}\n${search.get("version") ?? ""}`)}.json` : `scorecard/${dir}/latest.json`;
+  }
   if (path === "/report") {
     const period = search.get("period") ?? "week";
     const name = search.get("cycle");

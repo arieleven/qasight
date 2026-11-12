@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-11-06
+updated: 2026-11-12
 ---
 
 # CI Integrations
@@ -144,7 +144,7 @@ What runs on QASight itself, as opposed to the wrappers above that run it in oth
 | `mirror-to-gitlab.yml` | push to `main` | Mirrors the repo to GitLab when `GITLAB_MIRROR_URL` / `GITLAB_MIRROR_TOKEN` are set |
 | `pr-heavy.yml` | labeled pull request, manual | Heavy test tier |
 | `nightly-external.yml` | manual (nightly schedule paused; uncomment its `schedule:` lines to re-enable) | External test tier |
-| `release-gate.yml` | manual | Release checks before publishing |
+| `release-gate.yml` | manual | Release checks before publishing: the external E2E tier, and the [release scorecard](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md) of the last release tag and this commit (`qasight scorecard scan` with Bandit, pip-audit, zizmor and Ruff), failing under the `min_score` input (default 60) or, with `no_drop`, when a tool scored lower than on the last release |
 | `dependabot.yml` (config, not a workflow) | weekly | Grouped dependency update PRs for pip, npm (`/` and `frontend/`) and GitHub Actions, committed as `chore(deps)` with the `no-changelog` label so commitlint and `changelog_required` pass |
 | `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published (`publish.yml` and `docker-publish.yml` can also be run by hand for an existing tag) | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md), [Publishing Docker Images](Publishing%20Docker%20Images.md)) |
 | `move-major-tag.yml` | GitHub Release published (not prereleases), manual | Force-moves the `v<major>` tag (e.g. `v1`) to the release's commit |

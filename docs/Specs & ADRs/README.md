@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-08
+updated: 2026-11-12
 ---
 
 # Specs & ADRs
@@ -21,6 +21,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Navy glass look and sidebar | [UI Restyle - 2026-10-19](UI%20Restyle%20-%202026-10-19.md) |
 | One engine, generated API types, blocking type checks | [Architecture Consolidation - 2026-10-06](Architecture%20Consolidation%20-%202026-10-06.md) |
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
+| Release scorecard: the repo review tools on any repository or version, a 0-100 score per version, compared with the last one, and a release gate | [Release Scorecard - 2026-11-12](Release%20Scorecard%20-%202026-11-12.md) |
 | Test labels and issue links, then environments, chosen-test runs and releases (gaps found next to Allure TestOps) | [Test Labels, Environments and Releases - 2026-11-02](Test%20Labels,%20Environments%20and%20Releases%20-%202026-11-02.md) |
 | Better flaky signal: retries, same-commit results, flips per branch, broken kept apart | [Better Flaky Signal - 2026-11-01](Better%20Flaky%20Signal%20-%202026-11-01.md) |
 | Importer and integration bug hunt: ranked findings, fixes and proposals | [Importer and Integration Bug Hunt - 2026-10-31](Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) |

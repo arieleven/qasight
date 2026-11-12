@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Release scorecard: `qasight scorecard scan` runs the repo review tools (Bandit, Semgrep, gitleaks, Flawfinder, OWASP ZAP, pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor, Ruff, Schemathesis, Lighthouse, axe, k6) on any folder or git URL (`qasight scorecard scan https://github.com/torvalds/linux`), scores each 0-100 for the project's version, rolls them up by category and compares the version with the one before. `qasight scorecard import` records a report you ran yourself (coverage, mutmut or Stryker, Locust, any SARIF or JUnit file), `qasight scorecard show --min-score/--min-tool/--no-drop` is the release gate and writes a Markdown summary, and `qasight scorecard tools` switches tools on and off. A new Scorecard page shows the score, the change since the last version, a bar per version, every tool with its logo (where the tool has one) and an on/off switch, and a form to scan a repository. `release-gate.yml` scores the last release and the commit. API under `/api/v1/scorecard`. See `docs/Specs & ADRs/Release Scorecard - 2026-11-12.md`
+
 ### Changed
 - New accent colour: the web UI's blue is now the green of the logo's eye (navy stays), and primary buttons use dark text on green for contrast. The docs site follows: green on white in light mode, green on the app's navy in dark mode (it was deep orange)
 - Dashboard redesign: a hero card for the latest run (pass rate in big type, three small stats, and QASight's eye drawn as a glowing iris split like a pie into the run's passed, failed, broken and skipped tests), a big gauge for project health, uneven columns instead of rows of equal boxes, and a bar per recent run (pass rate and result) on Recent runs

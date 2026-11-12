@@ -1423,3 +1423,152 @@ class CycleIssuesResponse(BaseModel):
     linked_tests: int
     total_tests: int
     items: list[IssueStatusItem]
+
+
+# --- Release scorecard (qasight/services/scorecard) ------------------------------
+
+
+class ScorecardToolItem(ApiModel):
+    id: str
+    name: str
+    category: str
+    category_name: str
+    tagline: str
+    how: str
+    homepage: str
+    # "repo" (reads the files) | "app" (needs a running app) | "import" (bring the report)
+    kind: str
+    report: str
+    languages: list[str] = Field(default_factory=list)
+    default_on: bool
+    enabled: bool
+    # Whether this server can run it; None for import-only tools.
+    installed: bool | None = None
+    install: str = ""
+
+
+class ScorecardToolsResponse(ApiModel):
+    items: list[ScorecardToolItem]
+
+
+class ScorecardToolUpdate(BaseModel):
+    enabled: bool
+
+
+class ScorecardFindingItem(ApiModel):
+    severity: str
+    title: str
+    detail: str = ""
+    location: str = ""
+
+
+class ScorecardToolScoreItem(ApiModel):
+    tool: str
+    name: str
+    category: str
+    enabled: bool
+    score: int
+    previous_score: int | None = None
+    summary: str
+    metrics: dict[str, float | int | str] = Field(default_factory=dict)
+    counts: dict[str, int] = Field(default_factory=dict)
+    findings: list[ScorecardFindingItem] = Field(default_factory=list)
+    recorded_at: float
+    source: str
+    commit_sha: str | None = None
+
+
+class ScorecardCategoryItem(ApiModel):
+    key: str
+    name: str
+    score: int | None = None
+    previous_score: int | None = None
+    tools: list[str] = Field(default_factory=list)
+
+
+class ScorecardVersionItem(ApiModel):
+    version: str
+    first_at: float
+    last_at: float
+    score: int | None = None
+    grade: str | None = None
+    tools: int
+
+
+class ScorecardProjectItem(ApiModel):
+    project: str
+    versions: list[ScorecardVersionItem]
+
+
+class ScorecardProjectsResponse(ApiModel):
+    items: list[ScorecardProjectItem]
+
+
+class ScorecardResponse(ApiModel):
+    """One version's scorecard; ``status`` is "empty" when nothing was scored yet."""
+
+    status: str
+    project: str | None = None
+    version: str | None = None
+    score: int | None = None
+    grade: str | None = None
+    previous_version: str | None = None
+    previous_score: int | None = None
+    recorded_at: float | None = None
+    commit_sha: str | None = None
+    categories: list[ScorecardCategoryItem] = Field(default_factory=list)
+    tools: list[ScorecardToolScoreItem] = Field(default_factory=list)
+    versions: list[ScorecardVersionItem] = Field(default_factory=list)
+
+
+class ScorecardMarkdownResponse(ApiModel):
+    markdown: str
+
+
+class ScorecardResultRequest(BaseModel):
+    """A tool result parsed by the client (``qasight scorecard import|scan --server``)."""
+
+    project: str = Field(min_length=1, max_length=255)
+    version: str = Field(min_length=1, max_length=128)
+    tool: str = Field(min_length=1, max_length=64)
+    score: int = Field(ge=0, le=100)
+    summary: str = Field(default="", max_length=500)
+    metrics: dict[str, float | int | str] = Field(default_factory=dict)
+    counts: dict[str, int] = Field(default_factory=dict)
+    findings: list[ScorecardFindingItem] = Field(default_factory=list, max_length=200)
+    commit_sha: str | None = Field(default=None, max_length=64)
+
+
+class ScorecardScanRequest(BaseModel):
+    """Scan a folder on the server or a git URL with the switched-on tools."""
+
+    target: str = Field(min_length=1, max_length=1024)
+    project: str | None = Field(default=None, max_length=255)
+    version: str | None = Field(default=None, max_length=128)
+    ref: str | None = Field(default=None, max_length=255)
+    url: str | None = Field(default=None, max_length=1024)
+    openapi: str | None = Field(default=None, max_length=1024)
+    tools: list[str] | None = None
+
+
+class ScorecardScanToolItem(ApiModel):
+    tool: str
+    # "queued" | "running" | "done" | "error" | "skipped"
+    status: str
+    score: int | None = None
+    message: str = ""
+
+
+class ScorecardScanResponse(ApiModel):
+    id: str
+    target: str
+    # "running" | "done" | "failed"
+    state: str
+    project: str | None = None
+    version: str | None = None
+    languages: list[str] = Field(default_factory=list)
+    message: str = ""
+    tools: list[ScorecardScanToolItem] = Field(default_factory=list)
+    skipped: dict[str, str] = Field(default_factory=dict)
+    started_at: float
+    finished_at: float | None = None

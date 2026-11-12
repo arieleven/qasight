@@ -1120,6 +1120,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard
+         * @description A version's scorecard (default: the latest scored), compared with the version before.
+         */
+        get: operations["get_scorecard_api_v1_scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Markdown
+         * @description The scorecard as a Markdown document.
+         */
+        get: operations["get_scorecard_markdown_api_v1_scorecard_markdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Scorecard Projects
+         * @description Every scored project, the latest first, with its versions and their scores.
+         */
+        get: operations["list_scorecard_projects_api_v1_scorecard_projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Scorecard Result
+         * @description Record one tool's result that a client parsed (``qasight scorecard import|scan --server``).
+         */
+        post: operations["record_scorecard_result_api_v1_scorecard_results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Scorecard Scan
+         * @description Scan a folder on this server or a git URL (cloned shallow) with the switched-on tools.
+         */
+        post: operations["start_scorecard_scan_api_v1_scorecard_scans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/scans/{scan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scorecard Scan
+         * @description A scan's progress: each tool queued, running, done or failed.
+         */
+        get: operations["get_scorecard_scan_api_v1_scorecard_scans__scan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Scorecard Tools
+         * @description Every tool the scorecard knows, switched on or off, and whether this server can run it.
+         */
+        get: operations["list_scorecard_tools_api_v1_scorecard_tools_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecard/tools/{tool_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Scorecard Tool
+         * @description Switch a tool on or off: scans skip it and scores leave it out.
+         */
+        put: operations["set_scorecard_tool_api_v1_scorecard_tools__tool_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/storage": {
         parameters: {
             query?: never;
@@ -3461,6 +3621,287 @@ export interface components {
             /** Runs */
             runs: number;
         };
+        /** ScorecardCategoryItem */
+        ScorecardCategoryItem: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Previous Score */
+            previous_score: number | null;
+            /** Score */
+            score: number | null;
+            /** Tools */
+            tools: string[];
+        };
+        /** ScorecardFindingItem */
+        "ScorecardFindingItem-Input": {
+            /**
+             * Detail
+             * @default
+             */
+            detail?: string;
+            /**
+             * Location
+             * @default
+             */
+            location?: string;
+            /** Severity */
+            severity: string;
+            /** Title */
+            title: string;
+        };
+        /** ScorecardFindingItem */
+        "ScorecardFindingItem-Output": {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Location
+             * @default
+             */
+            location: string;
+            /** Severity */
+            severity: string;
+            /** Title */
+            title: string;
+        };
+        /** ScorecardMarkdownResponse */
+        ScorecardMarkdownResponse: {
+            /** Markdown */
+            markdown: string;
+        };
+        /** ScorecardProjectItem */
+        ScorecardProjectItem: {
+            /** Project */
+            project: string;
+            /** Versions */
+            versions: components["schemas"]["ScorecardVersionItem"][];
+        };
+        /** ScorecardProjectsResponse */
+        ScorecardProjectsResponse: {
+            /** Items */
+            items: components["schemas"]["ScorecardProjectItem"][];
+        };
+        /**
+         * ScorecardResponse
+         * @description One version's scorecard; ``status`` is "empty" when nothing was scored yet.
+         */
+        ScorecardResponse: {
+            /** Categories */
+            categories: components["schemas"]["ScorecardCategoryItem"][];
+            /** Commit Sha */
+            commit_sha: string | null;
+            /** Grade */
+            grade: string | null;
+            /** Previous Score */
+            previous_score: number | null;
+            /** Previous Version */
+            previous_version: string | null;
+            /** Project */
+            project: string | null;
+            /** Recorded At */
+            recorded_at: number | null;
+            /** Score */
+            score: number | null;
+            /** Status */
+            status: string;
+            /** Tools */
+            tools: components["schemas"]["ScorecardToolScoreItem"][];
+            /** Version */
+            version: string | null;
+            /** Versions */
+            versions: components["schemas"]["ScorecardVersionItem"][];
+        };
+        /**
+         * ScorecardResultRequest
+         * @description A tool result parsed by the client (``qasight scorecard import|scan --server``).
+         */
+        ScorecardResultRequest: {
+            /** Commit Sha */
+            commit_sha?: string | null;
+            /** Counts */
+            counts?: {
+                [key: string]: number;
+            };
+            /** Findings */
+            findings?: components["schemas"]["ScorecardFindingItem-Input"][];
+            /** Metrics */
+            metrics?: {
+                [key: string]: number | string;
+            };
+            /** Project */
+            project: string;
+            /** Score */
+            score: number;
+            /**
+             * Summary
+             * @default
+             */
+            summary?: string;
+            /** Tool */
+            tool: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * ScorecardScanRequest
+         * @description Scan a folder on the server or a git URL with the switched-on tools.
+         */
+        ScorecardScanRequest: {
+            /** Openapi */
+            openapi?: string | null;
+            /** Project */
+            project?: string | null;
+            /** Ref */
+            ref?: string | null;
+            /** Target */
+            target: string;
+            /** Tools */
+            tools?: string[] | null;
+            /** Url */
+            url?: string | null;
+            /** Version */
+            version?: string | null;
+        };
+        /** ScorecardScanResponse */
+        ScorecardScanResponse: {
+            /** Finished At */
+            finished_at: number | null;
+            /** Id */
+            id: string;
+            /** Languages */
+            languages: string[];
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Project */
+            project: string | null;
+            /** Skipped */
+            skipped: {
+                [key: string]: string;
+            };
+            /** Started At */
+            started_at: number;
+            /** State */
+            state: string;
+            /** Target */
+            target: string;
+            /** Tools */
+            tools: components["schemas"]["ScorecardScanToolItem"][];
+            /** Version */
+            version: string | null;
+        };
+        /** ScorecardScanToolItem */
+        ScorecardScanToolItem: {
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Score */
+            score: number | null;
+            /** Status */
+            status: string;
+            /** Tool */
+            tool: string;
+        };
+        /** ScorecardToolItem */
+        ScorecardToolItem: {
+            /** Category */
+            category: string;
+            /** Category Name */
+            category_name: string;
+            /** Default On */
+            default_on: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Homepage */
+            homepage: string;
+            /** How */
+            how: string;
+            /** Id */
+            id: string;
+            /**
+             * Install
+             * @default
+             */
+            install: string;
+            /** Installed */
+            installed: boolean | null;
+            /** Kind */
+            kind: string;
+            /** Languages */
+            languages: string[];
+            /** Name */
+            name: string;
+            /** Report */
+            report: string;
+            /** Tagline */
+            tagline: string;
+        };
+        /** ScorecardToolScoreItem */
+        ScorecardToolScoreItem: {
+            /** Category */
+            category: string;
+            /** Commit Sha */
+            commit_sha: string | null;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Enabled */
+            enabled: boolean;
+            /** Findings */
+            findings: components["schemas"]["ScorecardFindingItem-Output"][];
+            /** Metrics */
+            metrics: {
+                [key: string]: number | string;
+            };
+            /** Name */
+            name: string;
+            /** Previous Score */
+            previous_score: number | null;
+            /** Recorded At */
+            recorded_at: number;
+            /** Score */
+            score: number;
+            /** Source */
+            source: string;
+            /** Summary */
+            summary: string;
+            /** Tool */
+            tool: string;
+        };
+        /** ScorecardToolUpdate */
+        ScorecardToolUpdate: {
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** ScorecardToolsResponse */
+        ScorecardToolsResponse: {
+            /** Items */
+            items: components["schemas"]["ScorecardToolItem"][];
+        };
+        /** ScorecardVersionItem */
+        ScorecardVersionItem: {
+            /** First At */
+            first_at: number;
+            /** Grade */
+            grade: string | null;
+            /** Last At */
+            last_at: number;
+            /** Score */
+            score: number | null;
+            /** Tools */
+            tools: number;
+            /** Version */
+            version: string;
+        };
         /** SignalCause */
         SignalCause: {
             /**
@@ -5603,6 +6044,242 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeleteRunsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scorecard_api_v1_scorecard_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scorecard_markdown_api_v1_scorecard_markdown_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardMarkdownResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_scorecard_projects_api_v1_scorecard_projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardProjectsResponse"];
+                };
+            };
+        };
+    };
+    record_scorecard_result_api_v1_scorecard_results_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScorecardResultRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardToolScoreItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_scorecard_scan_api_v1_scorecard_scans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScorecardScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scorecard_scan_api_v1_scorecard_scans__scan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_scorecard_tools_api_v1_scorecard_tools_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardToolsResponse"];
+                };
+            };
+        };
+    };
+    set_scorecard_tool_api_v1_scorecard_tools__tool_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScorecardToolUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardToolItem"];
                 };
             };
             /** @description Validation Error */

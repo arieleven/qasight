@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-05
+updated: 2026-11-12
 ---
 
 # Command Reference
@@ -534,6 +534,38 @@ An entry whose test is an exact name is released on its own once the test passed
 **Automatic quarantine (`TESTO_QUARANTINE_AUTO`).** Off by default. Set it to a flip rate (`0.3`, or `30`) and, after each recorded run, every test that is [flaky](#qasight-flaky) at that rate or more *and failed in that run* is added to the list (user `qasight`, the reason says the rate and why it's flaky), so the next run doesn't fail on it. A test that fails every time is broken, not flaky, and is never added; one a rule already covers is skipped. With auto-release it comes back only if it fails again after its clean runs. The run's pull request comment and job summary list the tests it added ("Quarantined automatically"); in the GitHub Action, set the variable on the step's `env`.
 
 **On a laptop.** `add` on a local SQLite history (no `--server`, no shared `DATABASE_URL`) also prints the `quarantine:` lines for `qasight.yaml`, because CI (a fresh runner or the Action's cached history) never sees this machine's list.
+
+---
+
+## `qasight scorecard`
+
+Score a release with the repo review tools: security (Bandit, Semgrep, gitleaks, Flawfinder, OWASP ZAP), supply chain (pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor), code quality (Ruff, any SARIF tool), API (Schemathesis), web (Lighthouse), accessibility (axe), performance (k6, Locust) and tests (coverage, mutation testing, JUnit). Each tool gets a 0-100 score for a project's version, the categories and the version get the mean, and the version is compared with the one before. Results live in the run-history database (tables `scorecard_result`, `scorecard_tool`); the UI's **Scorecard** page shows them. How scores are made: [Release Scorecard - 2026-11-12](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md).
+
+```bash
+qasight scorecard scan .                                      # this repository, version from git describe
+qasight scorecard scan https://github.com/torvalds/linux      # any repository, cloned shallow
+qasight scorecard scan . --url http://localhost:8000 --openapi http://localhost:8000/openapi.json
+qasight scorecard import coverage coverage.json --version 1.6.0
+qasight scorecard show --min-score 70 --no-drop               # the release gate: exit 1 when it fails
+qasight scorecard show --format markdown -o scorecard.md
+qasight scorecard tools --off semgrep --on locust
+```
+
+| Command / flag | Meaning |
+|------|---------|
+| `scan [TARGET]` | Run the switched-on tools that fit the repository's languages and are installed on this machine (QASight installs none; missing ones are listed with their install command). `TARGET` is a folder (default `.`) or a git URL (`https://`, `git@`, `github.com/owner/repo`), cloned with `--depth 1` into a temp folder and deleted after. Writes each tool's report, `scorecard.md` and `scorecard.json` under `--out` (default `scorecard-reports/`) and appends the Markdown to `$GITHUB_STEP_SUMMARY` when set |
+| `--project`, `--version` | Default: `owner/name` of the URL or the `origin` remote, else the folder name; `git describe --tags --always` |
+| `--ref` | Branch or tag to clone (git URLs) |
+| `--url`, `--openapi` | A running copy of the app: adds ZAP (through Docker), Lighthouse, axe and a 20-second k6 run; the schema adds Schemathesis |
+| `--tools a,b` | Run only these tools, switched on or not |
+| `--timeout` | Seconds each tool may run (default `900`) |
+| `import TOOL FILE` | Record a report a tool already wrote (`qasight scorecard tools` lists what each reads). Exit `2` when the file isn't that tool's report |
+| `show` | A version's scorecard (default: the last project scored, its newest version) as `--format text`, `markdown` or `json`, or `-o FILE` |
+| `--min-score N`, `--min-tool N`, `--no-drop` | On `scan` and `show`: the release gate. Exit `1` when the overall score is below `N`, a switched-on tool is below `N`, or (`--no-drop`) a tool scored lower than on the previous version |
+| `tools [--on a,b] [--off c] [--reset] [--json]` | List the tools: on or off, installed here, what they read. Switching one off makes scans skip it and leaves it out of the score |
+| `--server URL` | On `scan` and `import`: send the results to a [team server](../Processes%20&%20Guides/Team%20Server.md) (default `$TESTO_SERVER_URL`, token `$TESTO_API_TOKEN`) |
+
+Versions compare by number when every version of the project is one (`1.10.0` after `1.9.0`), else by when each was first scored. Exit `2` for a bad target, tool or file, `1` when no tool produced a result or the gate fails, `3` when a server can't be reached. API: `GET /api/v1/scorecard` (`?project=&version=`), `/scorecard/projects`, `/scorecard/markdown`, `GET` and `PUT /scorecard/tools/{id}`, `POST /scorecard/results`, `POST /scorecard/scans` and `GET /scorecard/scans/{id}` (writes need the token or a `runner` account).
 
 ---
 
