@@ -49,6 +49,7 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 - [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md): open backlog
 - [Project Review](project-review.md): whole-repo scorecard (architecture, code, tests, security, docs, CI) and verdict, 2026-10-24
 - [Architecture Review](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md): ranked review of module boundaries, data model, scaling limits and extension points, with proposed next steps, 2026-10-31
+- [Menu by Question](Specs%20&%20ADRs/Menu%20by%20Question%20-%202026-11-12.md): the UI menu grouped by question (Overview, Tests, Releases, Share, Settings), Test health and Code quality named apart, 2026-11-12
 - [Release Scorecard](Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md): run the repo review tools (security, dependencies, API, web, load, tests) on any repository or version, score it 0-100, compare it with the last version and gate the release, 2026-11-12
 - [Scorecard on MegaLinter](Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md): the scorecard runs MegaLinter on any repository and scores like SonarQube and Codacy, 2026-11-12
 - [Better Flaky Signal](Specs%20&%20ADRs/Better%20Flaky%20Signal%20-%202026-11-01.md): flaky means passed on retry, mixed results on one commit, or flips on one branch; broken tests kept apart, 2026-11-01

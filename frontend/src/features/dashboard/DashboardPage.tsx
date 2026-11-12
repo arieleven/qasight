@@ -53,8 +53,8 @@ export function DashboardPage() {
   return (
     <section className="space-y-5">
       <PageHeader
-        title="Dashboard"
-        subtitle="What needs you first, then how the latest run compares with the one before."
+        title="Overview"
+        subtitle="What needs you first, how the latest run did, and the two scores: your tests and your code."
       />
       {data.data_freshness?.degraded ? (
         <p role="status" className="rounded-md border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-sm text-warn-300">
@@ -66,7 +66,10 @@ export function DashboardPage() {
 
       <div className="grid gap-5 lg:grid-cols-12">
         <LatestRunHero data={data} latest={latestRun} />
-        <ProjectHealthKpi />
+        <div className="flex flex-col gap-5 lg:col-span-5">
+          <ProjectHealthKpi />
+          <CodeQualityKpi />
+        </div>
       </div>
 
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -232,7 +235,7 @@ function TrendBaseline({ kpis }: { kpis: DashboardOverviewResponse["headline_kpi
 }
 
 /**
- * The project's test health score, the same number the Project health page
+ * The project's test health score, the same number the Test health page
  * leads with (one source: GET /api/v1/project-health), linking to that page.
  */
 function ProjectHealthKpi() {
@@ -241,13 +244,13 @@ function ProjectHealthKpi() {
   const tone = scoreTone(score);
   return (
     <Link
-      to="/health"
-      className="glass-card group flex flex-col p-5 transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgb(52_211_153/0.45),0_12px_32px_-12px_rgb(16_185_129/0.5)] lg:col-span-5"
+      to="/test-health"
+      className={`glass-card group flex flex-1 flex-col p-5 ${CARD_HOVER}`}
       data-testid="project-health-kpi"
-      aria-label={score == null ? "Project health: no score yet. Open project health" : `Project health: ${score} out of 100${query.data?.grade ? `, grade ${query.data.grade}` : ""}. Open project health`}
+      aria-label={score == null ? "Test health: no score yet. Open test health" : `Test health: ${score} out of 100${query.data?.grade ? `, grade ${query.data.grade}` : ""}. Open test health`}
     >
-      <strong className="text-base font-bold text-white">Project health</strong>
-      <span className="text-sm text-ink-300">Your tests, scored out of 100</span>
+      <strong className="text-base font-bold text-white">Test health</strong>
+      <span className="text-sm text-ink-300">Your tests: passing, stable, fast. Scored out of 100</span>
       <div className="mt-2 flex flex-1 items-center justify-center">
         <Gauge value={score ?? null} color={GAUGE_COLOR[tone]}>
           <span className={`text-4xl font-bold tabular-nums ${score == null ? "text-white" : TONE_TEXT[tone]}`}>{score == null ? "n/a" : score}</span>
@@ -255,6 +258,50 @@ function ProjectHealthKpi() {
         </Gauge>
       </div>
       <p className="-mt-3 text-center text-sm font-semibold text-brand-300 group-hover:underline">See what drives it →</p>
+    </Link>
+  );
+}
+
+const CARD_HOVER =
+  "transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgb(52_211_153/0.45),0_12px_32px_-12px_rgb(16_185_129/0.5)]";
+
+const GRADE_TONE: Record<string, keyof typeof TONE_TEXT> = { A: "success", B: "success", C: "warn", D: "danger", E: "danger" };
+
+/**
+ * The code's grade from the latest scored version (GET /api/v1/scorecard), the second score
+ * beside Test health, so the two are never mistaken for each other.
+ */
+function CodeQualityKpi() {
+  const query = useQuery({ queryKey: ["scorecard", "", ""], queryFn: () => apiClient.getScorecard() });
+  const card = query.data;
+  const scored = card?.status === "available" && card.score != null;
+  const tone = scored ? (GRADE_TONE[card.grade ?? ""] ?? "neutral") : "neutral";
+  return (
+    <Link
+      to="/code-quality"
+      className={`glass-card group flex items-center justify-between gap-4 p-5 ${CARD_HOVER}`}
+      data-testid="code-quality-kpi"
+      aria-label={
+        scored
+          ? `Code quality of ${card.version}: grade ${card.grade}, ${card.score} out of 100. Open code quality`
+          : "Code quality: not scanned yet. Open code quality"
+      }
+    >
+      <div className="min-w-0">
+        <strong className="block text-base font-bold text-white">Code quality</strong>
+        <span className="block text-sm text-ink-300">
+          {scored ? `Your code in ${card.version}: linters, security, API and load tools` : "Your code, graded per release. Not scanned yet"}
+        </span>
+      </div>
+      <span className={`shrink-0 text-right text-3xl font-bold tabular-nums ${scored ? TONE_TEXT[tone] : "text-ink-400"}`}>
+        {scored ? (
+          <>
+            {card.grade} <span className="text-white">{card.score}</span>
+          </>
+        ) : (
+          "n/a"
+        )}
+      </span>
     </Link>
   );
 }
