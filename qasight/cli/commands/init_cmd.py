@@ -437,9 +437,8 @@ def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle
         # The branch is pushed; only the pull request is missing (no gh, or a token that
         # can't create one, like Actions' default token in many repositories).
         console.print(f"The branch is pushed. Open the pull request here: {link}")
-        return False
     if result.todo:
-        console.print("Left to do:")
+        console.print("Or, with the GitHub CLI:" if link else "Left to do:")
         for line in result.todo:
             console.print(f"  {line}", markup=False, highlight=False)
     return False
