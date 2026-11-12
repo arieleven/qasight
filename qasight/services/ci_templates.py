@@ -50,9 +50,17 @@ def ci_file_text(
     branch: str,
     server: str = "",
     forks: bool = False,
+    full_history: bool = False,
 ) -> str:
     if system == "github":
-        return github_workflow(facts, cycle=cycle, branch=branch, server=server, forks=forks)
+        return github_workflow(
+            facts,
+            cycle=cycle,
+            branch=branch,
+            server=server,
+            forks=forks,
+            full_history=full_history,
+        )
     if system == "gitlab":
         return gitlab_ci(facts, cycle=cycle)
     if system == "jenkins":
@@ -177,8 +185,12 @@ def github_workflow(
     branch: str = "main",
     server: str = "",
     forks: bool = False,
+    full_history: bool = False,
 ) -> str:
     """``.github/workflows/qasight.yml``: set up the stacks, then run *cycle* with the Action.
+
+    With *full_history* the checkout fetches every commit, so the cycles' ``trigger``
+    can compare the branch with ``origin/<branch>`` (``qasight init --per-package``).
 
     With *server*, each run is also uploaded to that team server, with the token
     from the ``TESTO_API_TOKEN`` repository secret. With *forks*, the comment is
@@ -207,6 +219,14 @@ def github_workflow(
         "    runs-on: ubuntu-latest",
         "    steps:",
         "      - uses: actions/checkout@v4",
+        *(
+            [
+                "        with:",
+                "          fetch-depth: 0  # each package's trigger compares with the base branch",
+            ]
+            if full_history
+            else []
+        ),
     ]
     for language in _languages(facts.stacks):
         lines += _github_setup(facts, language)

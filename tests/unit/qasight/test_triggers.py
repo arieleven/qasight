@@ -233,3 +233,11 @@ cycles:
     assert tr.mode == "snapshot"
     assert tr.reason.startswith("Git evaluation failed (bad revision 'origin/main')")
     assert "falling back to snapshot mode" in caplog.text
+
+
+def test_double_star_spans_folders() -> None:
+    assert path_matches_trigger_glob("libs/core/src/a/b.py", "libs/core/**") is True
+    assert path_matches_trigger_glob("libs/corex/a.py", "libs/core/**") is False
+    assert path_matches_trigger_glob("setup.py", "**/*.py") is True
+    assert path_matches_trigger_glob("a/b/c.txt", "**/*.py") is False
+    assert path_matches_trigger_glob("a/b/c.py", "a/*.py") is False

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-11-05
+updated: 2026-11-12
 ---
 
 # QA Strategies
@@ -146,7 +146,7 @@ qasight run --cycle all --tag smoke
 
 ### 2. Selective triggers
 
-Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `qasight/config/triggers.py`:
+Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Paths are relative to the folder of `qasight.yaml`; `**` spans any number of folders (`api/**`, `**/*.py`). [`qasight init --scan --per-package`](../CLI%20Commands/Command%20Reference.md#qasight-init) writes one triggered cycle per package. Evaluation lives in `qasight/config/triggers.py`:
 
 | Mode | Behavior |
 |------|----------|

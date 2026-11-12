@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import re
 import subprocess
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -271,9 +272,38 @@ def _snapshot_catalog(anchor: Path, patterns: tuple[str, ...]) -> dict[str, tupl
     return dict(sorted(out.items()))
 
 
+def _glob_regex(pattern: str) -> re.Pattern[str]:
+    """*pattern* as a whole-path regex where ``**`` spans folders (``api/**``, ``**/*.py``)."""
+    out = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("".join(out))
+
+
 def _path_matches_patterns(rel_posix: str, patterns: tuple[str, ...]) -> bool:
+    # PurePath.match is anchored at the right and reads ``**`` as ``*`` (before Python 3.13's
+    # full_match), so ``api/**`` would miss ``api/src/app.py``; ``**`` patterns also get a
+    # whole-path match where ``**`` spans any number of folders.
     pp = PurePosixPath(rel_posix)
-    return any(pp.match(pat) for pat in patterns)
+    return any(
+        pp.match(pat) or ("**" in pat and _glob_regex(pat.removeprefix("./")).fullmatch(rel_posix))
+        for pat in patterns
+    )
 
 
 def _diff_catalog_keys(
@@ -291,4 +321,4 @@ def _diff_catalog_keys(
 
 def path_matches_trigger_glob(rel_posix: str, pattern: str) -> bool:
     """Public helper for tests: whether ``rel_posix`` matches a single pathlib glob."""
-    return PurePosixPath(rel_posix).match(pattern)
+    return _path_matches_patterns(rel_posix, (pattern,))

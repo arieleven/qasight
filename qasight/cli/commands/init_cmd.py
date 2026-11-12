@@ -178,6 +178,12 @@ def init(
         "--listTests, go test -list...) and leave out stages with none. Loads your test "
         "code; never runs a test.",
     ),
+    per_package: bool = typer.Option(
+        False,
+        "--per-package",
+        help="With --scan: one cycle per project folder, each run only when its folder "
+        "changed (qasight run --cycle all); the CI workflow runs them all that way.",
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="With --scan: write without asking."),
     force: bool = typer.Option(False, "--force", help="Overwrite files that already exist."),
     dry_run: bool = typer.Option(
@@ -232,6 +238,8 @@ def init(
             f"unknown stack {unknown[0]!r}; pick from {', '.join(project_setup.STACK_KEYS)}",
             param_hint="--stack",
         )
+    if per_package and not scan:
+        raise typer.BadParameter("needs --scan (it splits the folders --scan finds)")
     if scan:
         scanned = repo_scan.scan_repo(repo, only=stack)
         facts = dataclasses.replace(scanned.facts, skipped=scanned.notes)
@@ -268,11 +276,21 @@ def init(
     keep_config = config_path.exists() and not force
     if keep_config:
         cycle_name = _existing_cycle(config_path, cycle_name)
+    packages = per_package and not keep_config
+    if packages and len(project_setup.package_cycles(facts, cycle=cycle_name)) < 2:
+        console.print("[muted]--per-package: the tests are in one folder, so one cycle.[/]")
+        packages = False
     ci_kind = _resolve_ci(ci, repo)
     branch = ci_templates.default_branch(repo)
-    files: list[tuple[Path, str, bool]] = [
-        (config_path, project_setup.config_yaml(facts, cycle=cycle_name), keep_config)
-    ]
+    config_text = project_setup.config_yaml(
+        facts, cycle=cycle_name, per_package=packages, base=branch
+    )
+    if packages:
+        for name, folder, _stacks in project_setup.package_cycles(facts, cycle=cycle_name):
+            when = "always" if folder == "." else f"when {folder}/ changed"
+            console.print(f"  cycle [bold]{name}[/]: runs {when}", highlight=False)
+    run_cycle = "all" if packages else cycle_name
+    files: list[tuple[Path, str, bool]] = [(config_path, config_text, keep_config)]
     ci_hint = ""
     if ci_kind != "none":
         main_file, side_file = ci_templates.CI_FILES[ci_kind]
@@ -282,7 +300,13 @@ def init(
             target = repo / side_file
             ci_hint = _INCLUDE_HINTS[ci_kind]
         text = ci_templates.ci_file_text(
-            ci_kind, facts, cycle=cycle_name, branch=branch, server=server_url, forks=forks
+            ci_kind,
+            facts,
+            cycle=run_cycle if ci_kind == "github" else cycle_name,
+            branch=branch,
+            server=server_url,
+            forks=forks,
+            full_history=packages,
         )
         files.append((target, text, target.exists() and not force))
     if forks and ci_kind == "github":
@@ -333,7 +357,9 @@ def init(
 
     code = 0
     if run_first:
-        code = _first_run(console=console, repo=repo, cycle=cycle_name, config=config_path)
+        code = _first_run(
+            console=console, repo=repo, cycle=run_cycle, config=config_path, ingest=not packages
+        )
 
     written = [t.relative_to(repo).as_posix() for t, _, keep in files if not keep]
     if missing:
@@ -350,7 +376,7 @@ def init(
     console.print(
         "  qasight ui          # the run history in your browser (pip install 'qasight\\[api]')"
     )
-    console.print(f"  qasight run --cycle {cycle_name}")
+    console.print(f"  qasight run --cycle {run_cycle}")
     raise typer.Exit(code=code)
 
 
@@ -459,12 +485,18 @@ def _confirm(console: Console, files: list[Path], run_first: bool) -> None:
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
 
-def _first_run(*, console: Console, repo: Path, cycle: str, config: Path) -> int:
-    """Record the results already on disk, else run *cycle* once. Failing tests still count as recorded."""
+def _first_run(
+    *, console: Console, repo: Path, cycle: str, config: Path, ingest: bool = True
+) -> int:
+    """Record the results already on disk, else run *cycle* once. Failing tests still count as recorded.
+
+    With ``ingest=False`` (one cycle per package) the results on disk are left alone:
+    they couldn't be told apart by package, so the cycles run instead.
+    """
     from qasight.cli.runner import execute_ingest_command, execute_plan_command
     from qasight.services.project_setup import find_result_files, result_patterns
 
-    found = find_result_files(repo)
+    found = find_result_files(repo) if ingest else []
     with _cwd(repo):
         if found:
             reports = result_patterns(found, repo=repo)

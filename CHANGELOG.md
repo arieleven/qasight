@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `qasight init --scan --per-package` writes one cycle per monorepo package, each triggered by changes to its folder, so `qasight run --cycle all` (and the generated GitHub workflow) runs only the packages a branch touched
 - Release scorecard: `qasight scorecard scan` runs the repo review tools (Bandit, Semgrep, gitleaks, Flawfinder, OWASP ZAP, pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor, Ruff, Schemathesis, Lighthouse, axe, k6) on any folder or git URL (`qasight scorecard scan https://github.com/torvalds/linux`), scores each 0-100 for the project's version, rolls them up by category and compares the version with the one before. `qasight scorecard import` records a report you ran yourself (coverage, mutmut or Stryker, Locust, any SARIF or JUnit file), `qasight scorecard show --min-score/--min-tool/--no-drop` is the release gate and writes a Markdown summary, and `qasight scorecard tools` switches tools on and off. A new Scorecard page shows the score, the change since the last version, a bar per version, every tool with its logo (where the tool has one) and an on/off switch, and a form to scan a repository. `release-gate.yml` scores the last release and the commit. API under `/api/v1/scorecard`. See `docs/Specs & ADRs/Release Scorecard - 2026-11-12.md`
 - Release scorecard: the scorecard shows how many of the tools that fit the repository ran and caps the grade at C when fewer than half did; gitleaks leaves out test and fixture files, counts each secret once and ranks it by rule; a failed tool says why; `scorecard-ignore.yml` (or `--ignore`) accepts known false positives; each tool is listed once under "Not run"; `scan`, `import` and `show` print the history database they use
 - Release gate: before a release, `release-gate.yml` runs Schemathesis, OWASP ZAP and a load test against a running API, Lighthouse CI on the demo site, fuzzing of every report importer and mutation testing, and the PyPI publish stops without a pass. Every pull request now also runs gitleaks, Bandit, pip-audit and `npm audit`. See `docs/Specs & ADRs/Release Gate - 2026-11-12.md`
@@ -20,6 +21,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The web UI sends a full Content Security Policy (everything from its own origin, no plugins, no foreign forms). The Plus Jakarta Sans font is bundled with the app instead of loaded from Google Fonts
 
 ### Fixed
+- A cycle's `trigger.paths` pattern with `**` now spans folders: `api/**` matches `api/src/app.py` and `**/*.py` matches a top-level file (before, `**` matched a single folder)
 - API: a `config_path` or `artifacts_root` that is not a usable path (a NUL byte, an unknown `~user`) answers 400 instead of 500. Found by the first full run of the release gate.
 - The API answers a dashboard `limit` / `recent_limit` too large for the database, and a request body it cannot parse, with a 422 instead of a 500 (found by Schemathesis)
 - Needs attention and project health count a run marked failed as red even when its exit code is 0
