@@ -86,6 +86,9 @@ so adoption is one extra step. **`qasight run`** goes further: it runs several f
 **cycle** of stages from a `qasight.yaml` (pytest, Playwright, Behave, any command), the
 same way from the CLI, CI or the web UI. Point either at a shared
 [team server](https://arieleven.github.io/qasight/docs/processes-and-guides/team-server/) and every CI job lands in one history.
+The server runs with `docker compose up`, a [Helm chart](deploy/helm/qasight) or one click on
+[Render](https://render.com/deploy?repo=https://github.com/arieleven/qasight), and can sign people in
+with your company's SSO (any OpenID Connect provider).
 
 **How it compares.** Allure renders one run; ReportPortal is a large server to operate.
 QASight is a `pip install` that keeps the history and diffs runs against each other, works

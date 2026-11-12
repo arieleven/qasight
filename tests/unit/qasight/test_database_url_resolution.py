@@ -105,3 +105,24 @@ def test_merge_database_url_yaml_roundtrip(tmp_path: Path) -> None:
     merge_database_url_yaml(path=path, url="sqlite:///merged.db")
     assert "merged.db" in path.read_text(encoding="utf-8")
     assert database_url_from_discovered_config(cwd=tmp_path) == "sqlite:///merged.db"
+
+
+@pytest.mark.parametrize(
+    ("given", "expected"),
+    [
+        ("postgres://u:p@db:5432/q", "postgresql+psycopg://u:p@db:5432/q"),
+        ("postgresql://u:p@db/q?sslmode=require", "postgresql+psycopg://u:p@db/q?sslmode=require"),
+        ("postgresql+psycopg://u:p@db/q", "postgresql+psycopg://u:p@db/q"),
+        ("sqlite:///x.db", "sqlite:///x.db"),
+    ],
+)
+def test_hosted_postgres_urls_use_psycopg3(
+    given: str, expected: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", given)
+    reset_engine_cache()
+    try:
+        assert resolve_database_url() == expected
+    finally:
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        reset_engine_cache()

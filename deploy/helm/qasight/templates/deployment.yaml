@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "qasight.fullname" . }}
+  labels:
+    {{- include "qasight.labels" . | nindent 4 }}
+spec:
+  # One replica: live run streams and the run manager live in the server's memory.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "qasight.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "qasight.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/env: {{ toJson .Values.env | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: {{ include "qasight.secretName" . }}
+          env:
+            - name: TESTO_AUTH
+              value: {{ .Values.auth.mode | quote }}
+            {{- with .Values.auth.oidc }}
+            {{- if .issuer }}
+            - name: TESTO_OIDC_ISSUER
+              value: {{ .issuer | quote }}
+            - name: TESTO_OIDC_CLIENT_ID
+              value: {{ .clientId | quote }}
+            - name: TESTO_OIDC_ALLOWED_DOMAINS
+              value: {{ .allowedDomains | quote }}
+            - name: TESTO_OIDC_DEFAULT_ROLE
+              value: {{ .defaultRole | quote }}
+            {{- end }}
+            {{- end }}
+            {{- range $name, $value := .Values.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: http
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-data" (include "qasight.fullname" .)) .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

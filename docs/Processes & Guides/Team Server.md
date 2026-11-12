@@ -30,6 +30,23 @@ cd deploy/server
 docker compose up -d          # pulls ghcr.io/arieleven/qasight-server; add --build to build from the checkout
 ```
 
+### One-click hosting
+
+No machine to run Docker on? [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/arieleven/qasight) reads [`render.yaml`](https://github.com/arieleven/qasight/blob/main/render.yaml) and creates the server from the published image, a Postgres database and a 5 GB disk for run artifacts, with a generated `TESTO_API_TOKEN` (copy it from the service's Environment tab into your CI secrets). It uses Render's paid plans, because free web services there have no disk. Any host that runs a container image and gives it a Postgres URL works the same way: point it at `ghcr.io/arieleven/qasight-server:1`, port `8000`, a volume on `/data`, and set `TESTO_API_TOKEN` and `DATABASE_URL`. Bare `postgres://` and `postgresql://` URLs, which Render, Heroku, Railway and Fly hand out, are used with psycopg 3 as they are.
+
+### Kubernetes
+
+A Helm chart is in [`deploy/helm/qasight`](https://github.com/arieleven/qasight/tree/main/deploy/helm/qasight):
+
+```bash
+helm install qasight deploy/helm/qasight \
+  --set auth.token="$(openssl rand -hex 32)" \
+  --set database.url="postgresql://qasight:...@postgres:5432/qasight" \
+  --set ingress.enabled=true --set ingress.host=qasight.example.com
+```
+
+Without `database.url` the history is SQLite on the chart's volume. `auth.existingSecret` takes a Secret you manage (key `TESTO_API_TOKEN`, plus `DATABASE_URL` or any other setting), `auth.mode: accounts` and `auth.oidc.*` turn on [accounts](#accounts) and [single sign-on](#single-sign-on), and `env` passes any variable from the table below. The chart runs one replica on purpose ([Limits today](#limits-today)). CI runs `helm lint` and `helm template` on it.
+
 Open <http://localhost:8000> and sign in with the token on the `/login` page. That sets an HttpOnly session cookie (30 days, `SameSite=Strict`), so the UI, report links and the live run stream all work; the cookie is derived from the token, so changing `TESTO_API_TOKEN` signs out everyone who signed in with it ([Rotating the token](#rotating-the-token)). CI and scripts send `Authorization: Bearer $TESTO_API_TOKEN` instead. Signing out only clears that browser's cookie; change the token to sign everyone out. Every write (uploads, starting runs, AI settings) needs one of the two, and so does every read while `TESTO_PROTECT_READS` is on, which the image and the compose file do by default; only the health checks and the login page stay open. Run logs and report files can carry whatever a test printed, so keep reads protected unless the server is on a network you already trust.
 
 | Variable | Default | Meaning |
@@ -229,6 +246,7 @@ They hold password hashes when [accounts](#accounts) are on; keep them as privat
 ## Limits today
 
 - Cycles that exist only as uploads aren't in the server's `qasight.yaml`, so they can't be started from the UI. They still get a cycle page, and show on the Cycles page, Dashboard, Runs and Compare.
+- One server process: the run manager, queued runs and live run streams live in its memory, so the server (and the Helm chart) runs one replica. Uploads and reads are quick, so one replica serves a large team; starting many runs from the UI is what it limits.
 - No projects: everyone who can read sees every cycle. [Accounts](#accounts) give per-person roles, not per-project ones.
 - Starting runs from the server's UI only makes sense for cycles defined in the server's config. Without [throwaway containers](#runs-in-throwaway-containers) they run inside the server container. The team server is mainly meant for uploads.
 
