@@ -1,0 +1,33 @@
+# One-click QASight team server on Render: the "Deploy to Render" button in the README
+# (https://render.com/deploy?repo=https://github.com/arieleven/qasight) reads this file.
+# It creates the server from the published image, a Postgres database and a disk for
+# run artifacts, and generates TESTO_API_TOKEN (copy it from the service's Environment
+# tab into your CI secrets). Plans are paid: Render's free web services have no disk.
+# Guide: docs/Processes & Guides/Team Server.md#one-click-hosting
+services:
+  - type: web
+    name: qasight
+    runtime: image
+    image:
+      url: ghcr.io/arieleven/qasight-server:1
+    plan: starter
+    healthCheckPath: /api/v1/health/live
+    disk:
+      name: qasight-data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: TESTO_API_TOKEN
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qasight-db
+          property: connectionString
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+databases:
+  - name: qasight-db
+    databaseName: qasight
+    plan: basic-256mb

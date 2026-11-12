@@ -87,6 +87,15 @@ steps:
   that run tested (never a number from the artifact). Files must start with the
   `<!-- testo-summary:` marker; `@` mentions are defused. Runs nothing else.
   `qasight init --forks` writes both workflows; see [Pull requests from forks](#pull-requests-from-forks)
+- `scorecard` (optional, default `false`): `true` scores the repository after the tests with
+  `qasight scorecard scan`, `only` instead of them. The scorecard goes to the job summary and one
+  pull request comment; SARIF, an HTML page and a badge go to the `scorecard_dir` output. See
+  [CI-CD Pipeline Setup](https://arieleven.github.io/qasight/docs/processes-and-guides/ci-cd-pipeline-setup/)
+- `scorecard-path` (optional, default `.`): folder or git URL to score
+- `scorecard-min-score` (optional): fail the step under this score (0-100)
+- `scorecard-no-new` (optional, default `false`): fail the step when the change brings a high or
+  critical finding the last scored version didn't have
+- `scorecard-tools` (optional): run only these scorecard tools (comma-separated ids)
 - `github-token` (optional, default `${{ github.token }}`): token for the comment and issues
 
 The summary is `qasight report markdown`: pass/fail counts, a per-stage table, failing tests and
@@ -101,6 +110,9 @@ a `database.url` / team server shared between jobs.
 - `summary_json`: the final `plan_finished` (or `error`) NDJSON event
 - `summary_path`: the same JSON saved under `$RUNNER_TEMP/testo-summary.json`
 - `comment_dir`: with `comment-artifact` on a pull request, the folder with the comment files
+- `scorecard_dir`: with `scorecard`, the folder with `scorecard.md`, `scorecard.sarif`,
+  `scorecard.html` and `badge.svg`
+- `scorecard_sarif`: with `scorecard`, the SARIF file for `github/codeql-action/upload-sarif`
 
 ## Usage
 

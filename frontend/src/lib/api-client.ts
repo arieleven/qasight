@@ -47,6 +47,8 @@ export type ScorecardScanRequest = Schemas["ScorecardScanRequest"];
 export type ScorecardScanResponse = Schemas["ScorecardScanResponse"];
 export type QuarantineRequest = Schemas["QuarantineRequest"];
 export type QuarantineListResponse = Schemas["QuarantineListResponse"];
+export type LiveRunListResponse = Schemas["LiveRunListResponse"];
+export type LiveRunItem = Schemas["LiveRunItem"];
 export type PyramidShape = RunPyramidResponse["shape"];
 export type VersionResponse = Schemas["VersionResponse"];
 export type StorageResponse = Schemas["StorageResponse"];
@@ -311,6 +313,9 @@ export const apiClient = {
   },
   getDashboardOverview(recentLimit = 5): Promise<DashboardOverviewResponse> {
     return api<DashboardOverviewResponse>(`/api/v1/dashboard/overview?recent_limit=${recentLimit}`);
+  },
+  listLiveRuns(): Promise<LiveRunListResponse> {
+    return api<LiveRunListResponse>("/api/v1/live-runs");
   },
   getDashboardRecentRuns(limit = 10): Promise<DashboardRecentRunsResponse> {
     return api<DashboardRecentRunsResponse>(`/api/v1/dashboard/runs/recent?limit=${limit}`);

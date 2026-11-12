@@ -18,9 +18,11 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Unified dashboard | [Phase 3 Unified Dashboard Plan](Phase%203%20Unified%20Dashboard%20Plan.md) |
 | BYOK AI failure summaries | [Phase 4 BYOK and Failure Analysis](Phase%204%20BYOK%20and%20Failure%20Analysis.md) |
 | Cycles-first UI | [Phase 5 UI Redesign - Cycles-First Navigation](Phase%205%20UI%20Redesign%20-%20Cycles-First%20Navigation.md) |
+| Menu grouped by question (Overview, Tests, Releases, Share, Settings); Test health and Code quality named apart | [Menu by Question - 2026-11-12](Menu%20by%20Question%20-%202026-11-12.md) |
 | Navy glass look and sidebar | [UI Restyle - 2026-10-19](UI%20Restyle%20-%202026-10-19.md) |
 | One engine, generated API types, blocking type checks | [Architecture Consolidation - 2026-10-06](Architecture%20Consolidation%20-%202026-10-06.md) |
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
+| Adoption blockers: single sign-on, one-click hosting (Render, Helm), the stability promise | [Adoption Blockers - 2026-11-12](Adoption%20Blockers%20-%202026-11-12.md) |
 | Release scorecard: the repo review tools on any repository or version, a 0-100 score per version, compared with the last one, and a release gate | [Release Scorecard - 2026-11-12](Release%20Scorecard%20-%202026-11-12.md) |
 | Scorecard on MegaLinter: MegaLinter runs the linters for any language, scores follow SonarQube (worst security finding) and Codacy (issue density per 1,000 lines), new findings per version | [Scorecard on MegaLinter - 2026-11-12](Scorecard%20on%20MegaLinter%20-%202026-11-12.md) |
 | Test labels and issue links, then environments, chosen-test runs and releases (gaps found next to Allure TestOps) | [Test Labels, Environments and Releases - 2026-11-02](Test%20Labels,%20Environments%20and%20Releases%20-%202026-11-02.md) |

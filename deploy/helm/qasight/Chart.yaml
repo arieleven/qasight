@@ -1,0 +1,10 @@
+apiVersion: v2
+name: qasight
+description: QASight team server (API + web UI), the place every CI job records its test results into.
+type: application
+version: 0.1.0
+appVersion: "1"
+home: https://github.com/arieleven/qasight
+sources:
+  - https://github.com/arieleven/qasight
+keywords: [testing, test-reporting, flaky-tests, ci]

@@ -47,6 +47,11 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "server-token",
         "static-site",
         "static-site-base-path",
+        "scorecard",
+        "scorecard-path",
+        "scorecard-min-score",
+        "scorecard-no-new",
+        "scorecard-tools",
     }
     assert set(payload["outputs"].keys()) == {
         "exit_code",
@@ -54,6 +59,8 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "summary_path",
         "status",
         "site_dir",
+        "scorecard_dir",
+        "scorecard_sarif",
     }
 
 
@@ -67,3 +74,17 @@ def test_wrapper_uses_testo_run_ci_command_shape() -> None:
 def test_github_fixture_is_one_line_consumer() -> None:
     workflow = Path("tests/fixtures/ci/github_workflow_minimal.yml").read_text(encoding="utf-8")
     assert "uses: arieleven/qasight@v1" in workflow
+
+
+def test_scorecard_scan_command_carries_the_gate() -> None:
+    module = _load_wrapper_module()
+    out = Path("/tmp/out")
+    plain = module.build_scorecard_scan_command(
+        path="", out=out, min_score="", no_new=False, tools=""
+    )
+    assert plain == ["qasight", "scorecard", "scan", ".", "--out", "/tmp/out"]
+    gated = module.build_scorecard_scan_command(
+        path="services/api", out=out, min_score=" 70 ", no_new=True, tools="osv-scanner,zizmor"
+    )
+    assert gated[3] == "services/api"
+    assert gated[-5:] == ["--min-score", "70", "--no-new", "--tools", "osv-scanner,zizmor"]
