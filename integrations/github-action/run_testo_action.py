@@ -694,6 +694,33 @@ def run_scorecard(
     return scan.returncode
 
 
+SETUP_COMMAND = [
+    "qasight",
+    "init",
+    "--scan",
+    "--yes",
+    "--attach",
+    "--no-run",
+    "--ci",
+    "github",
+    "--pr",
+]
+_BOT = ("github-actions[bot]", "41898283+github-actions[bot]@users.noreply.github.com")
+
+
+def run_setup(*, env: dict[str, str]) -> int:
+    """``setup: true``: set QASight up in the checked-out repository and open a pull request.
+
+    The commit is made as github-actions[bot]; the push uses the checkout's token
+    and the pull request ``gh`` with ``GH_TOKEN``. Its exit code is ``qasight init``'s.
+    """
+    workspace = Path(env.get("GITHUB_WORKSPACE") or ".")
+    for key, value in (("user.name", _BOT[0]), ("user.email", _BOT[1])):
+        subprocess.run(["git", "-C", str(workspace), "config", key, value], check=False)  # noqa: S603, S607
+    proc = subprocess.run(SETUP_COMMAND, cwd=workspace, env=env, check=False)  # noqa: S603
+    return proc.returncode
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["export-site"]:
@@ -704,6 +731,8 @@ def main(argv: list[str] | None = None) -> int:
         return export_static_site(
             out=Path(parsed.out), base_path=parsed.base_path, env=dict(os.environ)
         )
+    if argv[:1] == ["setup"]:
+        return run_setup(env=dict(os.environ))
     if argv[:1] == ["prepare-history"]:
         return _prepare_history_main(argv[1:])
     if argv[:1] == ["scorecard"]:

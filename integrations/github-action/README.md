@@ -74,6 +74,9 @@ steps:
   [Results on GitHub Pages](#results-on-github-pages)
 - `static-site-base-path` (optional, default: `/<repo>/`, or `/` for `<owner>.github.io`): the
   path the site is served under; `/` for a custom domain
+- `setup` (optional, default `false`): record nothing; set QASight up in this repository instead
+  (`qasight init --scan --attach --pr`) and open the setup pull request. Needs `contents: write`
+  and `pull-requests: write`; the one-time workflow is in Getting Started
 - `ai-summary` (optional, default `false`): add an AI summary of the failures to a failed run's
   summary and comment (`qasight report markdown --ai`). Set the provider in the step's `env`:
   `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`), `TESTO_AI_MODEL`,

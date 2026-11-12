@@ -229,6 +229,44 @@ def github_workflow(
     return "\n".join(lines) + "\n"
 
 
+SETUP_WORKFLOW_PATH = ".github/workflows/qasight-setup.yml"
+
+
+def setup_workflow() -> str:
+    """The one-time workflow that sets QASight up from the GitHub website, no terminal.
+
+    Committing it (the docs link opens GitHub's editor with it filled in) runs it
+    once: the Action's ``setup`` mode runs ``qasight init --scan --attach --pr``
+    and opens a pull request. Nothing else changes until that is merged.
+    """
+    return (
+        "\n".join(
+            [
+                "# Sets QASight up: finds your tests and opens a pull request that adds it.",
+                "# Runs when this file is committed (or from the Actions tab); delete it afterwards.",
+                "# Docs: https://arieleven.github.io/qasight/docs/getting-started/",
+                "name: QASight setup",
+                "on:",
+                "  workflow_dispatch:",
+                "  push:",
+                f"    paths: [{_q(SETUP_WORKFLOW_PATH)}]",
+                "permissions:",
+                "  contents: write  # push the qasight-setup branch",
+                "  pull-requests: write  # open the pull request",
+                "jobs:",
+                "  setup:",
+                "    runs-on: ubuntu-latest",
+                "    steps:",
+                "      - uses: actions/checkout@v4",
+                f"      - uses: {ACTION_REF}",
+                "        with:",
+                '          setup: "true"',
+            ]
+        )
+        + "\n"
+    )
+
+
 COMMENT_WORKFLOW_PATH = ".github/workflows/qasight-comment.yml"
 
 
