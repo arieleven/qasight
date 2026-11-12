@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 import re
 import subprocess
 from collections.abc import Mapping
@@ -163,3 +164,44 @@ def github_repository_of(repo: Path | None) -> str | None:
 
 def detect_ci_environment(env: Mapping[str, str] | None = None) -> bool:
     return detect_ci_provenance(env) is not None
+
+
+# Set to 0 / false / off to stop :func:`ci_tag` and :func:`ci_os` filling in a run's
+# release and environment.
+AUTO_METADATA_VAR = "TESTO_AUTO_METADATA"
+
+
+def auto_metadata_enabled(env: Mapping[str, str]) -> bool:
+    return str(env.get(AUTO_METADATA_VAR, "")).strip().lower() not in {"0", "false", "off", "no"}
+
+
+def ci_tag(env: Mapping[str, str]) -> str | None:
+    """The git tag this CI job builds ("v2.3.0"), or ``None`` for a branch or pull request build."""
+    if not auto_metadata_enabled(env):
+        return None
+    if str(env.get("GITHUB_ACTIONS", "")).lower() == "true":
+        return env.get("GITHUB_REF_NAME") or None if env.get("GITHUB_REF_TYPE") == "tag" else None
+    for var in ("CI_COMMIT_TAG", "CIRCLE_TAG", "BUILDKITE_TAG", "TAG_NAME"):
+        if value := str(env.get(var) or "").strip():
+            return value
+    source = str(env.get("BUILD_SOURCEBRANCH") or "")
+    if source.startswith("refs/tags/"):
+        return source.removeprefix("refs/tags/") or None
+    return None
+
+
+_OS_NAMES = {
+    "linux": "linux",
+    "windows": "windows",
+    "windows_nt": "windows",
+    "macos": "macos",
+    "darwin": "macos",
+}
+
+
+def ci_os(env: Mapping[str, str]) -> str | None:
+    """The CI runner's OS ("linux", "windows", "macos"); ``None`` outside CI."""
+    if not auto_metadata_enabled(env) or detect_ci_provenance(env) is None:
+        return None
+    name = str(env.get("RUNNER_OS") or env.get("AGENT_OS") or platform.system()).strip().lower()
+    return _OS_NAMES.get(name, name or None)

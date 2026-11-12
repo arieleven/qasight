@@ -177,13 +177,16 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
 
     # Flaky over the same window, ending at this run (oldest first for flaky_service).
     observations: dict[str, list[dict[str, Any]]] = {}
-    # Branches are already filtered to this run's lineage; only the commit is added.
+    # The same observations as the flaky page (branch, commit, environment), so the
+    # "flaky" tag here agrees with it.
     for older, cases in reversed(earlier_cases):
         for key in failing:
             if key in cases:
-                observations.setdefault(key, []).append({**cases[key], "commit": older.commit})
+                observations.setdefault(key, []).append(
+                    flaky_service.observation(older, cases[key])
+                )
     for key, case in failing.items():
-        observations.setdefault(key, []).append({**case, "commit": run.commit})
+        observations.setdefault(key, []).append(flaky_service.observation(run, case))
 
     tests: list[FailingTest] = []
     for key, case in failing.items():

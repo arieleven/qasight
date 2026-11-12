@@ -113,3 +113,37 @@ def test_test_history_splits_outcomes_by_environment() -> None:
         ("browser=chromium", 1, 1, 0, "passed"),
     ]
     assert _by_environment((_point("passed", None),)) == ()
+
+
+def test_ci_runner_os_is_the_last_fallback(tmp_path: Path) -> None:
+    ci = {"GITHUB_ACTIONS": "true", "RUNNER_OS": "Linux"}
+    assert run_environment.resolve(None, ci, tmp_path) == "os=linux"
+    assert run_environment.resolve(None, {**ci, "TESTO_ENV": "browser=firefox"}, tmp_path) == (
+        "browser=firefox"
+    )
+    assert run_environment.resolve(None, {"RUNNER_OS": "Linux"}, tmp_path) == ""
+
+
+def test_an_upload_carries_the_ci_tag_and_os() -> None:
+    from qasight.services.ingest_client import client_run_metadata
+
+    meta = client_run_metadata(
+        {
+            "GITHUB_ACTIONS": "true",
+            "RUNNER_OS": "Windows",
+            "GITHUB_REF_TYPE": "tag",
+            "GITHUB_REF_NAME": "v2.0.0",
+        }
+    )
+    assert meta["environment"] == "os=windows"
+    assert meta["release"] == "v2.0.0"
+
+
+def test_release_falls_back_to_the_ci_tag() -> None:
+    from qasight.services import run_release
+
+    tag = {"GITLAB_CI": "true", "CI_COMMIT_TAG": "v3.1"}
+    assert run_release.resolve(None, tag) == "v3.1"
+    assert run_release.resolve(None, {**tag, "TESTO_RELEASE": "3.1-rc"}) == "3.1-rc"
+    assert run_release.resolve("given", tag) == "given"
+    assert run_release.resolve(None, {"GITLAB_CI": "true"}) == ""

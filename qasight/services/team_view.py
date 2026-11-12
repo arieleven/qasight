@@ -135,13 +135,10 @@ def build_teams(
         with_cases = [(r, c) for r in recent if (c := flaky_service._cases_for_run(r))]
         if not with_cases:
             continue
-        observations: dict[str, list[dict[str, Any]]] = {}
         every_case: dict[str, dict[str, Any]] = {}
-        for run, cases in with_cases:
-            for key, case in cases.items():
-                observations.setdefault(key, []).append(flaky_service.observation(run, case))
-                every_case[key] = case
-        flaky = {k for k, obs in observations.items() if flaky_service.classify(k, obs)}
+        for _run, cases in with_cases:
+            every_case.update(cases)
+        flaky = flaky_service.flaky_keys(with_cases)
         costs = flaky_service.flaky_costs(
             [(r, c) for r, c in with_cases if r.created_at >= start], flaky
         )
