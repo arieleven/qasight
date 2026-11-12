@@ -93,6 +93,7 @@ STACK_KEYS: tuple[str, ...] = (
     "jest",
     "vitest",
     "playwright",
+    "cypress",
     "go",
     "dotnet",
     "maven",
@@ -138,6 +139,34 @@ def _node_package_manager(repo: Path, pkg: dict[str, Any]) -> str:
     if (repo / "bun.lockb").is_file() or (repo / "bun.lock").is_file():
         return "bun"
     return "npm"
+
+
+_CYPRESS_CONFIGS = (
+    "cypress.config.ts",
+    "cypress.config.js",
+    "cypress.config.mjs",
+    "cypress.config.cjs",
+    "cypress.json",
+)
+_BASE_URL = re.compile(r"""["']?baseUrl["']?\s*:\s*["'`](https?://[^"'`\s]+)["'`]""")
+_SERVE_SCRIPTS = ("start", "dev", "preview", "serve")
+
+
+def cypress_serve(repo: Path, pkg: dict[str, Any], manager: str) -> dict[str, str] | None:
+    """The ``serve:`` a Cypress stage needs: the package's start script and Cypress's ``baseUrl``."""
+    url = next(
+        (
+            found.group(1)
+            for name in _CYPRESS_CONFIGS
+            if (found := _BASE_URL.search(_read_text(repo / name)))
+        ),
+        None,
+    )
+    scripts = pkg.get("scripts") if isinstance(pkg.get("scripts"), dict) else {}
+    script = next((name for name in _SERVE_SCRIPTS if name in (scripts or {})), None)
+    if url is None or script is None:
+        return None
+    return {"command": f"{manager} run {script}", "url": url}
 
 
 def node_install_command(manager: str, repo: Path) -> str:
@@ -278,11 +307,34 @@ def detect_project(repo: Path, *, only: Iterable[str] = ()) -> ProjectFacts:
                 install=(*node_install, "npx playwright install --with-deps"),
             )
         )
-    if not wanted and "cypress" in deps:
-        skipped.append(
-            "Cypress: left out because it needs your app running first; add an "
-            "`equipment: cypress` stage once CI starts the app."
-        )
+    if want("cypress", "cypress" in deps):
+        serve = cypress_serve(repo, pkg, manager)
+        if serve is None and wanted:  # asked for by name: a guess to edit beats nothing
+            serve = {"command": f"{manager} run start", "url": "http://localhost:3000"}
+        if serve is None:
+            skipped.append(
+                "Cypress: left out because it needs your app running and QASight couldn't "
+                "tell how to start it (a `baseUrl` in cypress.config and a start, dev, "
+                "preview or serve script); add an `equipment: cypress` stage with "
+                "`serve: {command: ..., url: ...}`."
+            )
+        else:
+            stacks.append(
+                Stack(
+                    key="cypress",
+                    label="Cypress",
+                    language="node",
+                    stage={
+                        "name": "cypress",
+                        "equipment": "cypress",
+                        "args": [],
+                        "tier": "e2e",
+                        "serve": serve,
+                    },
+                    install=node_install,
+                    result_files=("test-results/testo-cypress-*.xml",),
+                )
+            )
 
     if want("go", (repo / "go.mod").is_file()):
         stacks.append(
@@ -566,6 +618,13 @@ def config_yaml(facts: ProjectFacts, *, cycle: str) -> str:
             lines.append(f"        junit_xml: {_yaml_list(stage['junit_xml'])}")
         if stage.get("tier"):
             lines.append(f"        tier: {stage['tier']}")
+        serve = stage.get("serve")
+        if serve:
+            lines += [
+                "        serve:  # started before the stage, stopped after",
+                f"          command: {json.dumps(serve['command'])}",
+                f"          url: {json.dumps(serve['url'])}",
+            ]
     for note in facts.skipped:
         lines.append(f"# Not added: {note}")
     return "\n".join(lines) + "\n"

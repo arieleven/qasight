@@ -19,6 +19,7 @@ default, or in a throwaway container through the runner service
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import shutil
@@ -39,6 +40,7 @@ from qasight.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merge
 from qasight.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
 from qasight.engine.quarantine import evaluate as evaluate_quarantine
 from qasight.engine.result import StageResult
+from qasight.engine.stage_server import ServeError, serving
 from qasight.frameworks import pytest_adapter
 from qasight.frameworks.base import FrameworkAdapter, get_adapter
 from qasight.paths import plan_artifacts_dir, safe_child_path
@@ -269,22 +271,50 @@ def _run_resolved_stage(
                 target_repo=target_repo,
             )
         stage, resource_env, held = prepared.stage, prepared.env, prepared.held
+    serve_cm: contextlib.AbstractContextManager[None] = contextlib.nullcontext()
+    if stage.serve is not None:
+        serve_cm = serving(
+            stage.serve,
+            cwd=target_repo,
+            env=merged_env(parent_env if parent_env is not None else os.environ, stage.extra_env),
+            log_path=stage_root / "serve.log",
+        )
     try:
-        return _run_process_stage(
-            stage,
-            target_repo=target_repo,
-            adapter=adapter,
-            artifacts_root=artifacts_root,
-            stage_root=stage_root,
-            results_dir=results_dir,
+        with serve_cm:
+            return _run_process_stage(
+                stage,
+                target_repo=target_repo,
+                adapter=adapter,
+                artifacts_root=artifacts_root,
+                stage_root=stage_root,
+                results_dir=results_dir,
+                log_path=log_path,
+                parent_env=parent_env,
+                on_chunk=on_chunk,
+                tail_lines=tail_lines,
+                quarantine=quarantine,
+                # Which stage this is (pytest --qasight-shard reads the cycle's test times),
+                # plus the stage's key or what its workers need to lease their own.
+                testo_env={"TESTO_CYCLE": plan_name, "TESTO_STAGE": stage.name, **resource_env},
+            )
+    except ServeError as exc:
+        _append_run_log(log_path, [f"[qasight] serve: {exc}"])
+        now = time.time()
+        return StageResult(
+            stage_name=stage.name,
+            framework=stage.framework,
+            tier=stage.tier,
+            # Like a timeout: the environment, not the tests, stopped the stage (exit 3).
+            returncode=124,
+            started_at=now,
+            finished_at=now,
+            duration_s=0.0,
             log_path=log_path,
-            parent_env=parent_env,
-            on_chunk=on_chunk,
-            tail_lines=tail_lines,
-            quarantine=quarantine,
-            # Which stage this is (pytest --qasight-shard reads the cycle's test times),
-            # plus the stage's key or what its workers need to lease their own.
-            testo_env={"TESTO_CYCLE": plan_name, "TESTO_STAGE": stage.name, **resource_env},
+            artifacts_dir=stage_root,
+            command=(),
+            output_tail=f"[qasight] serve: {exc}",
+            error=f"the app didn't start: {exc}",
+            target_repo=target_repo,
         )
     finally:
         if held is not None:

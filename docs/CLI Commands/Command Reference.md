@@ -728,6 +728,7 @@ qasight init --pr                 # then commit the files on a new branch, push 
 | `jest` in `package.json` | `jest` | `equipment: jest` (Jest's JSON report) |
 | `vitest` in `package.json` | `vitest` | `equipment: vitest` |
 | `@playwright/test` in `package.json` | `playwright` | `equipment: playwright`, `tier: e2e` |
+| `cypress` in `package.json`, with a `baseUrl` in `cypress.config.*` and a `start`, `dev`, `preview` or `serve` script | `cypress` | `equipment: cypress`, `tier: e2e`, [`serve:`](../Testing%20Workflows/QA%20Strategies.md#defining-work-in-qasightyaml) that runs the script and waits for `baseUrl` (with `--stack cypress` and neither found: `npm run start` and `http://localhost:3000`, to edit) |
 | `go.mod` | `go` | `command`: `go test -json ./...` into `test-results/go-test.json` |
 | a `*.csproj` referencing a test SDK (xUnit, NUnit, MSTest) | `dotnet` | `command`: `dotnet test --logger trx` |
 | `pom.xml` | `maven` | `command`: `mvn -B test` (or `./mvnw`), Surefire XML |
@@ -735,7 +736,7 @@ qasight init --pr                 # then commit the files on a new branch, push 
 | `rspec` in `Gemfile`, or `.rspec` | `rspec` | `command`: `bundle exec rspec` with the JSON formatter |
 | `phpunit/phpunit` in `composer.json` | `phpunit` | `command`: `vendor/bin/phpunit --log-junit` |
 
-Cypress is found but left out (it needs the app running first); the command says so.
+Cypress without a `baseUrl` or a script to start the app is left out (it needs the app running first); the command says so. In GitLab, Jenkins and CircleCI files the Cypress step starts the app in the background and waits for the URL with `curl` before `cypress run`.
 
 **Every folder (`--scan`).** Plain `qasight init` reads the files at the top of the project. With `--scan` it looks in every folder that has a project file (up to 6 levels, skipping `node_modules`, virtualenvs, build output and hidden folders) and writes a stage per runner per folder, named after the folder (`api-pytest`, `libs-core-pytest`, `web-jest`) with `target_repo` set so it runs there. A folder an outer stage already covers is left out and listed: Maven modules under a parent `pom.xml`, Gradle subprojects, packages under a root Jest or Vitest, and Python folders a bare `pytest` (or `pytest tests`) above them collects. `dotnet test` starts at a `.sln`, else in each test project's folder. The CI file installs and runs each stage in its folder. `--scan` prints the stages and the command each runs, then asks before writing: `--yes` (`-y`) skips the question, `--dry-run` prints the files, and with no terminal to answer nothing is written (exit `2`).
 

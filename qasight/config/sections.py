@@ -28,6 +28,7 @@ from qasight.config.schema import (
     QuarantineRule,
     ReporterSpec,
     Stage,
+    StageServe,
 )
 from qasight.resources.pools import ResourcePool, parse_stage_resources
 
@@ -349,6 +350,8 @@ def parse_stage(
                 f"and stay inside it (got {pattern!r})."
             )
 
+    serve = parse_serve(stage_raw.get("serve"), where=f"stage {name!r}")
+
     if framework == "command" and not args:
         raise ConfigValidationError(
             f"stage {name!r}: framework 'command' needs 'args' (the full command to run)."
@@ -372,7 +375,29 @@ def parse_stage(
         resources=resources,
         workers_auto=workers_auto,
         workers_explicit="workers" in stage_raw or defaults.workers_explicit,
+        serve=serve,
     )
+
+
+def parse_serve(raw: Any, *, where: str) -> StageServe | None:
+    """A stage's ``serve: {command, url, timeout_s}``, or ``None`` when it has none."""
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ConfigValidationError(f"{where}: 'serve' must be a mapping with command and url.")
+    unknown = sorted(set(raw) - {"command", "url", "timeout_s"})
+    if unknown:
+        raise ConfigValidationError(f"{where}: 'serve' has unknown key {unknown[0]!r}.")
+    command = raw.get("command")
+    url = raw.get("url")
+    if not isinstance(command, str) or not command.strip():
+        raise ConfigValidationError(f"{where}: 'serve.command' must be a non-empty string.")
+    if not isinstance(url, str) or not url.strip().startswith(("http://", "https://")):
+        raise ConfigValidationError(f"{where}: 'serve.url' must be an http:// or https:// URL.")
+    timeout = raw.get("timeout_s", 120)
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+        raise ConfigValidationError(f"{where}: 'serve.timeout_s' must be a positive number.")
+    return StageServe(command=command.strip(), url=url.strip(), timeout_s=float(timeout))
 
 
 def parse_timeout(value: Any, *, where: str) -> float | None:

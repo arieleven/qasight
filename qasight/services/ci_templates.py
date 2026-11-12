@@ -320,6 +320,8 @@ def ci_test_command(stack: Stack) -> str:
     import shlex
 
     args = [str(a) for a in stack.stage.get("args") or []]
+    if stack.key == "cypress":
+        return in_folder(stack, _cypress_command(stack, args))
     if stack.key in _NATIVE_COMMANDS:
         cmd = _NATIVE_COMMANDS[stack.key].format(args=shlex.join(args)).replace("  ", " ")
     elif args[:2] == ["sh", "-c"] and len(args) == 3:
@@ -329,6 +331,26 @@ def ci_test_command(stack: Stack) -> str:
     # A runner that writes a file there needs the folder; `--results-directory` creates its own.
     needs_dir = "test-results/" in cmd and "--results-directory" not in cmd
     return in_folder(stack, f"mkdir -p test-results && {cmd}" if needs_dir else cmd)
+
+
+def _cypress_command(stack: Stack, args: list[str]) -> str:
+    """Start the app in the background, wait for its URL, then run Cypress with JUnit output."""
+    import shlex
+
+    run = (
+        "npx cypress run "
+        + (shlex.join(args) + " " if args else "")
+        + "--reporter junit --reporter-options "
+        + shlex.quote("mochaFile=test-results/testo-cypress-[hash].xml,toConsole=false")
+    )
+    serve = stack.stage.get("serve")
+    if not serve:
+        return f"mkdir -p test-results && {run}"
+    url = shlex.quote(str(serve["url"]))
+    return (
+        f"mkdir -p test-results && ({serve['command']} > test-results/serve.log 2>&1 &) && "
+        f"for i in $(seq 120); do curl -s -o /dev/null {url} && break; sleep 1; done && {run}"
+    )
 
 
 def in_folder(stack: Stack, cmd: str) -> str:

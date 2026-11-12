@@ -81,6 +81,19 @@ class CycleTrigger:
 
 
 @dataclass(frozen=True)
+class StageServe:
+    """``serve:``: the app a stage's tests need, started before the stage and stopped after.
+
+    *command* runs through the shell in the stage's ``target_repo``; the stage starts
+    once *url* answers (any HTTP status below 500), or fails after *timeout_s*.
+    """
+
+    command: str
+    url: str
+    timeout_s: float = 120.0
+
+
+@dataclass(frozen=True)
 class Stage:
     """One execution step in a plan.
 
@@ -109,6 +122,8 @@ class Stage:
     # True when the stage or ``defaults:`` sets ``workers``. A pytest stage on the
     # built-in default runs serially without a warning when pytest-xdist is missing.
     workers_explicit: bool = True
+    # ``serve:``: the app to start first (Cypress and other end-to-end runners).
+    serve: StageServe | None = None
 
 
 @dataclass(frozen=True)
