@@ -445,6 +445,9 @@ def isolated_history_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
     from qasight.repository import db, db_config
 
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'testo-history.db'}")
+    # The read-side cache (qasight.history.memo) is off unless a test turns it on, so a
+    # test that patches a service between two requests sees the patched result.
+    monkeypatch.setenv("TESTO_READ_CACHE_S", "0")
     db_config.reset_engine_cache()
     db.reset_repository_cache()
     yield

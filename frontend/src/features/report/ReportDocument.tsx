@@ -96,7 +96,7 @@ function TestList({ items, empty }: { items: ManagerReport["still_failing"]; emp
       </p>
     );
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" tabIndex={0}>
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-xs" style={{ color: PAPER.muted }}>
@@ -214,7 +214,7 @@ export function ReportDocument({ report, brand = "QASight", copy = true }: { rep
 
       <Section copy={copy} title="Cycles">
         {report.cycles.length ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="text-left text-xs" style={{ color: PAPER.muted }}>
@@ -425,7 +425,7 @@ function DeliveryByCycle({ report, copy }: { report: ManagerReport; copy: boolea
   const grown = rows.some((c) => c.grown_stage);
   return (
     <Section copy={copy} title="Speed and stability by cycle">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0}>
         <table className="w-full min-w-[620px] text-sm">
           <thead>
             <tr className="text-left text-xs" style={{ color: PAPER.muted }}>
@@ -577,7 +577,7 @@ function TeamsSection({ report, copy }: { report: ManagerReport; copy: boolean }
   return (
     <Section copy={copy} title="By team" note={t.owners_known ? "CODEOWNERS and owner labels" : undefined}>
       {t.owners_known ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0}>
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="text-left text-xs" style={{ color: PAPER.muted }}>

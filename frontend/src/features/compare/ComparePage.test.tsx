@@ -73,7 +73,8 @@ describe("ComparePage", () => {
       </QueryClientProvider>
     );
 
-    await waitFor(() => expect(screen.getByText("Compare runs")).toBeInTheDocument());
+    // The heading shows while runs load too, so wait for the pickers themselves.
+    await waitFor(() => expect(screen.getByLabelText("Current run")).toBeInTheDocument());
 
     // Pickers name runs by cycle and time, grouped by cycle, with the short id secondary.
     const currentPicker = screen.getByLabelText("Current run");

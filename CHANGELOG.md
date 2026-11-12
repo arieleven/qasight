@@ -11,6 +11,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 - Release scorecard: `qasight scorecard scan` runs the repo review tools (Bandit, Semgrep, gitleaks, Flawfinder, OWASP ZAP, pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor, Ruff, Schemathesis, Lighthouse, axe, k6) on any folder or git URL (`qasight scorecard scan https://github.com/torvalds/linux`), scores each 0-100 for the project's version, rolls them up by category and compares the version with the one before. `qasight scorecard import` records a report you ran yourself (coverage, mutmut or Stryker, Locust, any SARIF or JUnit file), `qasight scorecard show --min-score/--min-tool/--no-drop` is the release gate and writes a Markdown summary, and `qasight scorecard tools` switches tools on and off. A new Scorecard page shows the score, the change since the last version, a bar per version, every tool with its logo (where the tool has one) and an on/off switch, and a form to scan a repository. `release-gate.yml` scores the last release and the commit. API under `/api/v1/scorecard`. See `docs/Specs & ADRs/Release Scorecard - 2026-11-12.md`
 
+### Security
+- Uploaded and stage JUnit, TRX and Robot Framework XML is parsed with `defusedxml`: a file that declares entities is reported as unreadable instead of being expanded. `defusedxml` is a new dependency
+- GitHub Actions hardening: every third-party action is pinned to a commit SHA, checkouts no longer keep the job token unless the workflow pushes, the PyPI release build no longer restores the npm cache, and branch names reach shell scripts through `env:`. CI now runs zizmor on the workflows, and a weekly OpenSSF Scorecard workflow reports to code scanning (results are not published). See `docs/Specs & ADRs/External Audit Tools - 2026-11-11.md`
+- The web UI sends a full Content Security Policy (everything from its own origin, no plugins, no foreign forms). The Plus Jakarta Sans font is bundled with the app instead of loaded from Google Fonts
+
+### Fixed
+- The API answers a dashboard `limit` / `recent_limit` too large for the database, and a request body it cannot parse, with a 422 instead of a 500 (found by Schemathesis)
+- Needs attention and project health count a run marked failed as red even when its exit code is 0
+- A JSON report with a wrong-typed field says which format it looked like and that a field is missing or has an unexpected type, instead of a bare `TypeError`
+- The single-file HTML report (`qasight report --html`) works again with the on-demand page loading
+- Accessibility (found by axe): Compare and the test page keep their heading while loading or empty, the report's small print has 4.8:1 contrast instead of 2.6:1, and its wide tables scroll from the keyboard
+
+### Performance
+- The API keeps the manager report, Needs attention and project health in memory until a run is added, finishes or is deleted (`TESTO_READ_CACHE_S`, default 60 s, `0` off). With 50 users the API answers 5.7 times as many requests, median 0.16 s instead of 2.6 s
+- The web UI loads each page other than the dashboard on demand (the first download is 344 kB instead of 610 kB), and the dashboard no longer jumps while the demo notice and the first data load. The page has a meta description
+
 ### Changed
 - New accent colour: the web UI's blue is now the green of the logo's eye (navy stays), and primary buttons use dark text on green for contrast. The docs site follows: green on white in light mode, green on the app's navy in dark mode (it was deep orange)
 - Dashboard redesign: a hero card for the latest run (pass rate in big type, three small stats, and QASight's eye drawn as a glowing iris split like a pie into the run's passed, failed, broken and skipped tests), a big gauge for project health, uneven columns instead of rows of equal boxes, and a bar per recent run (pass rate and result) on Recent runs

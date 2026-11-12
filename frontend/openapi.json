@@ -9984,6 +9984,7 @@
             "required": false,
             "schema": {
               "default": 5,
+              "maximum": 100,
               "title": "Recent Limit",
               "type": "integer"
             }
@@ -10027,6 +10028,7 @@
             "required": false,
             "schema": {
               "default": 10,
+              "maximum": 500,
               "title": "Limit",
               "type": "integer"
             }

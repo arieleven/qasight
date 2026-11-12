@@ -426,6 +426,31 @@ def guard_read_request(request: Request) -> Response | None:
 _ATTACHMENT_MARKERS = ("-attachment", "/data/attachments/", "/allure-results/")
 
 
+# The web UI, the login page and the API itself: everything from this origin. Styles
+# allow inline because React sets `style=` attributes (chart sizes, colours) and the
+# login page has a <style> block; there is no inline script. The font ships with the UI.
+APP_CSP = "; ".join(
+    [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self' data:",
+        "connect-src 'self'",
+        "frame-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'self'",
+    ]
+)
+
+# Pages this policy would break, which keep only `frame-ancestors`: the Allure reports
+# under /history (their own inline scripts and data) and FastAPI's /docs and /redoc
+# (scripts from a CDN).
+_LOOSE_CSP_PREFIXES = ("/history/", "/docs", "/redoc")
+
+
 def add_security_headers(request: Request, response: Response) -> None:
     """Headers every response gets, plus a sandbox for report attachments.
 
@@ -441,8 +466,10 @@ def add_security_headers(request: Request, response: Response) -> None:
     path = request.url.path
     if path.startswith("/history/") and any(m in path for m in _ATTACHMENT_MARKERS):
         response.headers["Content-Security-Policy"] = "sandbox; frame-ancestors 'self'"
-    else:
+    elif path.startswith(_LOOSE_CSP_PREFIXES):
         response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'self'")
+    else:
+        response.headers.setdefault("Content-Security-Policy", APP_CSP)
 
 
 def read_config_path(raw: str | None) -> Path | None:

@@ -8,6 +8,12 @@ import { StaticBuildBanner } from "./components/StaticBuildBanner";
 import { StandaloneReport, embeddedReport } from "./features/report/standalone";
 import { shouldRetry } from "./lib/api-client";
 import { installStaticBackend } from "./lib/static-backend";
+// The UI's font ships with the bundle (Latin, the four weights the UI uses), so the
+// app works offline and the server's Content-Security-Policy can stay 'self'-only.
+import "@fontsource/plus-jakarta-sans/latin-400.css";
+import "@fontsource/plus-jakarta-sans/latin-500.css";
+import "@fontsource/plus-jakarta-sans/latin-600.css";
+import "@fontsource/plus-jakarta-sans/latin-700.css";
 import "./styles.css";
 
 // No-op unless the build was made with VITE_STATIC_DATA_BASE (the GitLab Pages

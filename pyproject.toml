@@ -59,6 +59,8 @@ dependencies = [
     "rich>=13.7.0",
     "watchdog>=4.0.0",
     "Jinja2>=3.1.0",
+    # Uploaded JUnit, TRX and Robot XML is parsed without entity expansion or DTD fetches.
+    "defusedxml>=0.7.1",
 ]
 
 [project.scripts]

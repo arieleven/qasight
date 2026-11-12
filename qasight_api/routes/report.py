@@ -7,6 +7,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
+from qasight.history import memo
 from qasight.services.manager_report import build_report
 from qasight_api.models import ManagerReportResponse
 
@@ -25,7 +26,11 @@ def get_report(
     title: str | None = Query(None, max_length=120),
 ) -> ManagerReportResponse:
     """How testing went over the last ``period``, against the period before, for every cycle or ``cycle``."""
-    report = build_report(period=period, cycles=cycle, title=title or None)
+    report = memo.cached(
+        "manager_report",
+        (period, tuple(cycle) if cycle else None, title or None),
+        lambda: build_report(period=period, cycles=cycle, title=title or None),
+    )
     return ManagerReportResponse.model_validate(report.to_dict())
 
 

@@ -319,7 +319,25 @@ def test_every_response_gets_nosniff_and_same_origin_framing() -> None:
     resp = _client().get("/api/v1/health/live")
     assert resp.headers["X-Content-Type-Options"] == "nosniff"
     assert resp.headers["X-Frame-Options"] == "SAMEORIGIN"
-    assert resp.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
+    csp = resp.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "script-src 'self'" in csp
+    assert "frame-ancestors 'self'" in csp
+
+
+def test_the_app_policy_allows_nothing_from_other_origins() -> None:
+    from qasight_api.security import APP_CSP
+
+    assert "http" not in APP_CSP
+    assert "*" not in APP_CSP
+    assert "'unsafe-eval'" not in APP_CSP
+    assert "script-src 'self';" in APP_CSP + ";"
+
+
+@pytest.mark.parametrize("path", ["/docs", "/redoc"])
+def test_api_docs_keep_the_loose_policy(path: str) -> None:
+    # Swagger UI and ReDoc load their scripts from a CDN.
+    assert _client().get(path).headers["Content-Security-Policy"] == "frame-ancestors 'self'"
 
 
 def test_refusals_get_the_headers_too(token: str, monkeypatch: pytest.MonkeyPatch) -> None:

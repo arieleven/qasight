@@ -1,0 +1,15 @@
+# zizmor (workflow security audit, run in the CI `format` job). Every ignore
+# here is a finding we looked at and accepted; say why next to it.
+rules:
+  cache-poisoning:
+    ignore:
+      # ci.yml also runs on `release: published`, so zizmor treats it as a
+      # publisher, but it only tests: nothing it builds is shipped. The release
+      # workflows (publish.yml, docker-publish.yml, ...) restore no caches.
+      - ci.yml
+  artipacked:
+    ignore:
+      # These two push with the checkout's token (changelog commit, moving the
+      # major tag), so they keep the persisted credentials on purpose.
+      - changelog-on-main.yml
+      - move-major-tag.yml

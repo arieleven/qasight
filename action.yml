@@ -164,7 +164,7 @@ runs:
     - name: Restore run history
       id: restore
       if: steps.history.outputs.cache == 'true'
-      uses: actions/cache/restore@v6
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.history.outputs.dir }}
         key: ${{ steps.history.outputs.key }}
@@ -212,7 +212,7 @@ runs:
           --coverage "$TESTO_INPUT_COVERAGE"
     - name: Save run history
       if: always() && steps.history.outputs.cache == 'true'
-      uses: actions/cache/save@v6
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.history.outputs.dir }}
         key: ${{ steps.history.outputs.key }}
@@ -220,7 +220,7 @@ runs:
       # For `qasight ui --from-github`. A name taken twice (a matrix job) must not fail the job.
       if: always() && steps.history.outputs.cache == 'true' && inputs.history-artifact == 'true'
       continue-on-error: true
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: ${{ steps.history.outputs.key }}
         path: ${{ steps.history.outputs.dir }}/testo_history.db
@@ -238,12 +238,12 @@ runs:
           --out "$RUNNER_TEMP/testo-site" --base-path "$TESTO_INPUT_STATIC_SITE_BASE_PATH"
     - name: Upload the static site for GitHub Pages
       if: always() && steps.site.outputs.site_dir != ''
-      uses: actions/upload-pages-artifact@v5
+      uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
       with:
         path: ${{ steps.site.outputs.site_dir }}
     - name: Upload the pull request comment
       if: always() && steps.run_testo.outputs.comment_dir != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: testo-comment
         path: ${{ steps.run_testo.outputs.comment_dir }}

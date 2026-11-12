@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 from email import message_from_bytes
@@ -110,6 +111,31 @@ def test_single_file_html_inlines_the_ui_and_bakes_in_the_report(tmp_path: Path)
     data = json.loads(baked)
     assert data["brand"] == "Acme" and data["report"]["summary"][1] == "Pass rate <rose>."
     assert "<title>Q4 &lt;check-in&gt;</title>" in page
+
+
+def test_single_file_html_inlines_the_chunks_the_entry_imports(tmp_path: Path) -> None:
+    """Pages load lazily, so the entry imports shared code from another chunk."""
+    root = _ui(tmp_path)
+    index = root / "index.html"
+    index.write_text(
+        index.read_text(encoding="utf-8").replace(
+            "</head>", '<link rel="modulepreload" crossorigin href="/assets/ui.js"></head>'
+        ),
+        encoding="utf-8",
+    )
+    (root / "assets" / "app.js").write_text(
+        'import{a as b}from"./ui.js";import"./side.js";const p=()=>import("./Page.js");b(p);',
+        encoding="utf-8",
+    )
+    (root / "assets" / "ui.js").write_text('import"./side.js";export const a=1;', encoding="utf-8")
+    (root / "assets" / "side.js").write_text("window.side=1;", encoding="utf-8")
+    page = report_export.render_html(_report(), ui=root).decode("utf-8")
+    assert "modulepreload" not in page
+    assert '"./ui.js"' not in page and '"./side.js"' not in page
+    side = "data:text/javascript;base64," + base64.b64encode(b"window.side=1;").decode()
+    # One URL per chunk, so a chunk imported twice still runs once.
+    assert page.count(side) == 1
+    assert 'import("./Page.js")' in page  # lazy pages are not part of the report
 
 
 def test_html_without_a_ui_build_says_how_to_get_one(monkeypatch: pytest.MonkeyPatch) -> None:

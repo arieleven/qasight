@@ -84,6 +84,12 @@ class BaseRunRepository(Protocol):
     def bulk_update(self, records: list[RunRecord]) -> int:
         """Persist updates to the given rows in one transaction; return the number of rows written."""
 
+    def history_fingerprint(self) -> tuple[Any, ...]:
+        """A cheap value that changes whenever a run is added, finishes, changes status or is deleted.
+
+        Read-side caches key on it (:mod:`qasight.history.memo`); one aggregate query, no JSON.
+        """
+
     def list_run_keys(self) -> list[tuple[str, str | None, datetime | None, RunStatus]]:
         """``(run_id, cycle, start_time, status)`` of every run, newest first.
 

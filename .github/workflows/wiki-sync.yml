@@ -29,8 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
       - name: Lint the vault
@@ -42,10 +44,13 @@ jobs:
           git clone --depth=1 \
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki
       - name: Export the vault
+        env:
+          REPO: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           find wiki -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           python scripts/docs_vault.py export-wiki wiki \
-            --repo "${{ github.repository }}" --ref "${{ github.ref_name }}"
+            --repo "$REPO" --ref "$REF_NAME"
       - name: Push
         working-directory: wiki
         run: |

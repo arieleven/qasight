@@ -47,10 +47,14 @@ import hashlib
 import json
 import re
 import uuid
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from defusedxml import ElementTree as SafeET
 
 from qasight.reporting.imported_results import fold_attempts
 
@@ -355,6 +359,23 @@ def _decode(raw: bytes) -> tuple[bytes, str]:
     return raw, raw.decode("utf-8-sig", errors="replace")
 
 
+@contextmanager
+def _report_shape(kind: str) -> Iterator[None]:
+    """Turn a wrong-typed or missing field in a recognised report into a plain ``ValueError``.
+
+    Reports are matched by a few top-level keys; a file that matches but has, say, a
+    number where a list belongs would otherwise surface as ``TypeError: 'int' object
+    is not iterable``, which says nothing about the file.
+    """
+    try:
+        yield
+    except (TypeError, KeyError, AttributeError, IndexError) as exc:
+        raise ValueError(
+            f"looks like a {kind} report, but a field is missing or has an unexpected type"
+            f" ({type(exc).__name__}: {exc})"
+        ) from exc
+
+
 def _results_for_any(
     path: Path, *, tool: str, results_dir: Path, repo: Path
 ) -> _FileResults | None:
@@ -370,7 +391,7 @@ def _results_for_any(
         # Whitespace (or a BOM, then whitespace) before ``<?xml`` is an expat error
         # ("XML or text declaration not at start of entity"); a stray newline from a
         # shell redirect shouldn't make the report unreadable.
-        root = ET.fromstring(raw.removeprefix(b"\xef\xbb\xbf").lstrip())  # noqa: S314 — stage-owned file, expat ignores external entities
+        root = SafeET.fromstring(raw.removeprefix(b"\xef\xbb\xbf").lstrip())
         from qasight.reporting.robot_import import is_robot_root, robot_results_for_root
         from qasight.reporting.trx_import import is_trx_root, trx_results_for_root
 
@@ -392,14 +413,16 @@ def _results_for_any(
     if head not in ("{", "["):
         # ``go test -json`` output can start with a build line ("go: downloading ...").
         if is_gotest_text(text):
-            return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+            with _report_shape("go test -json"):
+                return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
         raise ValueError("not a test result file (neither XML nor JSON)")
 
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         if is_gotest_text(text):
-            return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+            with _report_shape("go test -json"):
+                return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
         raise ValueError(f"not valid JSON ({exc})") from exc
     if allure_passthrough.is_allure_result(path, data):
         result, copied = allure_passthrough.copy_allure_result(
@@ -407,7 +430,8 @@ def _results_for_any(
         )
         return _FileResults([result], attachments=copied)
     if is_jest_report(data):
-        results = jest_results_for_report(data, tool=tool, root=repo, fallback_ms=fallback_ms)
+        with _report_shape("Jest/Vitest"):
+            results = jest_results_for_report(data, tool=tool, root=repo, fallback_ms=fallback_ms)
         flaky = sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
         return _FileResults(results, flaky=flaky)
     from qasight.reporting.k6_import import is_k6_summary, k6_results_for_summary
@@ -418,22 +442,27 @@ def _results_for_any(
     )
 
     if is_rspec_report(data):
-        return _FileResults(rspec_results_for_report(data, tool=tool, fallback_ms=fallback_ms))
+        with _report_shape("RSpec"):
+            return _FileResults(rspec_results_for_report(data, tool=tool, fallback_ms=fallback_ms))
     if is_k6_summary(data):
-        return _FileResults(k6_results_for_summary(data, tool=tool, fallback_ms=fallback_ms))
+        with _report_shape("k6"):
+            return _FileResults(k6_results_for_summary(data, tool=tool, fallback_ms=fallback_ms))
     if is_xcresult_report(data):
-        results = xcresult_results_for_report(data, tool=tool, fallback_ms=fallback_ms)
+        with _report_shape("xcresulttool"):
+            results = xcresult_results_for_report(data, tool=tool, fallback_ms=fallback_ms)
         flaky = sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
         return _FileResults(results, flaky=flaky)
     if isinstance(data, dict) and isinstance(data.get("suites"), list):
         from qasight.reporting.playwright_import import playwright_results_for_file
 
-        parsed = playwright_results_for_file(
-            path, tool=tool, results_dir=results_dir, attachments_root=repo
-        )
+        with _report_shape("Playwright"):
+            parsed = playwright_results_for_file(
+                path, tool=tool, results_dir=results_dir, attachments_root=repo
+            )
         return _FileResults(parsed.results, parsed.flaky, parsed.attachments, parsed.notes)
     if is_gotest_text(text):  # a single-event go test file is valid JSON too
-        return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+        with _report_shape("go test -json"):
+            return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
     raise ValueError(
         "not a known JSON report (Playwright, Jest/Vitest, RSpec, k6, xcresulttool,"
         " go test -json or an Allure result)"

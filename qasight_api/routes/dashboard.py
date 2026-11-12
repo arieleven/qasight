@@ -4,6 +4,7 @@ import time
 
 from fastapi import APIRouter, HTTPException, Query
 
+from qasight.history import memo
 from qasight.services.attention import needs_attention
 from qasight.services.dashboard_service import DashboardRecentRun, DashboardService
 from qasight_api.models import (
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/api/v1", tags=["dashboard"])
 
 
 @router.get("/dashboard/overview", response_model=DashboardOverviewResponse)
-def get_dashboard_overview(recent_limit: int = 5) -> DashboardOverviewResponse:
+def get_dashboard_overview(recent_limit: int = Query(5, le=100)) -> DashboardOverviewResponse:
     service = DashboardService()
     try:
         payload = service.get_overview(recent_limit=recent_limit)
@@ -103,7 +104,7 @@ def get_dashboard_overview(recent_limit: int = 5) -> DashboardOverviewResponse:
 @router.get("/dashboard/attention", response_model=DashboardAttentionResponse)
 def get_dashboard_attention() -> DashboardAttentionResponse:
     """Red cycles (most new failures first), newly flaky tests and tests that got slower."""
-    attention = needs_attention()
+    attention = memo.cached("attention", (), needs_attention)
     return DashboardAttentionResponse(
         cycles=attention.cycles,
         passing_cycles=attention.passing_cycles,
@@ -125,7 +126,7 @@ def get_dashboard_delivery(days: int = Query(7, ge=1, le=90)) -> DeliveryRespons
 
 
 @router.get("/dashboard/runs/recent", response_model=DashboardRecentRunsResponse)
-def get_dashboard_recent_runs(limit: int = 10) -> DashboardRecentRunsResponse:
+def get_dashboard_recent_runs(limit: int = Query(10, le=500)) -> DashboardRecentRunsResponse:
     service = DashboardService()
     try:
         items = service.get_recent_runs(limit=limit)
