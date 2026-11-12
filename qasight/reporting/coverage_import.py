@@ -18,10 +18,12 @@ are kept: per-file coverage is the coverage tool's job.
 from __future__ import annotations
 
 import re
-import xml.etree.ElementTree as ET  # noqa: S405 - parsed with forbidden DTDs below
+import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+
+from defusedxml import ElementTree as SafeET
 
 MAX_FILE_BYTES = 50 * 1024 * 1024
 # Run-record keys (strings, like every other uploaded metadata value).
@@ -57,7 +59,7 @@ def _xml_root(text: str) -> ET.Element:
         if "<!ENTITY" in text:
             raise CoverageFormatError("XML entities are not allowed in a coverage report")
     try:
-        return ET.fromstring(text)  # noqa: S314 - no DTD or entities left (checked above)
+        return SafeET.fromstring(text)
     except ET.ParseError as exc:
         raise CoverageFormatError(f"not well-formed XML ({exc})") from exc
 

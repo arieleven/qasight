@@ -83,7 +83,7 @@ def cache_path() -> Path:
 
 def _fetch(timeout: float) -> str | None:
     request = urllib.request.Request(PYPI_URL, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(request, timeout=timeout) as resp:  # noqa: S310 - fixed https URL
+    with urllib.request.urlopen(request, timeout=timeout) as resp:  # noqa: S310 - fixed https URL  # nosec B310
         data = json.loads(resp.read())
     version = str((data.get("info") or {}).get("version") or "")
     return version or None

@@ -324,7 +324,7 @@ def run_command(
     try:
         done = subprocess.run(  # noqa: S602 — the config author's own command line
             command,
-            shell=True,
+            shell=True,  # the config author's own command line  # nosec B602
             env=env,
             timeout=timeout_s,
             capture_output=True,

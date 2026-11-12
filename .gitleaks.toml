@@ -1,0 +1,15 @@
+# gitleaks (CI "secrets" step): the default rules, minus the made-up tokens that
+# the redaction tests feed in on purpose and an archived setup guide's curl line.
+title = "qasight"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures with fake credentials"
+paths = [
+  '''tests/unit/[^/]+/test_redaction\.py''',
+  '''tests/unit/[^/]+/test_ai_config_model\.py''',
+  '''tests/unit/[^/]+/test_failure_context_builder\.py''',
+  '''docs/.*ReportPortal Local Setup Guide\.md''',
+]

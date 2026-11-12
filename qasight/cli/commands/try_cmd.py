@@ -116,7 +116,7 @@ def _run_project_tests(project: Path) -> None:
         # goes to stderr so stdout stays the comment.
         proc = subprocess.run(  # noqa: S602 — the project's own test command
             command,
-            shell=True,
+            shell=True,  # the project's own test command  # nosec B602
             cwd=project,
             check=False,
             stdout=subprocess.PIPE,

@@ -155,7 +155,7 @@ class RunnerSettings:
     pids_limit: int = 512
     docker: str = "docker"
     max_runs: int = 4
-    host: str = "0.0.0.0"  # noqa: S104 - it serves its own container network
+    host: str = "0.0.0.0"  # noqa: S104 - it serves its own container network  # nosec B104
     port: int = DEFAULT_PORT
 
     @classmethod
@@ -190,7 +190,7 @@ class RunnerSettings:
                 pids_limit=int(opt("TESTO_RUNNER_PIDS_LIMIT") or 512),
                 docker=opt("TESTO_RUNNER_DOCKER") or "docker",
                 max_runs=max(1, int(opt("TESTO_RUNNER_MAX_RUNS") or 4)),
-                host=opt("TESTO_RUNNER_HOST") or "0.0.0.0",  # noqa: S104
+                host=opt("TESTO_RUNNER_HOST") or "0.0.0.0",  # noqa: S104  # nosec B104
                 port=int(opt("TESTO_RUNNER_PORT") or DEFAULT_PORT),
             )
         except ValueError as exc:
