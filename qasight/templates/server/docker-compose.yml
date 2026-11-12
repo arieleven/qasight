@@ -28,6 +28,12 @@ services:
       # With accounts and none yet: this admin is created at start (`qasight server init` sets them).
       TESTO_ADMIN_USER: ${TESTO_ADMIN_USER:-}
       TESTO_ADMIN_PASSWORD: ${TESTO_ADMIN_PASSWORD:-}
+      # Single sign-on with accounts (any OpenID Connect provider); on when all three are set.
+      TESTO_OIDC_ISSUER: ${TESTO_OIDC_ISSUER:-}
+      TESTO_OIDC_CLIENT_ID: ${TESTO_OIDC_CLIENT_ID:-}
+      TESTO_OIDC_CLIENT_SECRET: ${TESTO_OIDC_CLIENT_SECRET:-}
+      # Email domains allowed in (comma-separated); set it with Google or other public providers.
+      TESTO_OIDC_ALLOWED_DOMAINS: ${TESTO_OIDC_ALLOWED_DOMAINS:-}
       # During a token rotation: the old token, still accepted until CI secrets are moved.
       TESTO_API_TOKEN_PREVIOUS: ${TESTO_API_TOKEN_PREVIOUS:-}
       # Signs sign-in cookies instead of the token, so rotating the token keeps people signed in.
