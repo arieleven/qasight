@@ -1270,7 +1270,7 @@ export interface paths {
         get?: never;
         /**
          * Set Scorecard Tool
-         * @description Switch a tool on or off: scans skip it and scores leave it out.
+         * @description Switch a tool (or a linter MegaLinter ran) on or off: scans skip it and scores leave it out.
          */
         put: operations["set_scorecard_tool_api_v1_scorecard_tools__tool_id__put"];
         post?: never;
@@ -3723,6 +3723,8 @@ export interface components {
             recorded_at: number | null;
             /** Score */
             score: number | null;
+            /** Source Lines */
+            source_lines: number | null;
             /** Status */
             status: string;
             /** Tools */
@@ -3737,6 +3739,8 @@ export interface components {
          * @description A tool result parsed by the client (``qasight scorecard import|scan --server``).
          */
         ScorecardResultRequest: {
+            /** Category */
+            category?: string | null;
             /** Commit Sha */
             commit_sha?: string | null;
             /** Counts */
@@ -3745,10 +3749,14 @@ export interface components {
             };
             /** Findings */
             findings?: components["schemas"]["ScorecardFindingItem-Input"][];
+            /** Fingerprints */
+            fingerprints?: string[];
             /** Metrics */
             metrics?: {
                 [key: string]: number | string;
             };
+            /** Name */
+            name?: string | null;
             /** Project */
             project: string;
             /** Score */
@@ -3844,6 +3852,11 @@ export interface components {
             /** Id */
             id: string;
             /**
+             * In Engine
+             * @default false
+             */
+            in_engine: boolean;
+            /**
              * Install
              * @default
              */
@@ -3881,6 +3894,10 @@ export interface components {
             };
             /** Name */
             name: string;
+            /** New Counts */
+            new_counts: {
+                [key: string]: number;
+            } | null;
             /** Previous Score */
             previous_score: number | null;
             /** Recorded At */

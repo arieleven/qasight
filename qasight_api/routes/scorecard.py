@@ -12,9 +12,15 @@ from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from qasight.services.scorecard.report import build_scorecard, projects, to_markdown
+from qasight.services.scorecard.report import (
+    build_scorecard,
+    category_of,
+    name_of,
+    projects,
+    to_markdown,
+)
 from qasight.services.scorecard.scan import ScanError
-from qasight.services.scorecard.store import ScorecardError, ScorecardStore
+from qasight.services.scorecard.store import ScorecardError, ScorecardStore, is_engine_tool
 from qasight.services.scorecard.tools import CATEGORIES, TOOLS, TOOLS_BY_ID, Tool
 from qasight_api.models import (
     ScorecardFindingItem,
@@ -50,6 +56,27 @@ def _tool_item(tool: Tool, enabled: bool) -> ScorecardToolItem:
         enabled=enabled,
         installed=tool.installed() if tool.binary else None,
         install=tool.install,
+        in_engine=tool.in_engine,
+    )
+
+
+def _engine_linter_item(tool_id: str, enabled: bool) -> ScorecardToolItem:
+    key = tool_id.split(":", 1)[1]
+    return ScorecardToolItem(
+        id=tool_id,
+        name=key,
+        category="code",
+        category_name=CATEGORIES["code"],
+        tagline="A linter or scanner MegaLinter ran for this repository.",
+        how=TOOLS_BY_ID["megalinter"].how,
+        homepage=f"https://megalinter.io/latest/descriptors/{key.lower()}/",
+        kind="linter",
+        report="",
+        languages=[],
+        default_on=True,
+        enabled=enabled,
+        installed=None,
+        install="",
     )
 
 
@@ -62,11 +89,13 @@ def list_scorecard_tools() -> ScorecardToolsResponse:
 
 @router.put("/scorecard/tools/{tool_id}", response_model=ScorecardToolItem)
 def set_scorecard_tool(tool_id: str, body: ScorecardToolUpdate) -> ScorecardToolItem:
-    """Switch a tool on or off: scans skip it and scores leave it out."""
-    if tool_id not in TOOLS_BY_ID:
+    """Switch a tool (or a linter MegaLinter ran) on or off: scans skip it and scores leave it out."""
+    if tool_id not in TOOLS_BY_ID and not is_engine_tool(tool_id):
         raise HTTPException(status_code=404, detail=f"No tool {tool_id!r}.")
     store = ScorecardStore()
     store.set_enabled(tool_id, body.enabled)
+    if tool_id not in TOOLS_BY_ID:
+        return _engine_linter_item(tool_id, body.enabled)
     return _tool_item(TOOLS_BY_ID[tool_id], body.enabled)
 
 
@@ -113,15 +142,17 @@ def record_scorecard_result(body: ScorecardResultRequest) -> ScorecardToolScoreI
             findings=[f.model_dump() for f in body.findings],
             commit_sha=body.commit_sha,
             source="server",
+            name=body.name,
+            category=body.category,
+            fingerprints=body.fingerprints,
         )
     except ScorecardError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    tool = TOOLS_BY_ID[stored.tool]
     return ScorecardToolScoreItem(
         tool=stored.tool,
-        name=tool.name,
-        category=tool.category,
-        enabled=ScorecardStore().enabled()[stored.tool],
+        name=name_of(stored),
+        category=category_of(stored) or "code",
+        enabled=ScorecardStore().enabled().get(stored.tool, True),
         score=stored.score,
         summary=stored.summary,
         metrics=stored.metrics,

@@ -59,6 +59,9 @@ def _post_result(
         "counts": {k: v for k, v in result.counts.items() if v},
         "findings": [f.to_dict() for f in result.findings],
         "commit_sha": commit,
+        "name": result.name,
+        "category": result.category,
+        "fingerprints": list(result.fingerprints),
     }
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     try:
@@ -104,16 +107,40 @@ def _history_note() -> str:
     return f"History: {parsed.render_as_string(hide_password=True)}"
 
 
-def _gate(card: Any, *, min_score: int | None, min_tool: int | None, no_drop: bool) -> None:
+def _tool_name(tool_id: str) -> str:
+    """A tool's name, or the linter's key for one an engine ran (``megalinter:PYTHON_RUFF``)."""
+    from qasight.services.scorecard.megalinter import name_from_id
+    from qasight.services.scorecard.tools import TOOLS_BY_ID
+
+    known = TOOLS_BY_ID.get(tool_id)
+    return known.name if known else name_from_id(tool_id)
+
+
+_NO_NEW_HELP = (
+    "Exit 1 when a tool has a new high or critical finding since the previous version "
+    "(old findings don't block)."
+)
+
+
+def _gate(
+    card: Any,
+    *,
+    min_score: int | None,
+    min_tool: int | None,
+    no_drop: bool,
+    no_new: bool = False,
+) -> None:
     from qasight.services.scorecard.report import gate_failures
 
-    failures = gate_failures(card, min_score=min_score, min_tool=min_tool, no_drop=no_drop)
+    failures = gate_failures(
+        card, min_score=min_score, min_tool=min_tool, no_drop=no_drop, no_new=no_new
+    )
     if failures:
         typer.echo("\nRelease gate FAILED:", err=True)
         for failure in failures:
             typer.echo(f"  - {failure}", err=True)
         raise typer.Exit(code=int(EngineExitCode.DOMAIN_FAILURE))
-    if min_score is not None or min_tool is not None or no_drop:
+    if min_score is not None or min_tool is not None or no_drop or no_new:
         typer.echo("\nRelease gate passed.")
 
 
@@ -290,13 +317,23 @@ def scan_cmd(
     no_drop: bool = typer.Option(
         False, "--no-drop", help="Exit 1 when a tool scores lower than on the previous version."
     ),
+    no_new: bool = typer.Option(False, "--no-new", help=_NO_NEW_HELP),
     ignore: Path | None = typer.Option(
         None,
         "--ignore",
         help="Accepted findings to leave out (default: scorecard-ignore.yml in the scanned repository).",
     ),
+    megalinter_image: str | None = typer.Option(
+        None,
+        "--megalinter-image",
+        help="MegaLinter image to run (default: the flavor for the main language, else the full image).",
+    ),
 ) -> None:
-    """Run the review tools on a repository and record its scorecard."""
+    """Run the review tools on a repository and record its scorecard.
+
+    MegaLinter (in Docker) picks and runs the linters and scanners that fit the
+    repository's languages; without Docker, the scanners installed here run instead.
+    """
     from qasight.services.scorecard.ignore import IgnoreFileError
     from qasight.services.scorecard.report import build_scorecard, to_markdown
     from qasight.services.scorecard.scan import (
@@ -318,15 +355,15 @@ def scan_cmd(
                 f"Languages: {langs}. Running {len(event['tools'])} tool(s): {', '.join(event['tools']) or 'none'}"
             )
         elif event["type"] == "tool" and event["status"] == "running":
-            typer.echo(f"  {TOOLS_BY_ID[event['tool']].name} …")
+            detail = f" {event['message']}" if event.get("message") else " …"
+            typer.echo(f"  {_tool_name(event['tool'])}:{detail}")
         elif event["type"] == "tool" and event["status"] == "done":
-            typer.echo(
-                f"  {TOOLS_BY_ID[event['tool']].name}: {event['score']}/100, {event['message']}"
-            )
+            score = f"{event['score']}/100, " if event.get("score") is not None else ""
+            typer.echo(f"  {_tool_name(event['tool'])}: {score}{event['message']}")
         elif event["type"] == "tool":
             # The reason is printed once, in the "Not run" list at the end.
             word = "failed" if event["status"] == "error" else event["status"]
-            typer.echo(f"  {TOOLS_BY_ID[event['tool']].name}: {word}", err=True)
+            typer.echo(f"  {_tool_name(event['tool'])}: {word}", err=True)
 
     try:
         only = known_tool_ids(tools)
@@ -356,6 +393,7 @@ def scan_cmd(
             timeout_s=timeout,
             on_event=show,
             ignore_file=ignore,
+            engine_image=megalinter_image,
             record_coverage=(
                 (
                     lambda o: store.record_coverage(
@@ -379,7 +417,7 @@ def scan_cmd(
     if not_run:
         typer.echo("\nNot run:")
         for tool_id, why in not_run.items():
-            typer.echo(f"  {TOOLS_BY_ID[tool_id].name}: {why}")
+            typer.echo(f"  {_tool_name(tool_id)}: {why}")
     if outcome.ignore_file:
         typer.echo(f"\nIgnored findings listed in {outcome.ignore_file}.")
     if store is None:
@@ -404,7 +442,7 @@ def scan_cmd(
     _print_card(card)
     typer.echo(f"\nWrote {out / 'scorecard.md'}. Open it in the UI: qasight ui, then Scorecard.")
     typer.echo(_history_note())
-    _gate(card, min_score=min_score, min_tool=min_tool, no_drop=no_drop)
+    _gate(card, min_score=min_score, min_tool=min_tool, no_drop=no_drop, no_new=no_new)
 
 
 @app.command("show")
@@ -426,6 +464,7 @@ def show_cmd(
     no_drop: bool = typer.Option(
         False, "--no-drop", help="Exit 1 when a tool scores lower than on the previous version."
     ),
+    no_new: bool = typer.Option(False, "--no-new", help=_NO_NEW_HELP),
 ) -> None:
     """Show a version's scorecard; with a threshold it is the release gate."""
     from qasight.services.scorecard.report import build_scorecard, to_markdown
@@ -452,4 +491,4 @@ def show_cmd(
             typer.echo(f"Wrote {output}")
         else:
             typer.echo(text)
-    _gate(card, min_score=min_score, min_tool=min_tool, no_drop=no_drop)
+    _gate(card, min_score=min_score, min_tool=min_tool, no_drop=no_drop, no_new=no_new)

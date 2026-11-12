@@ -58,9 +58,11 @@ jobs:
 
   # The release scorecard (docs/Specs & ADRs/Release Scorecard - 2026-11-12.md):
   # the repo review tools on this commit and on the last release tag, compared.
+  # MegaLinter (Docker, docs/Specs & ADRs/Scorecard on MegaLinter - 2026-11-12.md) runs
+  # the linters; each full scan of QASight takes about ten minutes.
   release_scorecard:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

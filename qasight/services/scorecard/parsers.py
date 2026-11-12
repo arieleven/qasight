@@ -20,6 +20,7 @@ says what was expected.
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
 import re
@@ -42,6 +43,8 @@ SEVERITIES = tuple(SEVERITY_POINTS)
 CURVE_K = 100.0
 # Findings kept per tool result; the counts cover all of them.
 MAX_FINDINGS = 50
+# Fingerprints kept per tool result, to find new findings next version.
+MAX_FINGERPRINTS = 5000
 
 
 class ReportError(ValueError):
@@ -79,6 +82,11 @@ class ToolResult:
     rescore: Callable[[list[Finding]], ToolResult] | None = field(
         default=None, repr=False, compare=False
     )
+    # "severity:hash" of every counted finding, to tell new findings from known ones.
+    fingerprints: tuple[str, ...] = ()
+    # Set for a linter an engine ran, which isn't in the tool list: its name and category.
+    name: str | None = None
+    category: str | None = None
 
 
 def _clamp(value: float) -> int:
@@ -142,7 +150,13 @@ def from_findings(
     extra: dict[str, float | int | str] | None = None,
 ) -> ToolResult:
     """Score a list of findings on the curve; ``what`` names one finding ("issue")."""
-    items = sorted(findings, key=lambda f: SEVERITIES.index(f.severity))
+    base_extra = extra
+    every = sorted(findings, key=lambda f: SEVERITIES.index(f.severity))
+    # Findings in tests, vendored or generated code and docs are shown apart and not counted.
+    items = [f for f in every if _counts_as_source(f.location)]
+    elsewhere = len(every) - len(items)
+    if elsewhere:
+        extra = {**(extra or {}), "not_counted": elsewhere}
     counts = {s: 0 for s in SEVERITIES}
     for finding in items:
         counts[finding.severity] += 1
@@ -161,8 +175,25 @@ def from_findings(
         findings=tuple(items[:MAX_FINDINGS]),
         counts=counts,
         all_findings=tuple(items),
-        rescore=lambda kept: from_findings(kept, what=what, clean=clean, extra=extra),
+        rescore=lambda kept: from_findings(kept, what=what, clean=clean, extra=base_extra),
+        fingerprints=tuple(fingerprint(f) for f in items[:MAX_FINGERPRINTS]),
     )
+
+
+def _counts_as_source(location: str) -> bool:
+    """Whether a finding at ``location`` counts: anything that isn't a file path, or a file in source code."""
+    if not location or ("://" in location and not location.startswith("file://")):
+        return True
+    from qasight.services.scorecard.paths import classify
+
+    return classify(location) == "source"
+
+
+def fingerprint(finding: Finding) -> str:
+    """``severity:hash`` of what a finding is and which file it is in (not the line, which moves)."""
+    path = re.sub(r":\d+(:\d+)?$", "", finding.location)
+    digest = hashlib.sha1(f"{finding.title}\n{path}".encode(), usedforsecurity=False).hexdigest()
+    return f"{finding.severity}:{digest[:12]}"
 
 
 def _load_json(path: Path) -> Any:
