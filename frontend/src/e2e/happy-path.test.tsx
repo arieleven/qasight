@@ -231,7 +231,7 @@ describe("happy path", () => {
       </QueryClientProvider>
     );
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument());
 
     // Cycle discovery: the list shows what's defined, detail shows the stages.
     await router.navigate("/cycles");

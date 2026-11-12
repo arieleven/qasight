@@ -75,6 +75,9 @@ _FAILED_FIRST_ENV = "TESTO_FAILED_FIRST"
 _FAILED_FIRST = pytest.StashKey["dict[str, int] | None"]()
 _FAILED_FIRST_SUMMARY = pytest.StashKey[str]()
 _WORKER_RANKS = "testo_failed_first_ranks"
+_LIVE_ENV = "TESTO_LIVE"
+_LIVE = pytest.StashKey["Any"]()
+_LIVE_SUMMARY = pytest.StashKey[str]()
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -107,6 +110,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         metavar="URL",
         help="Upload to this QASight server instead of recording locally "
         "(default: $TESTO_SERVER_URL). The token comes from $TESTO_API_TOKEN.",
+    )
+    group.addoption(
+        "--qasight-no-live",
+        action="store_true",
+        default=False,
+        help="With --qasight-server: don't send each result to the server while tests run "
+        "(the report is still uploaded at the end). Also $TESTO_LIVE=0.",
     )
     group.addoption(
         "--qasight-resource",
@@ -196,6 +206,7 @@ def pytest_configure(config: pytest.Config) -> None:
     _configure_shard(config)
     _configure_affected(config)
     _configure_failed_first(config)
+    _configure_live(config)
     # Before pytest's junitxml plugin reads the option, so it writes the report for us.
     if not _enabled(config) or config.option.xmlpath:
         return
@@ -326,6 +337,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     temp = config.stash.get(_TEMP_DIR, None)
     xml = Path(config.option.xmlpath)
     try:
+        _finish_live(config)
         if int(exitstatus) in _NOTHING_RAN or not xml.is_file():
             return
         if int(exitstatus) == 1:
@@ -343,10 +355,96 @@ def pytest_terminal_summary(
 ) -> None:
     for affected_line in config.stash.get(_AFFECTED_SUMMARY, []):
         terminalreporter.write_line(affected_line)
-    for key in (_SHARD_SUMMARY, _FAILED_FIRST_SUMMARY, _QUARANTINE_SUMMARY, _SUMMARY):
+    for key in (
+        _SHARD_SUMMARY,
+        _FAILED_FIRST_SUMMARY,
+        _QUARANTINE_SUMMARY,
+        _LIVE_SUMMARY,
+        _SUMMARY,
+    ):
         line = config.stash.get(key, None)
         if line:
             terminalreporter.write_line(line)
+
+
+# -- live results -----------------------------------------------------------------
+
+
+def _live_wanted(config: pytest.Config) -> str | None:
+    """The team server to send live results to, or None."""
+    if not _enabled(config) or config.getoption("qasight_no_live"):
+        return None
+    if os.environ.get(_LIVE_ENV, "").strip().lower() in ("0", "false", "no"):
+        return None
+    return config.getoption("qasight_server") or os.environ.get("TESTO_SERVER_URL") or None
+
+
+class _LiveResults:
+    """Sends each finished test to the team server (registered only when live is on)."""
+
+    def __init__(self, config: pytest.Config, server: str) -> None:
+        from qasight.services.live_client import LiveReporter
+
+        self.config = config
+        self.total: int | None = None
+        self.reporter = LiveReporter(server=server, token=os.environ.get("TESTO_API_TOKEN") or None)
+
+    def pytest_collection_finish(self, session: pytest.Session) -> None:
+        # Under pytest-xdist the controller collects nothing; the total stays unknown there.
+        if session.items:
+            self.total = len(session.items)
+
+    def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
+        outcome = _live_outcome(report)
+        if outcome is None or self.reporter.disabled:
+            return
+        if not self.reporter.started:
+            from qasight.services.ingest_client import client_run_metadata
+
+            metadata = client_run_metadata()
+            self.reporter.start(
+                _cycle(self.config),
+                total=self.total,
+                branch=metadata.get("ci_ref_name"),
+                commit=metadata.get("ci_commit_sha"),
+            )
+        message = None
+        if outcome in ("failed", "error"):
+            text = str(getattr(report, "longreprtext", "") or "").strip()
+            message = "\n".join(text.splitlines()[-8:]) or None
+        self.reporter.add(report.nodeid, outcome, message)
+
+
+def _live_outcome(report: pytest.TestReport) -> str | None:
+    if report.when == "call":
+        if getattr(report, "wasxfail", None) is not None:
+            return "skipped" if report.skipped else "passed"
+        return str(report.outcome)
+    if report.when == "setup" and not report.passed:
+        return "skipped" if report.skipped else "error"
+    if report.when == "teardown" and report.failed:
+        return "error"
+    return None
+
+
+def _configure_live(config: pytest.Config) -> None:
+    if hasattr(config, "workerinput"):  # the xdist controller reports for its workers
+        return
+    server = _live_wanted(config)
+    if server is None:
+        return
+    hooks = _LiveResults(config, server)
+    config.stash[_LIVE] = hooks.reporter
+    config.pluginmanager.register(hooks, "qasight-live")
+
+
+def _finish_live(config: pytest.Config) -> None:
+    reporter = config.stash.get(_LIVE, None)
+    if reporter is None:
+        return
+    reporter.finish()
+    if reporter.error:
+        config.stash[_LIVE_SUMMARY] = f"qasight: live results stopped: {reporter.error}"
 
 
 # -- resource pools ---------------------------------------------------------------

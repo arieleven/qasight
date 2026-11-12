@@ -86,6 +86,9 @@ so adoption is one extra step. **`qasight run`** goes further: it runs several f
 **cycle** of stages from a `qasight.yaml` (pytest, Playwright, Behave, any command), the
 same way from the CLI, CI or the web UI. Point either at a shared
 [team server](https://arieleven.github.io/qasight/docs/processes-and-guides/team-server/) and every CI job lands in one history.
+The server runs with `docker compose up`, a [Helm chart](deploy/helm/qasight) or one click on
+[Render](https://render.com/deploy?repo=https://github.com/arieleven/qasight), and can sign people in
+with your company's SSO (any OpenID Connect provider).
 
 **How it compares.** Allure renders one run; ReportPortal is a large server to operate.
 QASight is a `pip install` that keeps the history and diffs runs against each other, works
@@ -181,11 +184,18 @@ npm --prefix frontend install
 npm --prefix frontend run dev          # React on http://localhost:5173
 ```
 
-Pages: Dashboard (what needs attention first), Cycles (run any cycle and watch its stages live,
-see its flaky tests), Runs and Run Detail (failing tests first, reports, test pyramid, AI summary),
-a page per test (history, attachments, Playwright trace), Compare (delta between two runs),
-Project health, Resources, Quick Run (run one framework against a repo without defining a cycle)
-and AI settings.
+The menu is grouped by the question each page answers:
+
+- **Overview:** what needs attention first, the latest run, and the two scores side by side
+  (Test health for your tests, Code quality for your code).
+- **Tests:** Runs and Run Detail (failing tests first, reports, test pyramid, AI summary; Compare
+  two runs from here), Cycles (run any cycle and watch its stages live; Quick run one framework
+  without a cycle), a page per test (history, attachments, Playwright trace), and Test health
+  (the 0-100 score of your tests and what drives it).
+- **Releases:** each release's test results, and its Code quality (the scorecard, graded A-E).
+- **Share:** Report (for managers, as PDF, slides or a spreadsheet) and Ask.
+- **Settings:** Resources and AI settings. Try a file (read a JUnit file in the browser) is on
+  the welcome page and in the footer.
 
 ## Defining cycles
 

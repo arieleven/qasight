@@ -548,6 +548,9 @@ qasight scorecard scan . --url http://localhost:8000 --openapi http://localhost:
 qasight scorecard import coverage coverage.json --version 1.6.0
 qasight scorecard show --min-score 70 --no-drop               # the release gate: exit 1 when it fails
 qasight scorecard show --format markdown -o scorecard.md
+qasight scorecard show --format sarif -o scorecard.sarif      # for GitHub code scanning
+qasight scorecard show --format html -o scorecard.html        # one page, no server
+qasight scorecard show --format svg -o badge.svg              # README badge: quality | B 87
 qasight scorecard tools --off semgrep --on locust
 ```
 
@@ -563,12 +566,12 @@ qasight scorecard tools --off semgrep --on locust
 | `--megalinter-image IMAGE` | On `scan`: the MegaLinter image to run (default: the flavor for the main language, `ghcr.io/oxsecurity/megalinter-<flavor>:v9`; env `QASIGHT_MEGALINTER_IMAGE`) |
 | `--ignore FILE` | On `scan` and `import`: accepted findings to leave out of the score. Default: `scorecard-ignore.yml` in the scanned repository (`scan`) or the current folder (`import`). Format in [Release Scorecard](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md#follow-up-fixes-from-the-first-outside-run). Exit `2` for a bad file |
 | `import TOOL FILE` | Record a report a tool already wrote (`qasight scorecard tools` lists what each reads). Exit `2` when the file isn't that tool's report |
-| `show` | A version's scorecard (default: the last project scored, its newest version) as `--format text`, `markdown` or `json`, or `-o FILE` |
+| `show` | A version's scorecard (default: the last project scored, its newest version) as `--format text`, `markdown`, `json`, `sarif` (SARIF 2.1.0: each switched-on tool's kept findings, with file and line, for GitHub code scanning), `html` (one self-contained page) or `svg` (a badge with the grade and score), or `-o FILE` |
 | `--min-score N`, `--min-tool N`, `--no-drop` | On `scan` and `show`: the release gate. Exit `1` when the overall score is below `N`, a switched-on tool is below `N`, or (`--no-drop`) a tool scored lower than on the previous version |
 | `tools [--on a,b] [--off c] [--reset] [--json]` | List the tools: on or off, installed here, what they read. Switching one off makes scans skip it and leaves it out of the score |
 | `--server URL` | On `scan` and `import`: send the results to a [team server](../Processes%20&%20Guides/Team%20Server.md) (default `$TESTO_SERVER_URL`, token `$TESTO_API_TOKEN`) |
 
-When Docker (or Podman) is installed, `scan` runs **MegaLinter** first and each linter it ran becomes a tool (`megalinter:PYTHON_RUFF`); the built-in scanners it covers are skipped, and run instead when it can't. Scores per category follow SonarQube and Codacy: [Scorecard on MegaLinter](../Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md). The scan keeps its **coverage**, how many of the tools that fit the repository ran; under half, the grade is capped at C (`scan`, `show` and the UI say so). `scan`, `import` and `show` print which history database they use. Versions compare by number when every version of the project is one (`1.10.0` after `1.9.0`), else by when each was first scored. Exit `2` for a bad target, tool or file, `1` when no tool produced a result or the gate fails, `3` when a server can't be reached. API: `GET /api/v1/scorecard` (`?project=&version=`), `/scorecard/projects`, `/scorecard/markdown`, `GET` and `PUT /scorecard/tools/{id}`, `POST /scorecard/results`, `POST /scorecard/scans` and `GET /scorecard/scans/{id}` (writes need the token or a `runner` account).
+When Docker (or Podman) is installed, `scan` runs **MegaLinter** first and each linter it ran becomes a tool (`megalinter:PYTHON_RUFF`); the built-in scanners it covers are skipped, and run instead when it can't. Scores per category follow SonarQube and Codacy: [Scorecard on MegaLinter](../Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md). The scan keeps its **coverage**, how many of the tools that fit the repository ran; under half, the grade is capped at C (`scan`, `show` and the UI say so). `scan`, `import` and `show` print which history database they use. Versions compare by number when every version of the project is one (`1.10.0` after `1.9.0`), else by when each was first scored. Exit `2` for a bad target, tool or file, `1` when no tool produced a result or the gate fails, `3` when a server can't be reached. API: `GET /api/v1/scorecard` (`?project=&version=`), `/scorecard/projects`, `/scorecard/markdown`, `/scorecard/sarif`, `/scorecard/badge.svg` and `/scorecard/badge.json` (`?project=&label=`, a shields.io endpoint), `GET` and `PUT /scorecard/tools/{id}`, `POST /scorecard/results`, `POST /scorecard/scans` and `GET /scorecard/scans/{id}` (writes need the token or a `runner` account).
 
 ---
 
@@ -977,6 +980,7 @@ qasight installs a pytest plugin (entry point `pytest11`, `qasight/pytest_plugin
 | `--qasight-cycle NAME` | Cycle to record under; implies `--qasight`. Default: the rootdir's name |
 | `--qasight-tier unit\|integration\|e2e` | Pyramid tier of the tests (default `unit`) |
 | `--qasight-server URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead (default `$TESTO_SERVER_URL`, token from `$TESTO_API_TOKEN`) |
+| `--qasight-no-live` | With `--qasight-server`: don't send each result to the server while the tests run (also `$TESTO_LIVE=0`). By default the server's dashboard shows the session under **Running now**, with its progress and first failures, until the report is uploaded at the end ([Team Server § Live results](../Processes%20&%20Guides/Team%20Server.md#live-results)) |
 | `--qasight-resource POOL` | Give each worker its own key from this [resource pool](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#use-a-pool-in-a-cycle) (from `qasight.yaml`, or `$TESTO_RESOURCE_SPEC` set by a stage's `resources:`). Tests read it from the variables or the `testo_resource` fixture |
 | `--qasight-resource-per worker\|test` | One key per worker (default) or a fresh one per test |
 | `--qasight-resource-label LABEL` | Only keys with this label (repeat for more) |
@@ -1030,6 +1034,7 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_REDACT` | `0` turns off hiding secrets in a run's stored results and logs (on by default: API keys, tokens, passwords, credentials in URLs, private keys) |
 | `TESTO_REDACT_PATTERNS` | Your own regular expressions to hide, one per line |
 | `TESTO_FAILED_FIRST` | `1`: same as [`--qasight-failed-first`](#pytest---qasight) |
+| `TESTO_LIVE` | `0`: same as [`--qasight-no-live`](#pytest---qasight) |
 | `TESTO_CYCLE`, `TESTO_STAGE` | Set by `qasight run` for each stage's process: which cycle and stage it is |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
 

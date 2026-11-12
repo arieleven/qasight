@@ -1,0 +1,11 @@
+QASight is starting.
+{{- if .Values.ingress.enabled }}
+Open https://{{ .Values.ingress.host }} and sign in with the token.
+{{- else }}
+  kubectl port-forward svc/{{ include "qasight.fullname" . }} 8000:{{ .Values.service.port }}
+Then open http://localhost:8000 and sign in with the token.
+{{- end }}
+
+Upload from CI after your tests:
+  pip install qasight
+  qasight ingest 'reports/**/*.xml' --cycle unit --server <this server's URL> --token "$TESTO_API_TOKEN"

@@ -94,7 +94,7 @@ function ByCycle({ rows }: { rows: ProjectHealthResponse["by_cycle"] }) {
           {rows.map((row) => (
             <tr key={row.cycle}>
               <td className="py-2 pr-3">
-                <Link to={`/health?cycle=${encodeURIComponent(row.cycle)}`} className="font-mono text-brand-300 hover:underline">
+                <Link to={`/test-health?cycle=${encodeURIComponent(row.cycle)}`} className="font-mono text-brand-300 hover:underline">
                   {row.cycle}
                 </Link>
               </td>
@@ -161,8 +161,8 @@ export function ProjectHealthPage() {
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Project health"
-        subtitle="How healthy the tests of the project you test are, scored from the runs QASight recorded."
+        title="Test health"
+        subtitle="How healthy your tests are, scored 0-100 from the runs QASight recorded: passing, green builds, flakiness, speed, hygiene and the test pyramid. The code itself is graded under Releases → Code quality."
         actions={<CyclePicker cycle={cycle} onChange={setCycle} />}
       />
 
@@ -171,7 +171,7 @@ export function ProjectHealthPage() {
           <Spinner /> Scoring the project…
         </div>
       ) : query.isError || !query.data ? (
-        <EmptyState mascot={<MuscleShrug />} title="Couldn't load project health" message={query.error instanceof Error ? query.error.message : undefined} />
+        <EmptyState mascot={<MuscleShrug />} title="Couldn't load test health" message={query.error instanceof Error ? query.error.message : undefined} />
       ) : query.data.cycles === 0 ? (
         <EmptyState
           mascot={<MuscleShrug />}

@@ -1,9 +1,15 @@
-import { createBrowserRouter } from "react-router-dom";
+import { Navigate, createBrowserRouter, useLocation } from "react-router-dom";
 
 import { AppShell } from "./AppShell";
 
 import { NotFoundPage } from "./NotFoundPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
+
+/** An old address that moved: keeps the query string (?cycle=, ?version=) so old links and bookmarks still land. */
+function Moved({ to }: { to: string }) {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to}${search}${hash}`} replace />;
+}
 
 // The dashboard is the landing page and loads with the app; every other page
 // is its own chunk, fetched the first time someone opens it.
@@ -49,13 +55,16 @@ export const routes = [
         lazy: () => import("../features/releases/ReleasesPage").then((m) => ({ Component: m.ReleasePage }))
       },
       {
-        path: "health",
+        path: "test-health",
         lazy: () => import("../features/health/ProjectHealthPage").then((m) => ({ Component: m.ProjectHealthPage }))
       },
       {
-        path: "scorecard",
+        path: "code-quality",
         lazy: () => import("../features/scorecard/ScorecardPage").then((m) => ({ Component: m.ScorecardPage }))
       },
+      // Renamed in the menu regroup (Project health -> Test health, Scorecard -> Code quality).
+      { path: "health", element: <Moved to="/test-health" /> },
+      { path: "scorecard", element: <Moved to="/code-quality" /> },
       {
         path: "report",
         lazy: () => import("../features/report/ReportPage").then((m) => ({ Component: m.ReportPage }))
