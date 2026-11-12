@@ -3,7 +3,9 @@
 The overall score is the mean of the category scores, and a category's score
 is the mean of its switched-on tools that have a result, so a category with ten
 linters weighs the same as one with a single load test. Tools that are switched
-off are still shown but don't count. The previous version is the one before it: by version number when
+off are still shown but don't count. A scan also keeps its **coverage**: the
+tools that fit the repository and which of them ran. When fewer than half ran,
+the grade is capped at C, so a 98 from one linter doesn't read as an A. The previous version is the one before it: by version number when
 every version is one (``1.10`` after ``1.9``), else the one first scored before it.
 """
 
@@ -15,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from qasight.services.project_health import grade_for
-from qasight.services.scorecard.store import ScorecardStore, StoredResult
+from qasight.services.scorecard.store import ScorecardStore, StoredCoverage, StoredResult
 from qasight.services.scorecard.tools import CATEGORIES, TOOLS, TOOLS_BY_ID
 
 
@@ -43,6 +45,49 @@ class CategoryScore:
     score: int | None
     previous_score: int | None
     tools: list[str]
+
+
+@dataclass(frozen=True)
+class Coverage:
+    """How many of the tools that fit the repository gave a result, and why the others didn't."""
+
+    ran: int
+    expected: int
+    missing: dict[str, str] = field(default_factory=dict)
+    # The grade the score alone would get, when coverage capped it.
+    capped_from: str | None = None
+
+    @property
+    def share(self) -> float:
+        return self.ran / self.expected if self.expected else 1.0
+
+
+# Under this share of the fitting tools, the grade is capped at GRADE_CAP.
+MIN_COVERAGE = 0.5
+GRADE_CAP = "C"
+_GRADE_ORDER = "ABCDF"
+
+
+def coverage_of(stored: StoredCoverage | None, tools_with_results: set[str]) -> Coverage | None:
+    if stored is None or not stored.expected:
+        return None
+    ran = [t for t in stored.expected if t in tools_with_results]
+    missing = {
+        t: stored.missing.get(t, "no result")
+        for t in stored.expected
+        if t not in tools_with_results
+    }
+    return Coverage(ran=len(ran), expected=len(stored.expected), missing=missing)
+
+
+def capped_grade(score: int | None, coverage: Coverage | None) -> tuple[str | None, str | None]:
+    """(grade, the uncapped grade when coverage capped it, else None)."""
+    grade = grade_for(score)
+    if grade is None or coverage is None or coverage.share >= MIN_COVERAGE:
+        return grade, None
+    if _GRADE_ORDER.index(grade) < _GRADE_ORDER.index(GRADE_CAP):
+        return GRADE_CAP, grade
+    return grade, None
 
 
 @dataclass(frozen=True)
@@ -74,6 +119,7 @@ class Scorecard:
     categories: list[CategoryScore]
     tools: list[ToolScore]
     versions: list[VersionSummary]
+    coverage: Coverage | None = None
 
 
 def overall_score(
@@ -97,20 +143,25 @@ def _half_up(value: float) -> int:
     return math.floor(value + 0.5)
 
 
-def _versions(results: list[StoredResult], enabled: dict[str, bool]) -> list[VersionSummary]:
+def _versions(
+    results: list[StoredResult],
+    enabled: dict[str, bool],
+    coverages: dict[str, StoredCoverage] | None = None,
+) -> list[VersionSummary]:
     grouped: dict[str, list[StoredResult]] = {}
     for result in results:
         grouped.setdefault(result.version, []).append(result)
     out = []
     for version, rows in grouped.items():
         score, _ = overall_score(rows, enabled)
+        cov = coverage_of((coverages or {}).get(version), {r.tool for r in rows})
         out.append(
             VersionSummary(
                 version=version,
                 first_at=min(r.recorded_at for r in rows),
                 last_at=max(r.recorded_at for r in rows),
                 score=score,
-                grade=grade_for(score),
+                grade=capped_grade(score, cov)[0],
                 tools=len(rows),
             )
         )
@@ -142,8 +193,13 @@ def projects(store: ScorecardStore | None = None) -> list[ProjectSummary]:
     grouped: dict[str, list[StoredResult]] = {}
     for result in store.results():
         grouped.setdefault(result.project, []).append(result)
+    coverages: dict[str, dict[str, StoredCoverage]] = {}
+    for key, cov in store.coverages().items():
+        project, _, version = key.partition("\n")
+        coverages.setdefault(project, {})[version] = cov
     summaries = [
-        ProjectSummary(project=p, versions=_versions(rows, enabled)) for p, rows in grouped.items()
+        ProjectSummary(project=p, versions=_versions(rows, enabled, coverages.get(p)))
+        for p, rows in grouped.items()
     ]
     return sorted(summaries, key=lambda s: max(v.last_at for v in s.versions), reverse=True)
 
@@ -165,7 +221,8 @@ def build_scorecard(
     rows = store.results(project)
     if not rows:
         return None
-    versions = _versions(rows, enabled)
+    coverages = store.coverages(project)
+    versions = _versions(rows, enabled, coverages)
     if not version:
         version = versions[0].version
     names = [v.version for v in versions]
@@ -211,11 +268,20 @@ def build_scorecard(
         if any(t.category == key for t in tools)
     ]
     commits = [r.commit_sha for r in current if r.commit_sha]
+    coverage = coverage_of(coverages.get(version), {r.tool for r in current})
+    grade, uncapped = capped_grade(score, coverage)
+    if coverage is not None and uncapped is not None:
+        coverage = Coverage(
+            ran=coverage.ran,
+            expected=coverage.expected,
+            missing=coverage.missing,
+            capped_from=uncapped,
+        )
     return Scorecard(
         project=project,
         version=version,
         score=score,
-        grade=grade_for(score),
+        grade=grade,
         previous_version=previous,
         previous_score=prev_score,
         recorded_at=max(r.recorded_at for r in current),
@@ -223,6 +289,7 @@ def build_scorecard(
         categories=categories,
         tools=tools,
         versions=versions,
+        coverage=coverage,
     )
 
 
@@ -251,6 +318,17 @@ def gate_failures(
     return failures
 
 
+def coverage_sentence(coverage: Coverage) -> str:
+    """``5 of 8 tools that fit this repository ran.`` plus the cap, when there is one."""
+    text = f"{coverage.ran} of {coverage.expected} tools that fit this repository ran."
+    if coverage.capped_from:
+        text += (
+            f" The grade is capped at {GRADE_CAP} (the score alone is a {coverage.capped_from})"
+            f" because fewer than half of them ran."
+        )
+    return text
+
+
 def _delta(score: int | None, previous: int | None) -> str:
     if score is None or previous is None:
         return ""
@@ -268,6 +346,8 @@ def to_markdown(card: Scorecard, *, skipped: dict[str, str] | None = None) -> st
         else ""
     )
     lines.append(f"**Overall: {score}**{vs}.")
+    if card.coverage is not None:
+        lines.append(coverage_sentence(card.coverage))
     if card.commit_sha:
         lines.append(f"Commit `{card.commit_sha[:12]}`.")
     lines += ["", "| Category | Score | Tools |", "|---|---:|---|"]
@@ -297,9 +377,10 @@ def to_markdown(card: Scorecard, *, skipped: dict[str, str] | None = None) -> st
             lines.append(
                 f"- **{finding['severity']}** · {tool.name}: {finding['title']}{where}. {finding.get('detail', '')}".rstrip()
             )
-    if skipped:
+    not_run = {**(card.coverage.missing if card.coverage else {}), **(skipped or {})}
+    if not_run:
         lines += ["", "## Not run", ""]
-        for tool_id, why in skipped.items():
+        for tool_id, why in not_run.items():
             lines.append(f"- {TOOLS_BY_ID[tool_id].name}: {why}")
     lines += [
         "",

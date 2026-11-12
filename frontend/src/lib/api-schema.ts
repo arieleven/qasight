@@ -3634,6 +3634,22 @@ export interface components {
             /** Tools */
             tools: string[];
         };
+        /**
+         * ScorecardCoverageItem
+         * @description How many of the tools that fit the repository gave a result in its latest scan.
+         */
+        ScorecardCoverageItem: {
+            /** Capped From */
+            capped_from: string | null;
+            /** Expected */
+            expected: number;
+            /** Missing */
+            missing: {
+                [key: string]: string;
+            };
+            /** Ran */
+            ran: number;
+        };
         /** ScorecardFindingItem */
         "ScorecardFindingItem-Input": {
             /**
@@ -3694,6 +3710,7 @@ export interface components {
             categories: components["schemas"]["ScorecardCategoryItem"][];
             /** Commit Sha */
             commit_sha: string | null;
+            coverage: components["schemas"]["ScorecardCoverageItem"] | null;
             /** Grade */
             grade: string | null;
             /** Previous Score */
@@ -3757,6 +3774,8 @@ export interface components {
             project?: string | null;
             /** Ref */
             ref?: string | null;
+            /** Semgrep Config */
+            semgrep_config?: string | null;
             /** Target */
             target: string;
             /** Tools */

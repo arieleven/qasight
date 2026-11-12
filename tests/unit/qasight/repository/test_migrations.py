@@ -28,6 +28,7 @@ EXPECTED_TABLES = {
     "test_result",
     "scorecard_result",
     "scorecard_tool",
+    "scorecard_coverage",
 }
 
 

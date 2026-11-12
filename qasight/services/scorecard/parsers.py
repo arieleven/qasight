@@ -73,6 +73,12 @@ class ToolResult:
     findings: tuple[Finding, ...] = ()
     # Findings per severity, over all of them (not only the kept ones).
     counts: dict[str, int] = field(default_factory=dict)
+    # Findings tools only: every finding and how to score a subset of them, so an
+    # ignore file (:mod:`qasight.services.scorecard.ignore`) can drop some and rescore.
+    all_findings: tuple[Finding, ...] = field(default=(), repr=False, compare=False)
+    rescore: Callable[[list[Finding]], ToolResult] | None = field(
+        default=None, repr=False, compare=False
+    )
 
 
 def _clamp(value: float) -> int:
@@ -119,6 +125,15 @@ def finding_points(findings: Iterable[Finding]) -> float:
     return sum(SEVERITY_POINTS[sev] * (1.0 + math.log2(n)) for (sev, _title), n in rules.items())
 
 
+def plural(n: int, what: str) -> str:
+    """``3 vulnerable dependencies``, ``1 issue``."""
+    if n == 1:
+        return f"{n} {what}"
+    if what.endswith("y") and what[-2:-1] not in "aeiou":
+        return f"{n} {what[:-1]}ies"
+    return f"{n} {what}s"
+
+
 def from_findings(
     findings: Iterable[Finding],
     *,
@@ -137,7 +152,7 @@ def from_findings(
         summary = clean
     else:
         parts = ", ".join(f"{n} {s}" for s, n in shown.items())
-        summary = f"{len(items)} {what}{'' if len(items) == 1 else 's'} ({parts})"
+        summary = f"{plural(len(items), what)} ({parts})"
     metrics: dict[str, float | int | str] = {"findings": len(items), **shown, **(extra or {})}
     return ToolResult(
         score=curve(points),
@@ -145,6 +160,8 @@ def from_findings(
         metrics=metrics,
         findings=tuple(items[:MAX_FINDINGS]),
         counts=counts,
+        all_findings=tuple(items),
+        rescore=lambda kept: from_findings(kept, what=what, clean=clean, extra=extra),
     )
 
 
@@ -308,11 +325,46 @@ def parse_pip_audit(path: Path) -> ToolResult:
 # --- JavaScript ------------------------------------------------------------------
 
 
+def _yarn_audit(path: Path) -> dict[str, Any] | None:
+    """``yarn audit --json`` (yarn 1) prints one JSON object per line: the advisories, as npm 6's shape."""
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    advisories: dict[str, Any] = {}
+    seen_yarn = False
+    for line in lines:
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict) or "type" not in event:
+            continue
+        seen_yarn = True
+        advisory = ((event.get("data") or {}) if event["type"] == "auditAdvisory" else {}).get(
+            "advisory"
+        )
+        if isinstance(advisory, dict):
+            # yarn repeats an advisory once per path to it; count it once.
+            key = str(advisory.get("id") or advisory.get("url") or advisory.get("title"))
+            advisories[key] = advisory
+    return {"advisories": advisories} if seen_yarn else None
+
+
 def parse_npm_audit(path: Path) -> ToolResult:
-    data = _load_json(path)
+    """npm audit, ``pnpm audit --json`` (npm 6's shape) or ``yarn audit --json`` (NDJSON)."""
+    try:
+        data = _load_json(path)
+    except ReportError:
+        data = _yarn_audit(path)
+        if data is None:
+            raise
     _expect(
         isinstance(data, dict) and ("vulnerabilities" in data or "advisories" in data),
-        "expected npm audit --json output",
+        "expected npm audit --json, pnpm audit --json or yarn audit --json output",
     )
     findings: list[Finding] = []
     for name, vuln in (data.get("vulnerabilities") or {}).items():
@@ -347,20 +399,153 @@ def parse_npm_audit(path: Path) -> ToolResult:
 # --- Any language ----------------------------------------------------------------
 
 
+# Paths of tests, fixtures and mocks: the "secrets" there are sample data. A folder
+# named like one, or a file such as test_keys.py, keys.spec.ts or expressionTestData.json.
+_TEST_DIR = re.compile(
+    r"(^|/)(tests?|__tests__|spec|specs|fixtures?|__fixtures__|mocks?|__mocks__|testdata|test-data|test_data|testing)(/|$)",
+    re.IGNORECASE,
+)
+_TEST_FILE = re.compile(
+    r"(^|[._-])(tests?|specs?|fixtures?|mocks?)([._-]|$)|[a-z0-9](Test|Spec|Fixture|Mock)([A-Z0-9._-]|$)"
+)
+
+
+def is_test_path(path: str) -> bool:
+    """True for a file under a test, fixture or mock folder, or named like one."""
+    path = path.replace("\\", "/").lstrip("./")
+    folder, _, name = path.rpartition("/")
+    return bool(_TEST_DIR.search(folder + "/") or _TEST_FILE.search(name))
+
+
+# gitleaks rule ids -> severity. Keys that open a cloud account or sign anything are
+# critical; a "generic" match (any long random string next to the word key) is medium.
+_GITLEAKS_CRITICAL = ("private-key", "aws-", "gcp-", "azure-", "github-app", "github-pat")
+_GITLEAKS_MEDIUM = ("generic-", "jwt", "hashicorp-tf-password", "sidekiq-secret")
+
+
+def gitleaks_severity(rule: str) -> str:
+    rule = rule.lower()
+    if rule.startswith(_GITLEAKS_MEDIUM):
+        return "medium"
+    if rule.startswith(_GITLEAKS_CRITICAL) or rule.endswith("private-key"):
+        return "critical"
+    return "high"
+
+
 def parse_gitleaks(path: Path) -> ToolResult:
+    """gitleaks' JSON: each distinct secret once, test and fixture files left out."""
     data = _load_json(path)
     _expect(isinstance(data, list), "expected gitleaks' JSON report (--report-format json)")
-    findings = [
-        Finding(
-            "critical",
-            str(d.get("RuleID") or d.get("Description") or "secret"),
-            _short(d.get("Description")),
-            f"{d.get('File', '')}:{d.get('StartLine', '')}",
+    findings: list[Finding] = []
+    seen: set[tuple[str, str]] = set()
+    in_tests = 0
+    for d in data:
+        if not isinstance(d, dict):
+            continue
+        file = str(d.get("File") or "")
+        if is_test_path(file):
+            in_tests += 1
+            continue
+        rule = str(d.get("RuleID") or d.get("Description") or "secret")
+        secret = str(d.get("Secret") or "")
+        key = (
+            (rule, secret)
+            if secret and secret != "REDACTED"
+            else (rule, f"{file}:{d.get('StartLine', '')}")
         )
-        for d in data
-        if isinstance(d, dict)
-    ]
-    return from_findings(findings, what="leaked secret", clean="No secrets found")
+        if key in seen:
+            continue
+        seen.add(key)
+        findings.append(
+            Finding(
+                gitleaks_severity(rule),
+                rule,
+                _short(d.get("Description")),
+                f"{file}:{d.get('StartLine', '')}",
+            )
+        )
+    extra: dict[str, float | int | str] = {"in_test_files": in_tests} if in_tests else {}
+    result = from_findings(findings, what="leaked secret", clean="No secrets found", extra=extra)
+    if in_tests:
+        result = _with_note(result, f"{in_tests} in test or fixture files not counted")
+    return result
+
+
+def _with_note(result: ToolResult, note: str) -> ToolResult:
+    from dataclasses import replace
+
+    return replace(result, summary=f"{result.summary}; {note}")
+
+
+def parse_bundler_audit(path: Path) -> ToolResult:
+    """bundler-audit's JSON (``bundle-audit check --format json``): Ruby gems with advisories."""
+    data = _load_json(path)
+    _expect(
+        isinstance(data, dict) and isinstance(data.get("results"), list),
+        "expected bundler-audit's JSON report (bundle-audit check --format json)",
+    )
+    findings: list[Finding] = []
+    for r in data["results"]:
+        if not isinstance(r, dict):
+            continue
+        gem = r.get("gem") or {}
+        adv = r.get("advisory") or {}
+        if r.get("type") == "insecure_source":
+            findings.append(
+                Finding("medium", "insecure gem source", _short(r.get("source")), "Gemfile.lock")
+            )
+            continue
+        ident = adv.get("cve") and f"CVE-{adv['cve']}" or adv.get("ghsa") or adv.get("id") or ""
+        patched = ", ".join(adv.get("patched_versions") or [])
+        findings.append(
+            Finding(
+                severity_of(adv.get("criticality"), "high"),
+                f"{gem.get('name', '')} {gem.get('version', '')}".strip(),
+                _short(f"{ident}: {adv.get('title', '')}. Fixed in {patched or 'no release yet'}"),
+                str(gem.get("name") or ""),
+            )
+        )
+    return from_findings(findings, what="vulnerable gem", clean="No known vulnerabilities")
+
+
+def _cvss_severity(raw: Any) -> str | None:
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return "critical" if value >= 9 else "high" if value >= 7 else "medium" if value >= 4 else "low"
+
+
+def parse_osv_scanner(path: Path) -> ToolResult:
+    """osv-scanner's JSON (``--format json``): packages in any lock file with known vulnerabilities."""
+    data = _load_json(path)
+    _expect(
+        isinstance(data, dict) and "results" in data,
+        "expected osv-scanner's JSON output (osv-scanner --format json)",
+    )
+    findings: list[Finding] = []
+    for result in data.get("results") or []:
+        source = str(((result or {}).get("source") or {}).get("path") or "")
+        for pkg in (result or {}).get("packages") or []:
+            info = (pkg or {}).get("package") or {}
+            name = f"{info.get('name', '')} {info.get('version', '')}".strip()
+            vulns = {str(v.get("id")): v for v in pkg.get("vulnerabilities") or [] if v}
+            groups = pkg.get("groups") or [{"ids": [i]} for i in vulns]
+            for group in groups:
+                ids = [str(i) for i in group.get("ids") or []]
+                first = vulns.get(ids[0], {}) if ids else {}
+                severity = _cvss_severity(group.get("max_severity")) or severity_of(
+                    (first.get("database_specific") or {}).get("severity"), "medium"
+                )
+                findings.append(
+                    Finding(
+                        severity,
+                        name or "package",
+                        _short(f"{', '.join(ids)}: {first.get('summary', '')}"),
+                        source,
+                    )
+                )
+    return from_findings(findings, what="vulnerable package", clean="No known vulnerabilities")
 
 
 def parse_trivy(path: Path) -> ToolResult:
@@ -754,6 +939,8 @@ PARSERS: dict[str, Callable[[Path], ToolResult]] = {
     "pip-audit": parse_pip_audit,
     "npm-audit": parse_npm_audit,
     "gitleaks": parse_gitleaks,
+    "bundler-audit": parse_bundler_audit,
+    "osv-scanner": parse_osv_scanner,
     "trivy": parse_trivy,
     "openssf-scorecard": parse_openssf_scorecard,
     "zap": parse_zap,

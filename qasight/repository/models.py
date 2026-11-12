@@ -410,6 +410,28 @@ class ScorecardResult(SQLModel, table=True):
     recorded_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
 
 
+class ScorecardCoverage(SQLModel, table=True):
+    """Which tools a scan of a project version expected and which of them ran.
+
+    One row per (project, version), from its latest scan. A scorecard whose
+    tools mostly didn't run caps its grade. See :mod:`qasight.services.scorecard`.
+    """
+
+    __tablename__ = "scorecard_coverage"
+    __table_args__ = {"extend_existing": True}
+
+    # sha256 of "<project>\n<version>".
+    id: str = Field(primary_key=True, max_length=64)
+    project: str = Field(max_length=255)
+    version: str = Field(max_length=128)
+    # {"expected": [tool ids that fit the repository], "missing": {tool id: why it didn't run},
+    #  "languages": [...]}
+    details: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column("details", _METADATA_JSON_COL, nullable=False)
+    )
+    recorded_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
 class ScorecardToolSetting(SQLModel, table=True):
     """A scorecard tool switched on or off; tools without a row use their default."""
 

@@ -59,6 +59,13 @@ export function gradeFor(score: number | null): string | null {
   return "F";
 }
 
+/** Same cap as the server (report.py capped_grade): under half of the fitting tools ran, the grade is at most C. */
+export function cappedGrade(score: number | null, coverage: ScorecardResponse["coverage"]): { grade: string | null; cappedFrom: string | null } {
+  const grade = gradeFor(score);
+  if (grade == null || !coverage || !coverage.expected || coverage.ran / coverage.expected >= 0.5) return { grade, cappedFrom: null };
+  return "AB".includes(grade) ? { grade: "C", cappedFrom: grade } : { grade, cappedFrom: null };
+}
+
 function Delta({ score, previous, label }: { score: number | null | undefined; previous: number | null | undefined; label?: string }) {
   if (score == null || previous == null) return null;
   const diff = score - previous;
@@ -183,6 +190,7 @@ function ToolTile({
 function ScoreSummary({ card, isOn }: { card: ScorecardResponse; isOn: (tool: string) => boolean }) {
   const now = rollUp(card.tools, isOn, (t) => t.score);
   const before = rollUp(card.tools, isOn, (t) => t.previous_score);
+  const graded = cappedGrade(now.score, card.coverage);
   const [copied, setCopied] = useState<string | null>(null);
   const copyMarkdown = async () => {
     try {
@@ -205,7 +213,13 @@ function ScoreSummary({ card, isOn }: { card: ScorecardResponse; isOn: (tool: st
     >
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
         <div className="flex flex-col items-center gap-2 md:w-48">
-          <ScoreRing score={now.score} grade={gradeFor(now.score)} label="Release score" />
+          <ScoreRing score={now.score} grade={graded.grade} label="Release score" />
+          {card.coverage ? (
+            <p className="text-center text-xs text-ink-300" data-testid="scorecard-coverage">
+              {card.coverage.ran} of {card.coverage.expected} tools that fit this repository ran.
+              {graded.cappedFrom ? ` Grade capped at C (the score alone is a ${graded.cappedFrom}).` : ""}
+            </p>
+          ) : null}
           {card.previous_version ? (
             <p className="flex items-center gap-1.5 text-center text-xs text-ink-300">
               vs {card.previous_version}: {before.score ?? "–"} <Delta score={now.score} previous={before.score} />

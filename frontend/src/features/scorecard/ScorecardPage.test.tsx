@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-import { ScorecardPage, gradeFor, rollUp } from "./ScorecardPage";
+import { ScorecardPage, cappedGrade, gradeFor, rollUp } from "./ScorecardPage";
 
 function tool(id: string, name: string, category: string, extra: Record<string, unknown> = {}) {
   return {
@@ -82,6 +82,15 @@ describe("rollUp", () => {
     expect(rollUp(items, () => true, (t) => t.previous_score).score).toBe(90);
     expect(gradeFor(75)).toBe("C");
     expect(gradeFor(null)).toBeNull();
+  });
+});
+
+describe("cappedGrade", () => {
+  it("caps the grade at C when fewer than half of the fitting tools ran", () => {
+    expect(cappedGrade(98, { ran: 1, expected: 3, missing: {}, capped_from: null })).toEqual({ grade: "C", cappedFrom: "A" });
+    expect(cappedGrade(98, { ran: 2, expected: 3, missing: {}, capped_from: null })).toEqual({ grade: "A", cappedFrom: null });
+    expect(cappedGrade(55, { ran: 1, expected: 3, missing: {}, capped_from: null })).toEqual({ grade: "F", cappedFrom: null });
+    expect(cappedGrade(98, null)).toEqual({ grade: "A", cappedFrom: null });
   });
 });
 

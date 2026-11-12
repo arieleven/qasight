@@ -143,6 +143,14 @@ class ScorecardScanManager:
                 url=request.url or None,
                 openapi=request.openapi or None,
                 on_event=lambda e: self._event(state, e),
+                semgrep_config=getattr(request, "semgrep_config", None) or None,
+                record_coverage=lambda o: store.record_coverage(
+                    project=target.project,
+                    version=target.version,
+                    expected=o.expected,
+                    missing=o.missing(),
+                    languages=sorted(o.languages),
+                ),
             )
             with self._lock:
                 state.state = "done" if outcome.results else "failed"

@@ -87,6 +87,23 @@ def _recorder(server: str | None, *, project: str, version: str, commit: str | N
     )
 
 
+def _history_note() -> str:
+    """Which database the results go to, so two folders' different histories aren't a surprise."""
+    from sqlalchemy.engine import make_url
+
+    from qasight.repository.db_config import resolve_database_url
+
+    url = resolve_database_url()
+    try:
+        parsed = make_url(url)
+    except Exception:  # noqa: BLE001 - only for the message
+        return f"History: {url}"
+    if parsed.get_backend_name() == "sqlite" and parsed.database:
+        where = Path(parsed.database).expanduser().resolve()
+        return f"History: {where} (set DATABASE_URL to use another)"
+    return f"History: {parsed.render_as_string(hide_password=True)}"
+
+
 def _gate(card: Any, *, min_score: int | None, min_tool: int | None, no_drop: bool) -> None:
     from qasight.services.scorecard.report import gate_failures
 
@@ -111,6 +128,10 @@ def _print_card(card: Any) -> None:
     typer.echo(f"{card.project} {card.version}: {head}{delta(card.score, card.previous_score)}")
     if card.previous_version:
         typer.echo(f"compared with {card.previous_version}")
+    if card.coverage is not None:
+        from qasight.services.scorecard.report import coverage_sentence
+
+        typer.echo(coverage_sentence(card.coverage))
     for cat in card.categories:
         value = "off" if cat.score is None else str(cat.score)
         typer.echo(f"  {cat.name:<15} {value:>4}{delta(cat.score, cat.previous_score)}")
@@ -188,8 +209,19 @@ def import_cmd(
         None, "--version", help="Version (default: `git describe --tags --always`)."
     ),
     server: str | None = typer.Option(None, "--server", help=_SERVER_HELP),
+    ignore: Path | None = typer.Option(
+        None,
+        "--ignore",
+        help="Accepted findings to leave out (default: ./scorecard-ignore.yml when it exists).",
+    ),
 ) -> None:
     """Record a report a tool already wrote as its score for a version."""
+    from qasight.services.scorecard.ignore import (
+        IgnoreFileError,
+        apply_ignores,
+        find_ignore_file,
+        load_ignores,
+    )
     from qasight.services.scorecard.parsers import ReportError
     from qasight.services.scorecard.scan import ScanError, resolve_target
     from qasight.services.scorecard.store import ScorecardError
@@ -201,7 +233,10 @@ def import_cmd(
         raise _fail(f"{report} is not a file")
     try:
         target = resolve_target(str(Path.cwd()), project=project, version=version)
+        ignore_path = ignore or find_ignore_file(Path.cwd())
         result = TOOLS_BY_ID[tool].parse(report)
+        if ignore_path:
+            result = apply_ignores(tool, result, load_ignores(ignore_path))
         _recorder(
             _server(server),
             project=target.project,
@@ -209,11 +244,13 @@ def import_cmd(
             commit=target.commit_sha,
             source="import",
         )(tool, result)
-    except (ReportError, ScanError, ScorecardError) as exc:
+    except (ReportError, ScanError, ScorecardError, IgnoreFileError) as exc:
         raise _fail(f"{TOOLS_BY_ID[tool].name}: {exc}") from exc
     typer.echo(
         f"{target.project} {target.version}: {TOOLS_BY_ID[tool].name} {result.score}/100, {result.summary}"
     )
+    if not _server(server):
+        typer.echo(_history_note())
 
 
 @app.command("scan")
@@ -253,8 +290,19 @@ def scan_cmd(
     no_drop: bool = typer.Option(
         False, "--no-drop", help="Exit 1 when a tool scores lower than on the previous version."
     ),
+    semgrep_config: str | None = typer.Option(
+        None,
+        "--semgrep-config",
+        help="Semgrep rules: a local folder or file (a clone of semgrep-rules) or a registry name. Default p/default, which needs semgrep.dev.",
+    ),
+    ignore: Path | None = typer.Option(
+        None,
+        "--ignore",
+        help="Accepted findings to leave out (default: scorecard-ignore.yml in the scanned repository).",
+    ),
 ) -> None:
     """Run the review tools on a repository and record its scorecard."""
+    from qasight.services.scorecard.ignore import IgnoreFileError
     from qasight.services.scorecard.report import build_scorecard, to_markdown
     from qasight.services.scorecard.scan import (
         ScanError,
@@ -281,10 +329,9 @@ def scan_cmd(
                 f"  {TOOLS_BY_ID[event['tool']].name}: {event['score']}/100, {event['message']}"
             )
         elif event["type"] == "tool":
-            typer.echo(
-                f"  {TOOLS_BY_ID[event['tool']].name}: {event['status']}: {event.get('message', '')}",
-                err=True,
-            )
+            # The reason is printed once, in the "Not run" list at the end.
+            word = "failed" if event["status"] == "error" else event["status"]
+            typer.echo(f"  {TOOLS_BY_ID[event['tool']].name}: {word}", err=True)
 
     try:
         only = known_tool_ids(tools)
@@ -313,15 +360,34 @@ def scan_cmd(
             openapi=openapi,
             timeout_s=timeout,
             on_event=show,
+            semgrep_config=semgrep_config,
+            ignore_file=ignore,
+            record_coverage=(
+                (
+                    lambda o: store.record_coverage(
+                        project=scan_target.project,
+                        version=scan_target.version,
+                        expected=o.expected,
+                        missing=o.missing(),
+                        languages=sorted(o.languages),
+                    )
+                )
+                if store is not None
+                else None
+            ),
         )
+    except IgnoreFileError as exc:
+        raise _fail(str(exc)) from exc
     finally:
         finish(scan_target)
 
-    not_run = {**outcome.skipped, **{t: f"failed: {m}" for t, m in outcome.errors.items()}}
+    not_run = outcome.not_run()
     if not_run:
         typer.echo("\nNot run:")
         for tool_id, why in not_run.items():
             typer.echo(f"  {TOOLS_BY_ID[tool_id].name}: {why}")
+    if outcome.ignore_file:
+        typer.echo(f"\nIgnored findings listed in {outcome.ignore_file}.")
     if store is None:
         typer.echo(f"\nRecorded {len(outcome.results)} result(s) on {_server(server)}.")
         return
@@ -343,6 +409,7 @@ def scan_cmd(
     typer.echo("")
     _print_card(card)
     typer.echo(f"\nWrote {out / 'scorecard.md'}. Open it in the UI: qasight ui, then Scorecard.")
+    typer.echo(_history_note())
     _gate(card, min_score=min_score, min_tool=min_tool, no_drop=no_drop)
 
 
@@ -379,6 +446,7 @@ def show_cmd(
         )
     if fmt == "text" and output is None:
         _print_card(card)
+        typer.echo(_history_note())
     else:
         text = (
             to_markdown(card)

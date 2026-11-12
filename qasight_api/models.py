@@ -1504,6 +1504,17 @@ class ScorecardProjectsResponse(ApiModel):
     items: list[ScorecardProjectItem]
 
 
+class ScorecardCoverageItem(ApiModel):
+    """How many of the tools that fit the repository gave a result in its latest scan."""
+
+    ran: int
+    expected: int
+    # Tool id -> why it gave no result.
+    missing: dict[str, str] = Field(default_factory=dict)
+    # The grade the score alone would get, when too few tools ran and the grade was capped.
+    capped_from: str | None = None
+
+
 class ScorecardResponse(ApiModel):
     """One version's scorecard; ``status`` is "empty" when nothing was scored yet."""
 
@@ -1518,6 +1529,7 @@ class ScorecardResponse(ApiModel):
     commit_sha: str | None = None
     categories: list[ScorecardCategoryItem] = Field(default_factory=list)
     tools: list[ScorecardToolScoreItem] = Field(default_factory=list)
+    coverage: ScorecardCoverageItem | None = None
     versions: list[ScorecardVersionItem] = Field(default_factory=list)
 
 
@@ -1549,6 +1561,8 @@ class ScorecardScanRequest(BaseModel):
     url: str | None = Field(default=None, max_length=1024)
     openapi: str | None = Field(default=None, max_length=1024)
     tools: list[str] | None = None
+    # Semgrep rules on the server (a folder of semgrep-rules) instead of p/default from semgrep.dev.
+    semgrep_config: str | None = Field(default=None, max_length=1024)
 
 
 class ScorecardScanToolItem(ApiModel):

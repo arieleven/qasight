@@ -1,4 +1,4 @@
-"""Scorecard results and tool switches, on the run-history database (``scorecard_result``, ``scorecard_tool``)."""
+"""Scorecard results, coverage and tool switches, on the run-history database (``scorecard_result``, ``scorecard_coverage``, ``scorecard_tool``)."""
 
 from __future__ import annotations
 
@@ -30,6 +30,16 @@ class StoredResult:
     findings: list[dict[str, str]] = field(default_factory=list)
     commit_sha: str | None = None
     source: str = "import"
+    recorded_at: float = 0.0
+
+
+@dataclass(frozen=True)
+class StoredCoverage:
+    """The tools a version's latest scan expected (they fit its languages) and why some didn't run."""
+
+    expected: list[str]
+    missing: dict[str, str]
+    languages: list[str] = field(default_factory=list)
     recorded_at: float = 0.0
 
 
@@ -167,6 +177,64 @@ class ScorecardStore:
         with Session(self._engine) as session:
             return [_stored(row) for row in session.exec(query).all()]
 
+    # --- coverage -----------------------------------------------------------
+
+    def record_coverage(
+        self,
+        *,
+        project: str,
+        version: str,
+        expected: list[str],
+        missing: dict[str, str],
+        languages: list[str] | None = None,
+    ) -> None:
+        """Save which tools a scan of ``project`` at ``version`` expected and which didn't run."""
+        from sqlmodel import Session
+
+        from qasight.repository.models import ScorecardCoverage
+
+        project, version = project.strip(), version.strip()
+        row = ScorecardCoverage(
+            id=hashlib.sha256(f"{project}\n{version}".encode()).hexdigest(),
+            project=project,
+            version=version,
+            details={
+                "expected": [t for t in expected if t in TOOLS_BY_ID],
+                "missing": {t: str(why)[:300] for t, why in missing.items() if t in TOOLS_BY_ID},
+                "languages": list(languages or []),
+            },
+            recorded_at=datetime.now(tz=UTC),
+        )
+        with Session(self._engine) as session:
+            session.merge(row)
+            session.commit()
+
+    def coverage(self, project: str, version: str) -> StoredCoverage | None:
+        return self.coverages(project).get(version)
+
+    def coverages(self, project: str | None = None) -> dict[str, StoredCoverage]:
+        """Version -> its latest scan's coverage, for ``project`` (keyed project\\nversion when None)."""
+        from sqlmodel import Session, select
+
+        from qasight.repository.models import ScorecardCoverage
+
+        query = select(ScorecardCoverage)
+        if project is not None:
+            query = query.where(ScorecardCoverage.project == project)
+        with Session(self._engine) as session:
+            rows = session.exec(query).all()
+        out: dict[str, StoredCoverage] = {}
+        for row in rows:
+            details = row.details or {}
+            key = row.version if project is not None else f"{row.project}\n{row.version}"
+            out[key] = StoredCoverage(
+                expected=list(details.get("expected") or []),
+                missing=dict(details.get("missing") or {}),
+                languages=list(details.get("languages") or []),
+                recorded_at=_aware(row.recorded_at).timestamp(),
+            )
+        return out
+
     def delete_version(self, project: str, version: str) -> int:
         from sqlmodel import Session, select
 
@@ -180,6 +248,14 @@ class ScorecardStore:
             ).all()
             for row in rows:
                 session.delete(row)
+            from qasight.repository.models import ScorecardCoverage
+
+            for cov in session.exec(
+                select(ScorecardCoverage).where(
+                    ScorecardCoverage.project == project, ScorecardCoverage.version == version
+                )
+            ).all():
+                session.delete(cov)
             session.commit()
             return len(rows)
 

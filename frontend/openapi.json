@@ -6926,6 +6926,45 @@
         "title": "ScorecardCategoryItem",
         "type": "object"
       },
+      "ScorecardCoverageItem": {
+        "description": "How many of the tools that fit the repository gave a result in its latest scan.",
+        "properties": {
+          "capped_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capped From"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
+          "missing": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "object"
+          },
+          "ran": {
+            "title": "Ran",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ran",
+          "expected",
+          "missing",
+          "capped_from"
+        ],
+        "title": "ScorecardCoverageItem",
+        "type": "object"
+      },
       "ScorecardFindingItem-Input": {
         "properties": {
           "detail": {
@@ -7055,6 +7094,16 @@
             ],
             "title": "Commit Sha"
           },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScorecardCoverageItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "grade": {
             "anyOf": [
               {
@@ -7163,6 +7212,7 @@
           "commit_sha",
           "categories",
           "tools",
+          "coverage",
           "versions"
         ],
         "title": "ScorecardResponse",
@@ -7293,6 +7343,18 @@
               }
             ],
             "title": "Ref"
+          },
+          "semgrep_config": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semgrep Config"
           },
           "target": {
             "maxLength": 1024,
