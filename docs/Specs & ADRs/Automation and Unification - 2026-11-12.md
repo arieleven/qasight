@@ -55,11 +55,19 @@ The GitHub Action's script (`integrations/github-action/run_testo_action.py`) di
 - **One flaky issue opener.** The `flaky-issues` input now sets `TESTO_ISSUES=github` for the run, so the run's own hook opens and also closes the issues. The script's own opener is gone.
 - **Templates.** The GitLab, Jenkins and CircleCI templates call `qasight ci publish --cycle <name> --out testo-summary.md` instead of `qasight report markdown`, so those jobs get the alert and, on GitLab, the merge request comment.
 
+### A5: alerts set up in one place
+
+Slack and Teams alerts could be set up four ways: the `slack` / `teams` reporters in `qasight.yaml`, the Action's `slack-webhook` / `teams-webhook` inputs, `qasight notify` in a CI step, and the webhook variables. A project with both a reporter and an Action input got every alert twice.
+
+- **`qasight.yaml` is the place.** Its top-level `reporters:` already applies to every cycle and fires inside `qasight run` and `qasight ingest`, on any CI and on the team server.
+- **The rest only fill gaps.** `qasight ci publish` (so the Action too) skips a channel the config has a reporter for (`ci_publish.configured_alert_channels()`), so each alert is sent once. The Action inputs and webhook variables stay for zero-config runs, which have no `qasight.yaml`, and `qasight notify` stays for sending by hand and for digests.
+
 ## Consequences
 
 - The digest, the run page's "flaky" tag and the Flaky page now agree. The digest may list fewer newly flaky tests than before, because its old rule counted a broken-then-fixed pull request.
 - After upgrading, a CI history's newest runs carry `os=linux` and older ones carry no environment. They count as two lanes in flaky detection until the window (20 runs) has moved past the upgrade. Set `TESTO_ENV` or `TESTO_AUTO_METADATA=0` to keep one lane.
 - Releases built from tags show up on the Releases page without `TESTO_RELEASE`.
+- A project with a `slack` reporter and the Action's `slack-webhook` input gets one alert per run, not two.
 - A GitLab merge request gets the same comment as a GitHub pull request once a `TESTO_GITLAB_TOKEN` variable is added; Jenkins and CircleCI jobs get the chat alert.
 - With `flaky-issues: true`, issues of tests that became stable are now closed too, as `qasight issues sync` does.
 - Waves 2 and 3 extend this note as they land.

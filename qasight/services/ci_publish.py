@@ -14,7 +14,9 @@ GitHub Action gives (``qasight ci publish``; the Action calls the same code):
 * **Annotations.** On GitHub, failing tests as ``::error`` lines on the diff.
 * **Alerts.** Slack and Microsoft Teams, to each channel whose webhook
   (``TESTO_SLACK_WEBHOOK_URL``, ``TESTO_TEAMS_WEBHOOK_URL``) is set, when the run
-  matches ``notify_when``.
+  matches ``notify_when``. A channel ``qasight.yaml`` already has a ``slack`` or
+  ``teams`` reporter for is skipped: that reporter alerted during the run, and the
+  config is the one place to set it up (:func:`configured_alert_channels`).
 
 Flaky test issues are not here: every recorded run already opens and closes them
 when ``TESTO_ISSUES=github`` (:mod:`~qasight.services.flaky_issues`).
@@ -228,11 +230,35 @@ def _annotations(cycle: str, opts: PublishOptions) -> list[str]:
     return workflow_commands(failures, cycle=summary.run.cycle)
 
 
-def _notify(cycle: str, when: str, ctx: CIContext, env: Mapping[str, str]) -> list[str]:
+def configured_alert_channels(config_path: Path | None) -> set[str]:
+    """Chat channels ``qasight.yaml`` already alerts through (its ``slack`` / ``teams`` reporters).
+
+    Those fire inside ``qasight run`` and ``qasight ingest``, so publishing skips them:
+    the alert is configured in one place and sent once.
+    """
+    from qasight.config.errors import ConfigError
+    from qasight.config.loader import discover_and_load
+    from qasight.services import run_alerts
+
+    try:
+        cfg = discover_and_load(config_path=config_path)
+    except (ConfigError, OSError):
+        return set()
+    return {r.type for r in cfg.reporters if r.type in run_alerts.CHANNELS}
+
+
+def _notify(
+    cycle: str, when: str, ctx: CIContext, env: Mapping[str, str], opts: PublishOptions
+) -> list[str]:
     from qasight.services import run_alerts
 
     sent: list[str] = []
-    channels = [c for c in run_alerts.CHANNELS if run_alerts.webhook_from_env(c, dict(env))]
+    configured = configured_alert_channels(opts.config_path)
+    channels = [
+        c
+        for c in run_alerts.CHANNELS
+        if c not in configured and run_alerts.webhook_from_env(c, dict(env))
+    ]
     if not channels or when not in run_alerts.WHEN_CHOICES:
         return sent
     alert = run_alerts.load_alert(cycle=cycle)
@@ -298,7 +324,7 @@ def publish(
     if opts.notify_when and cycle:
 
         def notify() -> None:
-            for channel in _notify(str(cycle), str(opts.notify_when), ctx, env):
+            for channel in _notify(str(cycle), str(opts.notify_when), ctx, env, opts):
                 echo(f"{channel}: sent")
 
         steps.append(("chat alert", notify))

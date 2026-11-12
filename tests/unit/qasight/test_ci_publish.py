@@ -139,3 +139,29 @@ def test_no_recorded_run_returns_false(monkeypatch: pytest.MonkeyPatch) -> None:
     warnings: list[str] = []
     assert not ci_publish.publish(cycle="x", env={}, opts=PublishOptions(), warn=warnings.append)
     assert warnings == ["no recorded run of 'x' to publish"]
+
+
+@pytest.mark.usefixtures("recorded")
+def test_a_channel_qasight_yaml_alerts_through_is_not_sent_twice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from qasight.services import run_alerts
+
+    config = tmp_path / "qasight.yaml"
+    config.write_text(
+        "version: 1\nreporters:\n  - type: slack\ncycles:\n  api:\n    stages:\n"
+        "      - name: unit\n        equipment: pytest\n",
+        encoding="utf-8",
+    )
+    posted: list[str] = []
+    monkeypatch.setattr(run_alerts, "load_alert", lambda **_: object())
+    monkeypatch.setattr(run_alerts, "should_send", lambda alert, when: True)
+    monkeypatch.setattr(run_alerts, "build_payload", lambda channel, *a, **k: {"c": channel})
+    monkeypatch.setattr(run_alerts, "post", lambda url, payload: posted.append(payload["c"]))
+    env = {
+        "TESTO_SLACK_WEBHOOK_URL": "https://hooks/slack",
+        "TESTO_TEAMS_WEBHOOK_URL": "https://hooks/teams",
+    }
+    opts = PublishOptions(comment=False, config_path=config)
+    assert ci_publish.publish(cycle="api", env=env, opts=opts, echo=print, warn=print)
+    assert posted == ["teams"]

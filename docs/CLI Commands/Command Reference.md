@@ -442,7 +442,7 @@ qasight ci publish --cycle unit --cycle e2e --notify-when change
 
 | Where | What it does |
 |---|---|
-| Everywhere | The run as Markdown ([`qasight report markdown`](#qasight-report)) written to `--out`. A Slack or Teams alert to each channel whose webhook is set (`TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL`) when the run matches `--notify-when` |
+| Everywhere | The run as Markdown ([`qasight report markdown`](#qasight-report)) written to `--out`. A Slack or Teams alert to each channel whose webhook is set (`TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL`) when the run matches `--notify-when`, except a channel `qasight.yaml` already has a `slack` or `teams` [reporter](#reporter-types-reporters----reporter) for, which alerted during the run |
 | GitHub Actions | Appends the summary to the job summary, comments on the pull request with `TESTO_GITHUB_TOKEN` or `GITHUB_TOKEN` (`pull-requests: write`) and edits that comment on later runs, and prints failing tests as annotations on the diff |
 | GitLab CI | Comments on the merge request (`CI_MERGE_REQUEST_IID`) with `TESTO_GITLAB_TOKEN`, a project or personal access token with `api` scope stored as a masked CI/CD variable (the job token can't write notes), and edits that comment on later runs |
 
