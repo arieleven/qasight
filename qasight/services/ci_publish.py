@@ -29,9 +29,7 @@ from __future__ import annotations
 
 import json
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -116,17 +114,15 @@ def context(env: Mapping[str, str]) -> CIContext:
 
 
 def _call(method: str, url: str, headers: dict[str, str], body: dict[str, Any] | None) -> Any:
-    request = urllib.request.Request(  # noqa: S310 - the API URL comes from the CI runner
-        url,
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-        headers={**headers, "Content-Type": "application/json"},
-    )
+    import requests
+
     try:
-        with urllib.request.urlopen(request, timeout=30) as resp:  # noqa: S310
-            return json.loads(resp.read() or b"null")
-    except (urllib.error.URLError, OSError, ValueError) as exc:
-        raise PublishError(str(exc)) from exc
+        resp = requests.request(method, url, headers=headers, json=body, timeout=30)
+    except requests.RequestException as exc:
+        raise PublishError(f"{type(exc).__name__} calling the API") from None
+    if resp.status_code >= 400:
+        raise PublishError(f"the API answered HTTP {resp.status_code}: {resp.text[:200]}")
+    return resp.json() if resp.content else None
 
 
 def upsert_github_comment(*, markdown: str, number: int, token: str, env: Mapping[str, str]) -> str:
