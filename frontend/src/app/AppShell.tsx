@@ -8,34 +8,70 @@ import { scoreTone } from "../features/health/score";
 import { DemoBadge } from "../components/StaticBuildBanner";
 import { Icons } from "../components/ui";
 
-type NavLinkSpec = { to: string; label: string; icon: ComponentType; end?: boolean };
+/** A menu entry. `also` lists pages reached from it (a button on its page) that keep it highlighted. */
+type NavLinkSpec = { to: string; label: string; icon: ComponentType; end?: boolean; also?: string[] };
+type NavGroup = { title?: string; links: NavLinkSpec[] };
 
-const PRIMARY_LINKS: NavLinkSpec[] = [
-  { to: "/", label: "Dashboard", icon: Icons.HomeIcon, end: true },
-  { to: "/cycles", label: "Cycles", icon: Icons.CyclesIcon },
-  { to: "/runs", label: "Runs", icon: Icons.RunsIcon },
-  { to: "/compare", label: "Compare", icon: Icons.CompareIcon },
-  { to: "/releases", label: "Releases", icon: Icons.TagIcon },
-  { to: "/health", label: "Project health", icon: Icons.HeartIcon },
-  { to: "/scorecard", label: "Scorecard", icon: Icons.ShieldIcon },
-  { to: "/report", label: "Report", icon: Icons.ReportIcon },
-  { to: "/ask", label: "Ask", icon: Icons.ChatIcon }
+/**
+ * The menu, grouped by the question each page answers: what needs me now,
+ * how are my tests doing, how is each release doing, what do I hand to others,
+ * and how QASight is set up. Compare, Quick run and Try a file are buttons on
+ * the pages they belong to (Runs, Cycles, the welcome page), not menu items.
+ */
+export const NAV_GROUPS: NavGroup[] = [
+  { links: [{ to: "/", label: "Overview", icon: Icons.HomeIcon, end: true }] },
+  {
+    title: "Tests",
+    links: [
+      { to: "/runs", label: "Runs", icon: Icons.RunsIcon, also: ["/compare"] },
+      { to: "/cycles", label: "Cycles", icon: Icons.CyclesIcon, also: ["/quick-run"] },
+      { to: "/test-health", label: "Test health", icon: Icons.HeartIcon }
+    ]
+  },
+  {
+    title: "Releases",
+    links: [{ to: "/releases", label: "Releases", icon: Icons.TagIcon, also: ["/code-quality"] }]
+  },
+  {
+    title: "Share",
+    links: [
+      { to: "/report", label: "Report", icon: Icons.ReportIcon },
+      { to: "/ask", label: "Ask", icon: Icons.ChatIcon }
+    ]
+  },
+  {
+    title: "Settings",
+    links: [
+      { to: "/resources", label: "Resources", icon: Icons.KeyIcon },
+      { to: "/settings/ai", label: "AI settings", icon: Icons.SparkIcon }
+    ]
+  }
 ];
 
-const ADVANCED_LINKS: NavLinkSpec[] = [
-  { to: "/quick-run", label: "Quick run", icon: Icons.BoltIcon },
-  { to: "/resources", label: "Resources", icon: Icons.KeyIcon },
-  { to: "/try", label: "Try a file", icon: Icons.UploadIcon },
-  { to: "/settings/ai", label: "AI settings", icon: Icons.SparkIcon }
-];
+const NAV_LINKS = NAV_GROUPS.flatMap((g) => g.links);
+
+/** Pages without a menu entry of their own: the crumb they show under the entry they belong to. */
+const SUB_PAGES: Record<string, string> = {
+  "/compare": "Compare",
+  "/quick-run": "Quick run",
+  "/code-quality": "Code quality",
+  "/try": "Try a file"
+};
+
+function under(pathname: string, to: string): boolean {
+  return to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
+}
 
 const DOCS_URL = "https://arieleven.github.io/qasight/docs/";
 
 /** Breadcrumb for the current page: the section, then the cycle, run or test it shows. */
 function breadcrumbs(pathname: string): { label: string; to?: string }[] {
-  const link = [...PRIMARY_LINKS, ...ADVANCED_LINKS].find((l) =>
-    l.to === "/" ? pathname === "/" : pathname === l.to || pathname.startsWith(`${l.to}/`)
-  );
+  const sub = Object.keys(SUB_PAGES).find((to) => under(pathname, to));
+  if (sub) {
+    const parent = NAV_LINKS.find((l) => l.also?.includes(sub));
+    return parent ? [{ label: parent.label, to: parent.to }, { label: SUB_PAGES[sub] }] : [{ label: SUB_PAGES[sub] }];
+  }
+  const link = NAV_LINKS.find((l) => under(pathname, l.to));
   if (!link) return [{ label: "Not found" }];
   const crumbs: { label: string; to?: string }[] = [{ label: link.label, to: link.to }];
   const rest = pathname.slice(link.to.length).split("/").filter(Boolean).map(decodeURIComponent);
@@ -48,18 +84,18 @@ function breadcrumbs(pathname: string): { label: string; to?: string }[] {
   return crumbs;
 }
 
-// Iris colours for the health page, the same green/amber/red scale as the score ring.
+// Iris colours for the Test health page, the same green/amber/red scale as the score ring.
 const IRIS_BY_TONE = { success: "#34d399", warn: "#fbbf24", danger: "#f87171", neutral: "#7e88ae" } as const;
 
 /**
- * The eye logo. On the Project health page its iris takes the colour of the
+ * The eye logo. On the Test health page its iris takes the colour of the
  * health score; everywhere else it stays brand green. The pupil spins while
  * any request is in flight.
  */
 function BrandEye() {
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
-  const onHealthPage = pathname === "/health" || pathname.startsWith("/health/");
+  const onHealthPage = under(pathname, "/test-health");
   const cycle = searchParams.get("cycle") ?? "";
   // Same key as ProjectHealthPage, so this reads its cached result instead of fetching twice.
   const health = useQuery({
@@ -73,7 +109,7 @@ function BrandEye() {
 }
 
 /**
- * Desktop: a floating glass sidebar (nav, Tools section, docs link) beside
+ * Desktop: a floating glass sidebar (grouped nav, docs link) beside
  * the page. Below `lg` the sidebar is hidden and a top bar with a disclosure
  * menu takes its place.
  */
@@ -115,13 +151,7 @@ export function AppShell() {
         </Link>
         <div className="mb-5 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" aria-hidden />
         <nav aria-label="Sections" className="flex flex-col gap-1 text-sm">
-          {PRIMARY_LINKS.map((link) => (
-            <NavItem key={link.to} link={link} />
-          ))}
-          <p className="mb-1 mt-5 px-4 text-[11px] font-bold uppercase tracking-wider text-white">Tools</p>
-          {ADVANCED_LINKS.map((link) => (
-            <NavItem key={link.to} link={link} />
-          ))}
+          <NavGroups />
         </nav>
         <HelpCard />
         <VersionNote />
@@ -202,26 +232,48 @@ export function AppShell() {
   );
 }
 
+function NavGroups({ size = "compact" }: { size?: "compact" | "touch" }) {
+  return (
+    <>
+      {NAV_GROUPS.map((group) => (
+        <div key={group.title ?? "home"} className="flex flex-col gap-1">
+          {group.title ? (
+            <p className={`mb-1 px-4 text-[11px] font-bold uppercase tracking-wider text-ink-400 ${size === "touch" ? "mt-3" : "mt-4"}`}>
+              {group.title}
+            </p>
+          ) : null}
+          {group.links.map((link) => (
+            <NavItem key={link.to} link={link} size={size} />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
 function NavItem({ link, size = "compact" }: { link: NavLinkSpec; size?: "compact" | "touch" }) {
   const Icon = link.icon;
+  const { pathname } = useLocation();
+  const onSubPage = (link.also ?? []).some((to) => under(pathname, to));
   return (
     <NavLink
       to={link.to}
       end={link.end}
-      className={({ isActive }) =>
-        [
+      className={({ isActive: exact }) => {
+        const isActive = exact || onSubPage;
+        return [
           "group flex items-center gap-3 rounded-2xl px-4 font-medium transition-colors",
           size === "touch" ? "py-2.5" : "py-2",
           isActive ? "bg-ink-800/80 text-white shadow-lg shadow-black/20" : "text-ink-300 hover:bg-ink-800/40 hover:text-white"
-        ].join(" ")
-      }
+        ].join(" ");
+      }}
     >
-      {({ isActive }) => (
+      {({ isActive: exact }) => (
         <>
           <span
             className={[
               "flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-xl transition-colors",
-              isActive ? "brand-tile" : "bg-ink-800 text-brand-400 shadow-md shadow-black/20 group-hover:bg-ink-700 group-hover:text-brand-300"
+              exact || onSubPage ? "brand-tile" : "bg-ink-800 text-brand-400 shadow-md shadow-black/20 group-hover:bg-ink-700 group-hover:text-brand-300"
             ].join(" ")}
           >
             <Icon />
@@ -262,6 +314,9 @@ function HelpCard() {
         >
           Docs
         </a>
+        <Link to="/try" className="mt-2 block text-center text-xs font-semibold text-ink-200 hover:text-white hover:underline">
+          Try it on a JUnit file
+        </Link>
       </div>
     </div>
   );
@@ -274,7 +329,10 @@ function Footer() {
   return (
     <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-5 text-xs text-ink-400 print:hidden">
       <span className="font-semibold text-ink-200">QASight</span>
-      <span className="flex gap-4">
+      <span className="flex flex-wrap gap-4">
+        <Link to="/try" className="hover:text-white">
+          Try a file
+        </Link>
         <a href={DOCS_URL} target="_blank" rel="noreferrer" className="hover:text-white">
           Docs
         </a>
@@ -348,7 +406,7 @@ function useDismiss(
 }
 
 /**
- * Below the `lg` breakpoint the sidebar nav and its Tools section don't fit
+ * Below the `lg` breakpoint the sidebar nav doesn't fit
  * next to the logo, so both collapse into one disclosure panel under the header.
  */
 function MobileMenu() {
@@ -396,15 +454,7 @@ function MobileMenu() {
         className="absolute inset-x-0 top-full border-b border-white/5 bg-ink-950 px-4 py-3 text-sm shadow-xl"
       >
         <div className="flex flex-col gap-1">
-          {PRIMARY_LINKS.map((link) => (
-            <NavItem key={link.to} link={link} size="touch" />
-          ))}
-        </div>
-        <p className="mt-3 px-4 text-[11px] font-bold uppercase tracking-wider text-white">Tools</p>
-        <div className="mt-1 flex flex-col gap-1">
-          {ADVANCED_LINKS.map((link) => (
-            <NavItem key={link.to} link={link} size="touch" />
-          ))}
+          <NavGroups size="touch" />
         </div>
       </nav>
     </div>

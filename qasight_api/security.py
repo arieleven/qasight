@@ -70,7 +70,9 @@ LOGIN_PATH = "/login"
 LOGIN_POST_PATH = "/api/v1/auth/login"
 LOGOUT_PATH = "/api/v1/auth/logout"
 # Reachable without a session even when reads are protected.
-_OPEN_PATHS = frozenset({LOGIN_PATH, LOGIN_POST_PATH, LOGOUT_PATH})
+# The SSO routes (qasight_api/oidc.py); spelled out here so this module doesn't import it.
+_OIDC_PATHS = ("/api/v1/auth/oidc/start", "/api/v1/auth/oidc/callback")
+_OPEN_PATHS = frozenset({LOGIN_PATH, LOGIN_POST_PATH, LOGOUT_PATH, *_OIDC_PATHS})
 _OPEN_PREFIXES = ("/api/v1/health/",)
 # Writes under these need the admin role in accounts mode; every other write needs runner.
 # Taking a key back from its holder is an admin's call; taking and giving back your own is a runner's.

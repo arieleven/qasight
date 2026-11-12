@@ -162,7 +162,7 @@ stream is likewise absent: a static host cannot stream a run that is not running
   export (`scripts/export_static_site.py`, never `qasight export-site`) fills
   them from the demo's real runs with `qasight_api/demo_examples.py`: an AI
   failure summary for each failed run that has no real one, an AI review on
-  Project health, two example turns on Ask (`data/demo/ask-examples.json`), and
+  Test health, two example turns on Ask (`data/demo/ask-examples.json`), and
   two pretend releases (`2.1-example`, `2.0-example`) made by grouping each
   cycle's runs while the export reads `/releases` (the history database is not
   changed). No AI is called. AI answers carry `provider: "demo-example"` and the
@@ -200,7 +200,7 @@ environment; it is never written to the site.
 
 The same site also carries the docs: the `build` job runs `mkdocs build --strict --site-dir public/docs`, so the vault is at `https://arieleven.github.io/qasight/docs/` ([Docs Site](../Specs%20&%20ADRs/Docs%20Site%20-%202026-10-19.md)). Pull requests that touch `mkdocs.yml` or `scripts/mkdocs_hooks.py` build it too.
 
-The GitHub build also fills the Scorecard page: `qasight scorecard scan` on QASight's last two release tags, on `main` and on fake-api, with the tools that install from PyPI (Bandit, pip-audit, npm audit, zizmor, Ruff; `--tools`, so MegaLinter doesn't run there). A scan that fails doesn't fail the build.
+The GitHub build also fills the Code quality page (Releases → Code quality): `qasight scorecard scan` on QASight's last two release tags, on `main` and on fake-api, with the tools that install from PyPI (Bandit, pip-audit, npm audit, zizmor, Ruff; `--tools`, so MegaLinter doesn't run there). A scan that fails doesn't fail the build.
 
 Run history is restored from and saved to the Actions cache under a fresh key
 per run (`testo-demo-history-<run_id>`, restored by prefix), because Actions

@@ -132,3 +132,39 @@ def test_scan_of_a_folder_runs_in_the_background(client: TestClient, tmp_path: P
         "/api/v1/scorecard/scans", json={"target": "x", "tools": ["nope"]}, headers=_AUTH
     )
     assert bad.status_code == 422
+
+
+def test_badge_sarif_and_html_from_the_same_scorecard(client: TestClient) -> None:
+    assert "not scored" in client.get("/api/v1/scorecard/badge.svg").text
+    assert client.get("/api/v1/scorecard/sarif").status_code == 404
+    body = _result("1.0.0", "bandit", 60)
+    body["findings"] = [
+        {
+            "severity": "high",
+            "title": "B602",
+            "detail": "subprocess call with shell=True",
+            "location": "app/run.py:12",
+        },
+        {"severity": "low", "title": "B101", "detail": "assert used"},
+    ]
+    assert client.post("/api/v1/scorecard/results", json=body, headers=_AUTH).status_code == 200
+    card = client.get("/api/v1/scorecard").json()
+
+    svg = client.get("/api/v1/scorecard/badge.svg?label=code")
+    assert svg.headers["content-type"].startswith("image/svg+xml")
+    assert f"{card['grade']} {card['score']}" in svg.text and ">code<" in svg.text
+    shields = client.get("/api/v1/scorecard/badge.json").json()
+    assert (
+        shields["schemaVersion"] == 1 and shields["message"] == f"{card['grade']} {card['score']}"
+    )
+
+    sarif = client.get("/api/v1/scorecard/sarif?project=acme/app&version=1.0.0").json()
+    assert sarif["version"] == "2.1.0" and len(sarif["runs"]) == 1
+    results = sarif["runs"][0]["results"]
+    located = results[0]["locations"][0]["physicalLocation"]
+    assert results[0]["ruleId"] == "bandit/B602" and results[0]["level"] == "error"
+    assert located == {"artifactLocation": {"uri": "app/run.py"}, "region": {"startLine": 12}}
+    assert results[1]["level"] == "note"
+    assert results[1]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "."
+    rules = sarif["runs"][0]["tool"]["driver"]["rules"]
+    assert rules[0]["properties"]["security-severity"] == "7.5"

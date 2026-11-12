@@ -11,6 +11,7 @@ import { Badge, Card, EmptyState, PageHeader, ShowMoreButton, Spinner, useShowMo
 import { MuscleShrug } from "../../components/mascot";
 import { DemoExampleNote, useIsDemoExample } from "../../components/DemoExampleNote";
 import { countLabel, cyclePath, formatPercent, formatRunTime, testPath } from "../../lib/format";
+import { ReleasesTabs } from "./ReleasesTabs";
 
 export function releasePath(release: string): string {
   return `/releases/${encodeURIComponent(release)}`;
@@ -46,7 +47,8 @@ export function ReleasesPage() {
 
   return (
     <div>
-      <PageHeader title="Releases" subtitle="Runs grouped by the release they tested." />
+      <PageHeader title="Releases" subtitle="Each release in one place: what its tests did, and how its code scores." />
+      <ReleasesTabs />
       <ExampleNote />
       {query.isLoading ? (
         <Loading text="Loading releases…" />
@@ -140,6 +142,36 @@ function Delta({ data }: { data: ReleaseDetailResponse }) {
   );
 }
 
+/** The release's code grade from the scorecard, when a scan recorded this version. */
+function CodeQualityTile({ release }: { release: string }) {
+  const query = useQuery({ queryKey: ["scorecard", "", release], queryFn: () => apiClient.getScorecard(undefined, release) });
+  const card = query.data;
+  const scored = card?.status === "available" && card.version === release && card.score != null;
+  const href = `/code-quality?${new URLSearchParams({ ...(card?.project ? { project: card.project } : {}), version: release })}`;
+  return (
+    <Card title="Code quality" copy={false}>
+      {scored ? (
+        <>
+          <p className="text-3xl font-bold text-white">
+            {card.grade ?? ""} <span className="tabular-nums">{card.score}</span>
+            <span className="text-sm font-normal text-ink-400"> / 100</span>
+          </p>
+          <Link to={href} className="text-xs text-brand-300 hover:underline">
+            See what drives it
+          </Link>
+        </>
+      ) : (
+        <>
+          <p className="text-3xl font-bold text-ink-400">n/a</p>
+          <p className="text-xs text-ink-300">
+            No code scan for {release}. Run <code className="font-mono">qasight scorecard scan . --version {release}</code>.
+          </p>
+        </>
+      )}
+    </Card>
+  );
+}
+
 /** One release: each cycle's latest run in it, failing and flaky tests, and the change from the release before. */
 export function ReleasePage() {
   const { release = "" } = useParams();
@@ -174,7 +206,7 @@ export function ReleasePage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card title="Pass rate" copy={false}>
               <p className="text-3xl font-bold text-white">{formatPercent(data.summary.pass_rate)}</p>
               <p className="text-xs text-ink-300">
@@ -191,6 +223,7 @@ export function ReleasePage() {
               <p className="text-3xl font-bold text-white">{data.flaky}</p>
               <p className="text-xs text-ink-300">passed and failed across this release&apos;s runs</p>
             </Card>
+            <CodeQualityTile release={release} />
           </div>
           <Card title="Compared with the release before">
             <Delta data={data} />
