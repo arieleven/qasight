@@ -80,5 +80,6 @@ Design decisions that still describe the code. The code is the source of truth; 
 | External audit tools (gitleaks, pip-audit, Bandit, Semgrep, zizmor, Lighthouse): findings, the fixes, and the checks kept in CI | [External Audit Tools - 2026-11-11](External%20Audit%20Tools%20-%202026-11-11.md) |
 | Release gate: fast third-party checks on every pull request, slow ones before every release, PyPI publish blocked without a pass | [Release Gate - 2026-11-12](Release%20Gate%20-%202026-11-12.md) |
 | Automating hand steps and unifying duplicated processes: one flaky rule, release and environment from CI, one after-run step for every CI | [Automation and Unification - 2026-11-12](Automation%20and%20Unification%20-%202026-11-12.md) |
+| Published standards QASight meets: OpenSSF Best Practices, SLSA and SBOMs, OWASP ASVS level 1, WCAG 2.1 AA, ISO/IEC 25010 | [Standards Compliance - 2026-11-12](Standards%20Compliance%20-%202026-11-12.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

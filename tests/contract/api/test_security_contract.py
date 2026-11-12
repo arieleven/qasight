@@ -333,6 +333,14 @@ def test_every_response_gets_nosniff_and_same_origin_framing() -> None:
     assert "frame-ancestors 'self'" in csp
 
 
+def test_referrer_policy_everywhere_and_hsts_only_over_https() -> None:
+    plain = _client().get("/api/v1/health/live")
+    assert plain.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "Strict-Transport-Security" not in plain.headers
+    proxied = _client().get("/api/v1/health/live", headers={"X-Forwarded-Proto": "https"})
+    assert proxied.headers["Strict-Transport-Security"] == "max-age=31536000"
+
+
 def test_the_app_policy_allows_nothing_from_other_origins() -> None:
     from qasight_api.security import APP_CSP
 

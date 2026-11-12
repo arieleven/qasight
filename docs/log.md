@@ -268,3 +268,7 @@ New ADR [Plug and Play - 2026-11-12](Specs%20&%20ADRs/Plug%20and%20Play%20-%2020
 ## 2026-11-12: added Automation and Unification
 
 New ADR [Automation and Unification - 2026-11-12](Specs%20&%20ADRs/Automation%20and%20Unification%20-%202026-11-12.md): one flaky rule across every page, release and environment filled in from CI, and the plan for the next waves. Linked from the Specs README and the docs site menu.
+
+## 2026-11-12: added Standards Compliance
+
+New ADR [Standards Compliance - 2026-11-12](Specs%20&%20ADRs/Standards%20Compliance%20-%202026-11-12.md): where QASight stands against OpenSSF Best Practices, SLSA, OWASP ASVS, WCAG 2.1 AA and ISO/IEC 25010. Linked from the Specs README and the docs site menu.
