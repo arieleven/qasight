@@ -367,7 +367,8 @@ def _record(cycle: str, history_dir: str) -> list[str]:
         f'mkdir -p "{history_dir}"',
         f'export DATABASE_URL="sqlite:///{history_dir}/testo_history.db"',
         f"qasight ingest --cycle {cycle}",
-        f"qasight report markdown --cycle {cycle} --out testo-summary.md",
+        # Summary file, merge request comment (GitLab: TESTO_GITLAB_TOKEN), chat alerts.
+        f"qasight ci publish --cycle {cycle} --out testo-summary.md",
     ]
 
 
@@ -412,6 +413,7 @@ def gitlab_ci(facts: ProjectFacts, *, cycle: str) -> str:
     """``.gitlab-ci.yml`` jobs: run the tests, record them in ``after_script`` (runs on failure too)."""
     lines = [
         "# QASight: records each run's results and keeps their history in the GitLab cache.",
+        "# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.",
         "# Docs: https://arieleven.github.io/qasight/docs/",
         "stages: [test]",
     ]

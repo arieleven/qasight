@@ -430,6 +430,38 @@ Nothing is recorded: the run goes into a new temporary folder with its own SQLit
 
 ---
 
+## `qasight ci publish`
+
+The step a CI job runs after its tests are recorded (`qasight run` or `qasight ingest`), on any CI system. It works out where it runs and publishes the cycle's latest run there. The GitHub Action calls the same command.
+
+```bash
+qasight ingest --cycle unit
+qasight ci publish --cycle unit --out testo-summary.md     # GitLab, Jenkins, CircleCI, Buildkite...
+qasight ci publish --cycle unit --cycle e2e --notify-when change
+```
+
+| Where | What it does |
+|---|---|
+| Everywhere | The run as Markdown ([`qasight report markdown`](#qasight-report)) written to `--out`. A Slack or Teams alert to each channel whose webhook is set (`TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL`) when the run matches `--notify-when` |
+| GitHub Actions | Appends the summary to the job summary, comments on the pull request with `TESTO_GITHUB_TOKEN` or `GITHUB_TOKEN` (`pull-requests: write`) and edits that comment on later runs, and prints failing tests as annotations on the diff |
+| GitLab CI | Comments on the merge request (`CI_MERGE_REQUEST_IID`) with `TESTO_GITLAB_TOKEN`, a project or personal access token with `api` scope stored as a masked CI/CD variable (the job token can't write notes), and edits that comment on later runs |
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` | latest run of any cycle | Cycle to publish; repeat for several. Without it there are no annotations or alerts |
+| `--out`, `-o` | none | Also write the Markdown here (`summary-<cycle>.md` for each of several cycles) |
+| `--comment/--no-comment` | on | Pull request or merge request comment |
+| `--job-summary/--no-job-summary` | on | GitHub job summary |
+| `--annotations/--no-annotations` | on | GitHub annotations |
+| `--notify-when` | `failure` | `failure`, `change`, `always` or `never`, as [`qasight notify --when`](#qasight-notify) |
+| `--ai` | off | Add the AI summary to a failed run, as `qasight report markdown --ai` |
+| `--comment-dir` | none | GitHub, pull requests from forks: write the comment into this folder for a trusted workflow to post |
+| `--workspace`, `--config` | `.`, discovered | For annotation paths, as `qasight report annotations` |
+
+A publishing error (no token, the API refused, a webhook down) is one warning line and never changes the exit code, because the tests already ran. Exit `0`, or `2` when no recorded run was found. Flaky test issues are not part of this step: every recorded run opens and closes them when `TESTO_ISSUES=github` ([`qasight issues sync`](#qasight-issues-sync)). See [Automation and Unification - 2026-11-12](../Specs%20&%20ADRs/Automation%20and%20Unification%20-%202026-11-12.md).
+
+---
+
 ## `qasight notify`
 
 Send a recorded run to Slack and/or Microsoft Teams: pass/fail counts, then new regressions, newly flaky tests, failing tests and fixed tests (10 names per list).
@@ -1029,6 +1061,7 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_REPORT_EMAIL_TO` | Comma-separated recipients for `qasight notify --to email` without `--email-to` |
 | `TESTO_CHROMIUM` | A Chrome or Chromium for `qasight export pdf` / `png`, instead of Playwright's own download |
 | `TESTO_AUTO_METADATA` | `0`: don't fill in a run's release from the CI tag or its environment from the CI runner's OS |
+| `TESTO_GITLAB_TOKEN` | GitLab token with `api` scope for [`qasight ci publish`](#qasight-ci-publish)'s merge request comment |
 | `TESTO_ISSUES` | `github`: after every recorded run, open an issue per newly flaky test and close fixed ones ([`qasight issues sync`](#qasight-issues-sync)) |
 | `TESTO_GITHUB_TOKEN`, `GITHUB_TOKEN` | Token for those issues (`issues: write`); the first one set wins |
 | `TESTO_ISSUES_REPO` | `owner/name` for the issues, instead of the repository the runs recorded |

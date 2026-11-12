@@ -46,9 +46,20 @@ Eight services built the per-test observation list that `flaky_service.classify(
 
 This reverses one line of [Test Labels, Environments and Releases](Test%20Labels,%20Environments%20and%20Releases%20-%202026-11-02.md), which filled in nothing so it would not split runs nobody asked to split. The OS is the one value that is always right in CI and that a matrix really does split on, and runs outside CI still get nothing.
 
+### A2: `qasight ci publish`
+
+The GitHub Action's script (`integrations/github-action/run_testo_action.py`) did the after-run steps itself, with its own GitHub API client: the job summary, the pull request comment, annotations, the Slack and Teams alert, and flaky test issues. Other CI systems got only a Markdown file from `qasight init`'s templates. The issue opener also duplicated `services/flaky_issues.py`, which every recorded run already runs when `TESTO_ISSUES=github`.
+
+- **One service, one command.** `services/ci_publish.py` and `qasight ci publish` work out the CI system (`ci_provenance`) and publish the cycle's latest run: the summary to `--out` and the GitHub job summary, the review comment on a GitHub pull request or a GitLab merge request (`TESTO_GITLAB_TOKEN`), edited in place by its first line as before, GitHub annotations, and the chat alert.
+- **The Action calls it.** For each cycle the script runs `qasight ci publish` with the action's inputs. With a pinned qasight older than the command (exit 2, "No such command") it falls back to the old steps, which stay until those versions are out of use. The fork flow (`comment-artifact`, `post-comments-from`) is unchanged; `--comment-dir` writes the comment file.
+- **One flaky issue opener.** The `flaky-issues` input now sets `TESTO_ISSUES=github` for the run, so the run's own hook opens and also closes the issues. The script's own opener is gone.
+- **Templates.** The GitLab, Jenkins and CircleCI templates call `qasight ci publish --cycle <name> --out testo-summary.md` instead of `qasight report markdown`, so those jobs get the alert and, on GitLab, the merge request comment.
+
 ## Consequences
 
 - The digest, the run page's "flaky" tag and the Flaky page now agree. The digest may list fewer newly flaky tests than before, because its old rule counted a broken-then-fixed pull request.
 - After upgrading, a CI history's newest runs carry `os=linux` and older ones carry no environment. They count as two lanes in flaky detection until the window (20 runs) has moved past the upgrade. Set `TESTO_ENV` or `TESTO_AUTO_METADATA=0` to keep one lane.
 - Releases built from tags show up on the Releases page without `TESTO_RELEASE`.
+- A GitLab merge request gets the same comment as a GitHub pull request once a `TESTO_GITLAB_TOKEN` variable is added; Jenkins and CircleCI jobs get the chat alert.
+- With `flaky-issues: true`, issues of tests that became stable are now closed too, as `qasight issues sync` does.
 - Waves 2 and 3 extend this note as they land.

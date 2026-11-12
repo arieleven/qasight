@@ -57,8 +57,9 @@ steps:
   alert (`qasight notify`). Pass secrets, e.g. `${{ secrets.SLACK_WEBHOOK_URL }}`; empty sends nothing
 - `notify-when` (optional, default `failure`): `failure` (red run or a newly flaky test),
   `change` (differs from the previous run) or `always`
-- `flaky-issues` (optional, default `false`): open one issue (label `flaky-test`) for each test
-  this run made flaky, unless an open issue already has its title. Needs `permissions: issues: write`
+- `flaky-issues` (optional, default `false`): turn on `TESTO_ISSUES=github` for the run, which
+  opens one issue (label `flaky-test`) for each test the run made flaky and closes it once the
+  test is stable (`qasight issues sync`). Needs `permissions: issues: write`
 - `coverage` (optional): coverage report(s) your tests write, space-separated (Cobertura or
   JaCoCo XML, LCOV, Go cover profile). Line coverage is stored with the run, and the summary and
   PR comment show it and how much it moved against the baseline
@@ -98,7 +99,9 @@ steps:
 - `scorecard-tools` (optional): run only these scorecard tools (comma-separated ids)
 - `github-token` (optional, default `${{ github.token }}`): token for the comment and issues
 
-The summary is `qasight report markdown`: pass/fail counts, a per-stage table, failing tests and
+After the run the action calls `qasight ci publish`, the same step any other CI runs, for the
+summary, the comment, the annotations and the alert (with a pinned qasight older than that
+command it runs them one by one). The summary is `qasight report markdown`: pass/fail counts, a per-stage table, failing tests and
 the tests that changed outcome since the cycle's previous run (for a pull request, the latest
 run on its target branch). That history comes from the Actions cache (`history: auto`), or from
 a `database.url` / team server shared between jobs.

@@ -17,9 +17,11 @@ With the run persisted, it also renders the run as Markdown
 (``qasight report markdown``) for the job summary and, when asked, for one
 pull request comment per cycle that later runs edit in place; prints failing
 tests as annotations on the diff (``qasight report annotations``); sends a Slack
-or Teams alert when a webhook secret is given (``qasight notify``); and, when
-asked, opens one issue per newly flaky test (``qasight flaky --new``). All of
-it is best-effort: a failure there is a warning, never a changed exit code.
+or Teams alert when a webhook secret is given. Those steps are ``qasight ci
+publish``, the same command any other CI runs; with a pinned qasight older than
+it, the action runs them one by one. With ``flaky-issues`` the run itself opens
+one issue per newly flaky test (``TESTO_ISSUES=github``). All of it is
+best-effort: a failure there is a warning, never a changed exit code.
 """
 
 from __future__ import annotations
@@ -460,61 +462,47 @@ def notify(*, cycle: str, when: str, env: dict[str, str]) -> None:
         _warn(f"could not send the chat alert: {proc.stderr.strip() or proc.returncode}")
 
 
-FLAKY_LABEL = "flaky-test"
+def ci_publish(
+    *,
+    cycle: str,
+    job_summary: bool,
+    comment: bool,
+    annotations: bool,
+    notify_when: str,
+    config_path: str,
+    env: dict[str, str],
+) -> bool:
+    """``qasight ci publish``: summary, comment, annotations and alert, as on any CI.
 
-
-def flaky_issue_title(*, name: str, cycle: str) -> str:
-    return f"Flaky test: {name} ({cycle})"
-
-
-def _flaky_issue_body(test: dict[str, Any], *, cycle: str, run_url: str | None) -> str:
-    marks = {"passed": "✅", "failed": "❌", "broken": "❌"}
-    history = "".join(marks.get(str(s), "·") for s in test.get("history") or [])
-    lines = [
-        f"`{test.get('name')}` in cycle `{cycle}` started flipping between passing and failing.",
-        "",
-        f"- Last {test.get('runs')} runs: {test.get('passed')} passed, {test.get('failed')} failed,"
-        f" {test.get('flips')} flips",
-        f"- History, oldest to newest: {history}",
-    ]
-    if run_url:
-        lines.append(f"- Found by [this workflow run]({run_url})")
-    lines += [
-        "",
-        f"Check it locally with `qasight flaky --cycle {cycle}`. Close this issue once it is fixed.",
-        "",
-        "<sub>Opened by [QASight](https://github.com/arieleven/qasight)</sub>",
-    ]
-    return "\n".join(lines)
-
-
-def open_flaky_issues(*, cycle: str, token: str, env: dict[str, str]) -> None:
-    """One issue per test the latest run made flaky, unless an open issue already has its title."""
-    proc = _testo(["flaky", "--cycle", cycle, "--new", "--json"], env)
-    if proc.returncode != 0:
-        _warn(f"could not check for flaky tests: {proc.stderr.strip() or proc.returncode}")
-        return
-    tests = json.loads(proc.stdout or "{}").get("flaky") or []
-    if not tests or not token:
-        return
-    api = env.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
-    base = f"{api}/repos/{env['GITHUB_REPOSITORY']}/issues"
-    try:
-        existing: set[str] = set()
-        for page in range(1, 11):
-            issues = _github("GET", f"{base}?state=open&per_page=100&page={page}", token)
-            existing |= {str(i.get("title")) for i in issues}
-            if len(issues) < 100:
-                break
-        for test in tests:
-            title = flaky_issue_title(name=str(test.get("name")), cycle=cycle)
-            if title in existing:
-                continue
-            body = _flaky_issue_body(test, cycle=cycle, run_url=_run_url(env))
-            _github("POST", base, token, {"title": title, "body": body, "labels": [FLAKY_LABEL]})
-            existing.add(title)
-    except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
-        _warn(f"could not open flaky test issues ({exc}); it needs issues: write")
+    Returns ``False`` when the installed qasight has no ``ci`` command (a pinned
+    older version), so the caller publishes step by step instead.
+    """
+    cmd = ["ci", "publish"]
+    if cycle:
+        cmd += ["--cycle", cycle]
+    cmd += ["--comment" if comment else "--no-comment"]
+    cmd += ["--job-summary" if job_summary else "--no-job-summary"]
+    cmd += ["--annotations" if annotations else "--no-annotations"]
+    cmd += ["--notify-when", notify_when or "failure"]
+    if _parse_bool(env.get("TESTO_INPUT_AI_SUMMARY", ""), default=False):
+        cmd.append("--ai")
+    artifact = comment and _parse_bool(env.get("TESTO_INPUT_COMMENT_ARTIFACT", ""), default=False)
+    if artifact and pull_request_number(env) is not None:
+        cmd += ["--comment-dir", str(comment_dir(env))]
+    if env.get("GITHUB_WORKSPACE"):
+        cmd += ["--workspace", env["GITHUB_WORKSPACE"]]
+    if config_path:
+        cmd += ["--config", config_path]
+    proc = _testo(cmd, env)
+    if proc.returncode == 2 and "No such command" in (proc.stderr or ""):
+        return False
+    sys.stdout.write(proc.stdout or "")
+    sys.stderr.write(proc.stderr or "")
+    if artifact and comment_dir(env).is_dir() and env.get("GITHUB_OUTPUT"):
+        _write_github_outputs(
+            Path(env["GITHUB_OUTPUT"]), values={"comment_dir": str(comment_dir(env))}
+        )
+    return True
 
 
 def history_note(env: dict[str, str]) -> str | None:
@@ -777,6 +765,10 @@ def main(argv: list[str] | None = None) -> int:
 
     server = os.environ.get("TESTO_INPUT_SERVER_URL", "").strip()
     run_env = os.environ.copy()
+    if _parse_bool(args.flaky_issues, default=False):
+        # Every recorded run opens an issue per newly flaky test and closes fixed ones
+        # (qasight.services.flaky_issues), with the token the action passes in.
+        run_env.setdefault("TESTO_ISSUES", "github")
     if server:
         # The local run feeds the summary and comment; the upload is its own step below.
         run_env.pop("TESTO_SERVER_URL", None)
@@ -834,19 +826,29 @@ def main(argv: list[str] | None = None) -> int:
             with Path(env["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as fh:
                 fh.write(note + "\n\n")
         for cycle in cycles:
-            publish_summary(
+            published = ci_publish(
                 cycle=cycle,
                 job_summary=_parse_bool(args.job_summary, default=True),
                 comment=comment,
+                annotations=_parse_bool(args.annotations, default=True),
+                notify_when=str(args.notify_when or "").strip(),
+                config_path=config_path,
                 env=env,
             )
+            if not published:
+                # A pinned qasight older than ``qasight ci publish``: the steps one by one.
+                publish_summary(
+                    cycle=cycle,
+                    job_summary=_parse_bool(args.job_summary, default=True),
+                    comment=comment,
+                    env=env,
+                )
+                if cycle and _parse_bool(args.annotations, default=True):
+                    annotate(cycle=cycle, config_path=config_path, env=env)
+                if cycle:
+                    notify(cycle=cycle, when=str(args.notify_when or "").strip(), env=env)
             if not cycle:
                 continue
-            if _parse_bool(args.annotations, default=True):
-                annotate(cycle=cycle, config_path=str(args.config_path or "").strip(), env=env)
-            notify(cycle=cycle, when=str(args.notify_when or "").strip(), env=env)
-            if _parse_bool(args.flaky_issues, default=False):
-                open_flaky_issues(cycle=cycle, token=env.get("TESTO_GITHUB_TOKEN", ""), env=env)
             if server:
                 token = os.environ.get("TESTO_INPUT_SERVER_TOKEN", "").strip()
                 if ingest:

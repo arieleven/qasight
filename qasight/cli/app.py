@@ -53,6 +53,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import ai as ai_mod
     from qasight.cli.commands import backup as backup_mod
     from qasight.cli.commands import badge as badge_mod
+    from qasight.cli.commands import ci_cmd as ci_mod
     from qasight.cli.commands import clean as clean_mod
     from qasight.cli.commands import config as config_cmd
     from qasight.cli.commands import config_db as config_db_cmd
@@ -135,6 +136,12 @@ def _register_commands() -> None:
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
         rich_help_panel="Run and report",
     )(notify_mod.notify)
+    app.add_typer(
+        ci_mod.app,
+        name="ci",
+        help="After a CI run: summary, pull/merge request comment, annotations, chat alerts.",
+        rich_help_panel="Run and report",
+    )
     app.add_typer(
         issues_mod.app,
         name="issues",
