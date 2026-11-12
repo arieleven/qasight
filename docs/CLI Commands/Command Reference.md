@@ -723,6 +723,7 @@ qasight init --interactive        # the older wizard: asks for each value, write
 qasight init --scan               # monorepo: a stage per runner in every project folder; asks first
 qasight init --scan --check       # also ask each runner which tests it would run (runs none)
 qasight init --pr                 # then commit the files on a new branch, push it and open a pull request
+qasight init --attach --dry-run   # add QASight to the workflows that already run your tests; show the diff
 ```
 
 | Detected from | Stack (`--stack`) | Stage it writes |
@@ -756,6 +757,15 @@ A file that exists is kept unless `--force`; a kept `qasight.yaml` with one cycl
 
 The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `qasight ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found, `--check` found no tests in any stage, `--scan` wasn't confirmed, or an option is wrong.
 
+
+**Your existing workflows (`--attach`, GitHub Actions).** Plain `init` writes `.github/workflows/qasight.yml`, which runs the tests again next to the workflow that already runs them. With `--attach` it edits the workflows in `.github/workflows/` instead, as text (comments, quoting and order stay as they were), and writes no workflow of its own:
+
+- A test command it knows gets the flag that writes a result file in the step's working directory: `pytest` (also `python -m pytest`, `uv run pytest`) `--junitxml=qasight-pytest.xml`; `jest` / `vitest`, or an `npm` / `pnpm` / `yarn` script that runs them, the JSON report (`qasight-jest.json`, `qasight-vitest.json`; npm gets `--` before the flags); `dotnet test --logger trx --results-directory qasight-dotnet`; `rspec` the JSON formatter; `phpunit --log-junit`. Maven and Gradle write Surefire / Gradle XML already and stay as they are.
+- Each job with such a step gets one QASight step after its last test step: `if: ${{ !cancelled() }}` (failing runs are recorded too), `results:` set to those files (so the Action records them instead of running a cycle), `cycle:` the project's cycle (`<cycle>-<job>` when several jobs are attached) and `comment-on-pr: "true"`.
+- A `permissions:` block without `pull-requests` gets `pull-requests: write` for the comment; `read-all` or `pull-requests: read` is left alone and reported.
+- Left alone and listed, never guessed: a command that isn't the last on its line (`pytest && echo ok`), one that already writes a result file, folded (`>`) scalars, Playwright (add a json or junit reporter to its config) and `go test` (needs `-json` and a redirect), and jobs that already use QASight.
+
+`--dry-run` prints the change as a diff. When no workflow runs a known test command, `--attach` says so and writes `qasight.yml` as usual; without `--attach`, `init` says when your workflows already run tests. `--forks` and `--server` aren't added to edited workflows (set the QASight step's `comment-artifact` or `server-url` yourself). `--attach` with `--ci gitlab|jenkins|circleci` is an error (exit `2`).
 
 **Straight to a pull request (`--pr`).** After writing (and the first run), switches to a new branch `qasight-setup` (`-2`, `-3`... if taken), commits only the files it wrote (`git commit -- <paths>`, so anything else you had staged stays staged), pushes it to `origin` and opens a pull request into the default branch with the [GitHub CLI](https://cli.github.com) (`gh pr create`). Without `gh`, or when a step fails (no `origin`, push refused), it prints the commands left to run; the exit code stays the first run's. The pull request's own comment has no baseline yet: once it is merged and the workflow has run on the default branch, later pull requests are compared with that run.
 
