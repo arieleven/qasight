@@ -159,3 +159,38 @@ class _FrozenDatetime(run_digest.datetime):  # type: ignore[misc,name-defined]
     @classmethod
     def now(cls, tz=None):  # type: ignore[no-untyped-def,override]
         return run_digest.datetime.fromtimestamp(NOW, tz=tz)
+
+
+def test_a_pull_request_that_broke_and_fixed_a_test_is_not_flaky(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The digest judges flakiness per branch, like the flaky page (one rule everywhere)."""
+    import dataclasses
+
+    from qasight.services import flaky_service
+
+    # Oldest first: main green, the pull request breaks then fixes it, main green again.
+    plan = [("m1", "main", "passed"), ("f1", "feature", "failed"), ("f2", "feature", "passed")]
+    plan.append(("m2", "main", "passed"))
+    runs = [
+        dataclasses.replace(
+            _run(
+                run_id,
+                at=NOW - (5 - i) * DAY,
+                returncode=int(status == "failed"),
+                passed=int(status == "passed"),
+                failed=int(status == "failed"),
+            ),
+            branch=branch,
+        )
+        for i, (run_id, branch, status) in enumerate(plan)
+    ]
+    cases = {run_id: {"t": {"name": "test_pr", "status": status}} for run_id, _, status in plan}
+    monkeypatch.setattr(run_digest, "list_recent_runs", lambda *, limit: list(reversed(runs)))
+    monkeypatch.setattr(flaky_service, "_cases_for_run", lambda run: cases[run.run_id])
+
+    (d,) = run_digest.build_digest(period="week", now=NOW).cycles
+    assert d.newly_flaky == ()
+    # The same history on one branch flips twice, which is flaky.
+    one_branch = [(dataclasses.replace(r, branch="main"), cases[r.run_id]) for r in runs]
+    assert flaky_service.flaky_keys(one_branch) == {"t"}

@@ -60,6 +60,8 @@ class FailingTest:
     new: bool
     # The cause someone marked for this message in this cycle (services/triage.py).
     triage: Triage | None = None
+    # With no cause marked: what a well-known message points to (services/cause_hints.py).
+    suggested_cause: str | None = None
     # "stack_overflow" | "crash" when its message or trace shows one (engine/crash_signatures.py).
     crash_kind: str | None = None
     # What the test is about ({name, value}: feature, severity, tag...) and its issue links.
@@ -152,6 +154,18 @@ def _with_triage(cycle: str | None, tests: list[FailingTest]) -> list[FailingTes
     return [replace(t, triage=causes[t.message]) if t.message in causes else t for t in tests]
 
 
+def _with_suggestions(tests: list[FailingTest]) -> list[FailingTest]:
+    """``tests`` with a suggested cause on each failure nobody has marked yet."""
+    from qasight.services.cause_hints import suggest_cause
+
+    return [
+        replace(t, suggested_cause=hint)
+        if t.triage is None and (hint := suggest_cause(t.message))
+        else t
+        for t in tests
+    ]
+
+
 def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailures | None:
     """``run_id``'s failing tests, newest breakages first; ``None`` if the run doesn't exist."""
     run = get_run(run_id=run_id)
@@ -177,13 +191,16 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
 
     # Flaky over the same window, ending at this run (oldest first for flaky_service).
     observations: dict[str, list[dict[str, Any]]] = {}
-    # Branches are already filtered to this run's lineage; only the commit is added.
+    # The same observations as the flaky page (branch, commit, environment), so the
+    # "flaky" tag here agrees with it.
     for older, cases in reversed(earlier_cases):
         for key in failing:
             if key in cases:
-                observations.setdefault(key, []).append({**cases[key], "commit": older.commit})
+                observations.setdefault(key, []).append(
+                    flaky_service.observation(older, cases[key])
+                )
     for key, case in failing.items():
-        observations.setdefault(key, []).append({**case, "commit": run.commit})
+        observations.setdefault(key, []).append(flaky_service.observation(run, case))
 
     tests: list[FailingTest] = []
     for key, case in failing.items():
@@ -217,7 +234,7 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
                 links=tuple(case.get("links") or ()),
             )
         )
-    tests = _with_triage(run.cycle, tests)
+    tests = _with_suggestions(_with_triage(run.cycle, tests))
     case_frameworks = {k[:200]: str(c.get("framework") or "") for k, c in failing.items()}
     # New breakages first, then the longest-standing ones; ties by stage and name.
     tests.sort(key=lambda t: (not t.new, -t.failing_runs, t.stage, t.name))

@@ -12,13 +12,20 @@ def _load(path: Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def test_root_action_matches_subfolder_action() -> None:
-    """The Marketplace copy at the root and the older subfolder path stay the same action."""
+def test_subfolder_action_is_generated_from_the_root_one() -> None:
+    """One action, edited in one place: the older subfolder path is generated from the root."""
+    import subprocess
+    import sys
+
+    proc = subprocess.run(
+        [sys.executable, "scripts/sync_action_copy.py", "--check"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout
     root, sub = _load(ROOT), _load(SUBFOLDER)
     run_step = "integrations/github-action/run_testo_action.py"
-    root_text = ROOT.read_text(encoding="utf-8")
-    assert f'"$GITHUB_ACTION_PATH/{run_step}"' in root_text
-    # Only the script's location differs: the root action reaches into the subfolder.
     for step in root["runs"]["steps"]:
         if "run" in step:
             step["run"] = step["run"].replace(f"/{run_step}", "/run_testo_action.py")

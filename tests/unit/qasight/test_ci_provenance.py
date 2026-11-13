@@ -151,3 +151,25 @@ def test_detect_git_checkout_reads_branch_and_commit(tmp_path: Path) -> None:
 def test_detect_git_checkout_outside_a_repo(tmp_path: Path) -> None:
     assert detect_git_checkout(tmp_path) == {}
     assert detect_git_checkout(None) == {}
+
+
+def test_ci_tag_reads_each_providers_tag() -> None:
+    from qasight.services.ci_provenance import ci_tag
+
+    gh = {"GITHUB_ACTIONS": "true", "GITHUB_REF_NAME": "v1.2.0"}
+    assert ci_tag({**gh, "GITHUB_REF_TYPE": "tag"}) == "v1.2.0"
+    assert ci_tag({**gh, "GITHUB_REF_TYPE": "branch"}) is None
+    assert ci_tag({"GITLAB_CI": "true", "CI_COMMIT_TAG": "2.0"}) == "2.0"
+    assert ci_tag({"CIRCLECI": "true", "CIRCLE_TAG": "3.0"}) == "3.0"
+    assert ci_tag({"TF_BUILD": "True", "BUILD_SOURCEBRANCH": "refs/tags/4.0"}) == "4.0"
+    assert ci_tag({"TF_BUILD": "True", "BUILD_SOURCEBRANCH": "refs/heads/main"}) is None
+    assert ci_tag({"GITLAB_CI": "true", "CI_COMMIT_TAG": "2.0", "TESTO_AUTO_METADATA": "0"}) is None
+
+
+def test_ci_os_only_in_ci() -> None:
+    from qasight.services.ci_provenance import ci_os
+
+    assert ci_os({"GITHUB_ACTIONS": "true", "RUNNER_OS": "macOS"}) == "macos"
+    assert ci_os({"TF_BUILD": "True", "AGENT_OS": "Windows_NT"}) == "windows"
+    assert ci_os({"RUNNER_OS": "Linux"}) is None  # not in CI
+    assert ci_os({"CI": "true", "RUNNER_OS": "Linux", "TESTO_AUTO_METADATA": "off"}) is None

@@ -155,11 +155,7 @@ def red_spells(
     """(closed spells as (test key, fixed_at, seconds red), open failures) for ``runs`` (oldest first)."""
     cases = [(run, flaky_service._cases_for_run(run)) for run in runs]
     cases = [(run, c) for run, c in cases if c]
-    observations: dict[str, list[dict[str, Any]]] = {}
-    for run, run_cases in cases:
-        for key, case in run_cases.items():
-            observations.setdefault(key, []).append(flaky_service.observation(run, case))
-    flaky = {key for key, obs in observations.items() if flaky_service.classify(key, obs)}
+    flaky = flaky_service.flaky_keys(cases)
 
     open_: dict[str, _Spell] = {}
     names: dict[str, str] = {}

@@ -28,6 +28,7 @@ function failing(
     flaky: false,
     new: true,
     triage,
+    suggested_cause: null,
     crash_kind,
     labels: [],
     links: []
@@ -114,6 +115,38 @@ describe("FailingTestsCard triage", () => {
     });
     expect(screen.getByText("Cause: Bug in the test")).toBeInTheDocument();
     expect(screen.getByText(/all with a known cause/)).toBeInTheDocument();
+  });
+});
+
+describe("FailingTestsCard suggested cause", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("accepts a suggested cause in one click", async () => {
+    let current = failures([{ ...failing("test_db", DB_MESSAGE), suggested_cause: "environment" }]);
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/triage") && init?.method === "PUT") {
+        const body = JSON.parse(String(init.body));
+        const marked = { ...ENVIRONMENT, cause: body.cause, note: body.note, run_id: "run-2" };
+        current = failures([failing("test_db", DB_MESSAGE, marked)]);
+        return Promise.resolve({ ok: true, status: 200, json: async () => marked });
+      }
+      if (url.endsWith("/api/v1/runs/run-2/failures")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => current });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderCard();
+
+    const hint = await screen.findByTestId("suggested-cause");
+    expect(within(hint).getByText("Looks like: Environment or infrastructure")).toBeInTheDocument();
+    fireEvent.click(within(hint).getByRole("button", { name: "Accept" }));
+
+    await waitFor(() => expect(screen.getByTestId("triage")).toBeInTheDocument());
+    const put = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT");
+    expect(JSON.parse(String(put?.[1]?.body)).cause).toBe("environment");
   });
 });
 

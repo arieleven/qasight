@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Command Reference
@@ -47,8 +47,8 @@ qasight run --cycle sample-pytests --workers 8 --force
 | `--workers` | `-w` | Override parallel workers (e.g. BehaveX); 1 or more |
 | `--force` | `-f` | Run even when trigger would skip the cycle |
 | `--coverage` | | Code coverage report the tests write (repeatable): Cobertura or JaCoCo XML, LCOV, or a Go cover profile. Read when the stages finish; its line coverage is stored with the run and shown on the run page, the [PR comment](#qasight-report) and the [digest](#qasight-notify). A missing file only logs a warning. Not with `--cycle all` |
-| `--env KEY=VALUE` | `$TESTO_ENV` | What the run tests on, repeatable (`--env browser=firefox --env os=linux`). Stored with the run as `browser=firefox, os=linux`; merged into `TESTO_ENV` (the flag wins on the same key), so the stages see it too. Without either, an Allure `environment.properties` in the results is used. Flaky detection, failing streaks and the test page keep environments apart. A flag without `=` is exit `2` |
-| `--release NAME` | `$TESTO_RELEASE` | The release the run tests (`2.3`, `v2.3.0-rc1`): letters, digits, `.`, `-`, `+` and `_`, up to 60. Stored with the run; the Releases page (`GET /api/v1/releases`) groups runs by it. Another character is exit `2` |
+| `--env KEY=VALUE` | `$TESTO_ENV` | What the run tests on, repeatable (`--env browser=firefox --env os=linux`). Stored with the run as `browser=firefox, os=linux`; merged into `TESTO_ENV` (the flag wins on the same key), so the stages see it too. Without either, an Allure `environment.properties` in the results is used. Flaky detection, failing streaks and the test page keep environments apart. A flag without `=` is exit `2`. In CI, a run with no environment gets the runner's OS (`os=linux`) |
+| `--release NAME` | `$TESTO_RELEASE` | The release the run tests (`2.3`, `v2.3.0-rc1`): letters, digits, `.`, `-`, `+` and `_`, up to 60. Stored with the run; the Releases page (`GET /api/v1/releases`) groups runs by it. Another character is exit `2`. A CI job that builds a git tag uses the tag when neither is set |
 | `--test NAME`, `-t` | | Run only this test (repeatable): its name, full name or pytest node id. pytest stages get the node ids (or `-k` when the stage already names a path), Playwright `--grep ... --pass-with-no-tests`, Behave and BehaveX `--name`; every stage also gets Allure's test plan file in `ALLURE_TESTPLAN_PATH` (read by Allure's own adapters) and the names in `TESTO_SELECTED_TESTS`. A pytest stage that holds none of them counts as passed. The run records `selected_tests` and `selected_from`. Not with `--cycle all` (exit `2`) |
 | `--rerun-failed RUN_ID` | | Run only the tests that failed in that recorded run, each in the stage it failed in; stages with none are skipped. A run that doesn't exist or has no failures is exit `2`. The run page's "Run these tests again" link does the same through `POST /api/v1/cycles/{cycle}/executions` with `rerun_failed` (or `tests`) |
 
@@ -56,6 +56,32 @@ qasight run --cycle sample-pytests --workers 8 --force
 > `--tag`, `--fail-fast`, `--dry-run` and `--reporter` were previously listed here but are **not present in `qasight/cli/commands/run.py`**. The API layer already accepts `fail_fast` and `reporter_override` on `POST /api/v1/cycles/{cycle}/executions` (surfaced in the React Run panel); the CLI flags remain roadmap items. (Doc corrected 2026-07-04 during the Phase 5 UI redesign.)
 
 Only one run of a cycle uses its artifacts folder at a time. A second `qasight run` of the same cycle (another terminal, another CI job on the runner, the API) waits and says `another run of cycle 'x' is using ... (pid N); waiting for it to finish`; see [Engine Fixes - 2026-11-01](../Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md).
+
+### Any test command, no config
+
+Everything after `--` is a test command to run instead of a cycle. QASight works out the runner, adds what it needs to write a result file into a new `.testo/wrap/<time>/` folder, runs the command with its normal output, and records the results as a run (as `qasight ingest` would). No `qasight.yaml` is needed; the exit code is the command's own.
+
+```bash
+qasight run -- pytest -q tests                # adds --junitxml
+qasight run -- npm test                       # a Jest / Vitest / Playwright script: npm gets `--` and the flags
+qasight run --cycle api -- go test ./...      # adds -json, prints the usual text, keeps the JSON
+qasight run -- ./mvnw -B test                 # Surefire XML written during the run
+```
+
+| Runner (also through `npx`, `uv run`, `python -m`, an `npm` / `pnpm` / `yarn` script, `VAR=value` in front) | Added |
+|---|---|
+| `pytest` | `--junitxml=<folder>/pytest.xml` (kept as is when you pass `--junitxml`) |
+| `jest` | `--json --outputFile=<folder>/jest.json` |
+| `vitest` | `--reporter=default --reporter=json --outputFile.json=<folder>/vitest.json` |
+| `playwright test` | `--reporter=list,json` and `PLAYWRIGHT_JSON_OUTPUT_NAME` (tier `e2e`) |
+| `go test` | `-json`; its output is printed as plain `go test` text |
+| `dotnet test` | `--logger trx --results-directory <folder>/dotnet` |
+| `mvn` / `./mvnw`, `gradle` / `./gradlew` | nothing: their XML reports written during the run are recorded |
+| `rspec`, `bundle exec rspec` | the JSON formatter next to progress |
+| `phpunit` | `--log-junit <folder>/phpunit.xml` |
+| anything else | nothing: result files written under the folder while it ran (found by content) are recorded |
+
+The cycle is the folder's name unless `--cycle`; the stage is the runner's name. `--config`, `--ci`, `--no-persist` and `--coverage` work as for a cycle; `--test`, `--rerun-failed` and `--workers` are refused (exit `2`; pass the equivalent to the command). One quoted argument with shell syntax (`qasight run -- "pytest && echo ok"`) runs through `sh -c` and is treated as an unknown command. When the command leaves no result file, nothing is recorded and QASight says so.
 
 ### Expected terminal output
 
@@ -91,6 +117,7 @@ qasight ingest allure-results --cycle api                    # a folder: the fil
 qasight ingest                                               # find the result files, cycle = folder name
 qasight ingest 'reports/*.xml' --cycle web-unit \
   --server https://qasight.example.com --token "$TESTO_API_TOKEN"   # team server
+qasight ingest --from-github --runs 50 --workflow ci.yml     # history from past CI runs
 ```
 
 | Flag | Default | Meaning |
@@ -108,6 +135,12 @@ qasight ingest 'reports/*.xml' --cycle web-unit \
 | `--coverage` | none | Code coverage report to store with the run (repeatable, relative to `--repo`), as `qasight run --coverage`. Checked first: no match or an unknown format is exit `2`. With `--server` only the totals are sent (the server recomputes the percentage) |
 | `--env KEY=VALUE` | `$TESTO_ENV` | What the results were tested on, as `qasight run --env`. With `--server` it is sent with the upload |
 | `--release NAME` | `$TESTO_RELEASE` | The release the results tested, as `qasight run --release`. With `--server` it is sent with the upload |
+| `--from-github` | off | Fill the history from past GitHub Actions runs (below). Not with `--server` or file arguments (exit `2`) |
+| `--runs N` | `20` | With `--from-github`: how many recent completed runs to read |
+| `--workflow` | all | With `--from-github`: only this workflow (name or file name) |
+| `--branch` | all | With `--from-github`: only runs on this branch |
+
+**History from day one.** Flaky detection, "got slower" and the trends need runs to compare. `qasight ingest --from-github` lists the repository's recent completed workflow runs with the [GitHub CLI](https://cli.github.com) (`gh auth login` first; it handles tokens and GitHub Enterprise), downloads each run's artifacts, finds the result files in them by content and records each run as one run of the cycle, with its commit, branch and CI run id, dated when it ran. A run without artifacts or result files is skipped and counted; a run already recorded (same CI run id) is skipped, so running it again adds only what is new. Exit `2` when `gh` is missing or can't list the runs, otherwise `0`. Code: `qasight/services/github_backfill.py`.
 
 Files it reads, with the command that writes each one (no extra package needed except where noted):
 
@@ -430,6 +463,38 @@ Nothing is recorded: the run goes into a new temporary folder with its own SQLit
 
 ---
 
+## `qasight ci publish`
+
+The step a CI job runs after its tests are recorded (`qasight run` or `qasight ingest`), on any CI system. It works out where it runs and publishes the cycle's latest run there. The GitHub Action calls the same command.
+
+```bash
+qasight ingest --cycle unit
+qasight ci publish --cycle unit --out testo-summary.md     # GitLab, Jenkins, CircleCI, Buildkite...
+qasight ci publish --cycle unit --cycle e2e --notify-when change
+```
+
+| Where | What it does |
+|---|---|
+| Everywhere | The run as Markdown ([`qasight report markdown`](#qasight-report)) written to `--out`. A Slack or Teams alert to each channel whose webhook is set (`TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL`) when the run matches `--notify-when`, except a channel `qasight.yaml` already has a `slack` or `teams` [reporter](#reporter-types-reporters----reporter) for, which alerted during the run |
+| GitHub Actions | Appends the summary to the job summary, comments on the pull request with `TESTO_GITHUB_TOKEN` or `GITHUB_TOKEN` (`pull-requests: write`) and edits that comment on later runs, and prints failing tests as annotations on the diff |
+| GitLab CI | Comments on the merge request (`CI_MERGE_REQUEST_IID`) with `TESTO_GITLAB_TOKEN`, a project or personal access token with `api` scope stored as a masked CI/CD variable (the job token can't write notes), and edits that comment on later runs |
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` | latest run of any cycle | Cycle to publish; repeat for several. Without it there are no annotations or alerts |
+| `--out`, `-o` | none | Also write the Markdown here (`summary-<cycle>.md` for each of several cycles) |
+| `--comment/--no-comment` | on | Pull request or merge request comment |
+| `--job-summary/--no-job-summary` | on | GitHub job summary |
+| `--annotations/--no-annotations` | on | GitHub annotations |
+| `--notify-when` | `failure` | `failure`, `change`, `always` or `never`, as [`qasight notify --when`](#qasight-notify) |
+| `--ai` | off | Add the AI summary to a failed run, as `qasight report markdown --ai` |
+| `--comment-dir` | none | GitHub, pull requests from forks: write the comment into this folder for a trusted workflow to post |
+| `--workspace`, `--config` | `.`, discovered | For annotation paths, as `qasight report annotations` |
+
+A publishing error (no token, the API refused, a webhook down) is one warning line and never changes the exit code, because the tests already ran. Exit `0`, or `2` when no recorded run was found. Flaky test issues are not part of this step: every recorded run opens and closes them when `TESTO_ISSUES=github` ([`qasight issues sync`](#qasight-issues-sync)). See [Automation and Unification - 2026-11-12](../Specs%20&%20ADRs/Automation%20and%20Unification%20-%202026-11-12.md).
+
+---
+
 ## `qasight notify`
 
 Send a recorded run to Slack and/or Microsoft Teams: pass/fail counts, then new regressions, newly flaky tests, failing tests and fixed tests (10 names per list).
@@ -724,6 +789,7 @@ qasight init --scan               # monorepo: a stage per runner in every projec
 qasight init --scan --check       # also ask each runner which tests it would run (runs none)
 qasight init --scan --per-package # monorepo: a cycle per package, run only when its folder changed
 qasight init --pr                 # then commit the files on a new branch, push it and open a pull request
+qasight init --attach --dry-run   # add QASight to the workflows that already run your tests; show the diff
 ```
 
 | Detected from | Stack (`--stack`) | Stage it writes |
@@ -759,6 +825,15 @@ A file that exists is kept unless `--force`; a kept `qasight.yaml` with one cycl
 
 The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `qasight ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found, `--check` found no tests in any stage, `--scan` wasn't confirmed, or an option is wrong.
 
+
+**Your existing workflows (`--attach`, GitHub Actions).** Plain `init` writes `.github/workflows/qasight.yml`, which runs the tests again next to the workflow that already runs them. With `--attach` it edits the workflows in `.github/workflows/` instead, as text (comments, quoting and order stay as they were), and writes no workflow of its own:
+
+- A test command it knows gets the flag that writes a result file in the step's working directory: `pytest` (also `python -m pytest`, `uv run pytest`) `--junitxml=qasight-pytest.xml`; `jest` / `vitest`, or an `npm` / `pnpm` / `yarn` script that runs them, the JSON report (`qasight-jest.json`, `qasight-vitest.json`; npm gets `--` before the flags); `dotnet test --logger trx --results-directory qasight-dotnet`; `rspec` the JSON formatter; `phpunit --log-junit`. Maven and Gradle write Surefire / Gradle XML already and stay as they are.
+- Each job with such a step gets one QASight step after its last test step: `if: ${{ !cancelled() }}` (failing runs are recorded too), `results:` set to those files (so the Action records them instead of running a cycle), `cycle:` the project's cycle (`<cycle>-<job>` when several jobs are attached) and `comment-on-pr: "true"`.
+- A `permissions:` block without `pull-requests` gets `pull-requests: write` for the comment; `read-all` or `pull-requests: read` is left alone and reported.
+- Left alone and listed, never guessed: a command that isn't the last on its line (`pytest && echo ok`), one that already writes a result file, folded (`>`) scalars, Playwright (add a json or junit reporter to its config) and `go test` (needs `-json` and a redirect), and jobs that already use QASight.
+
+`--dry-run` prints the change as a diff. When no workflow runs a known test command, `--attach` says so and writes `qasight.yml` as usual; without `--attach`, `init` says when your workflows already run tests. `--forks` and `--server` aren't added to edited workflows (set the QASight step's `comment-artifact` or `server-url` yourself). `--attach` with `--ci gitlab|jenkins|circleci` is an error (exit `2`).
 
 **Straight to a pull request (`--pr`).** After writing (and the first run), switches to a new branch `qasight-setup` (`-2`, `-3`... if taken), commits only the files it wrote (`git commit -- <paths>`, so anything else you had staged stays staged), pushes it to `origin` and opens a pull request into the default branch with the [GitHub CLI](https://cli.github.com) (`gh pr create`). Without `gh`, or when a step fails (no `origin`, push refused), it prints the commands left to run; the exit code stays the first run's. The pull request's own comment has no baseline yet: once it is merged and the workflow has run on the default branch, later pull requests are compared with that run.
 
@@ -1021,6 +1096,8 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_SMTP_HOST`, `TESTO_SMTP_PORT`, `TESTO_SMTP_SECURITY`, `TESTO_SMTP_USER`, `TESTO_SMTP_PASSWORD`, `TESTO_SMTP_FROM` | Mail server for `qasight notify --to email` (`TESTO_SMTP_SECURITY`: `starttls` default, `ssl` or `none`; port 587, or 465 with `ssl`) |
 | `TESTO_REPORT_EMAIL_TO` | Comma-separated recipients for `qasight notify --to email` without `--email-to` |
 | `TESTO_CHROMIUM` | A Chrome or Chromium for `qasight export pdf` / `png`, instead of Playwright's own download |
+| `TESTO_AUTO_METADATA` | `0`: don't fill in a run's release from the CI tag or its environment from the CI runner's OS |
+| `TESTO_GITLAB_TOKEN` | GitLab token with `api` scope for [`qasight ci publish`](#qasight-ci-publish)'s merge request comment |
 | `TESTO_ISSUES` | `github`: after every recorded run, open an issue per newly flaky test and close fixed ones ([`qasight issues sync`](#qasight-issues-sync)) |
 | `TESTO_GITHUB_TOKEN`, `GITHUB_TOKEN` | Token for those issues (`issues: write`); the first one set wins |
 | `TESTO_ISSUES_REPO` | `owner/name` for the issues, instead of the repository the runs recorded |

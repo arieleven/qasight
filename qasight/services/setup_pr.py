@@ -9,6 +9,8 @@ staged and out of the commit.
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
 import subprocess
 from collections.abc import Sequence
@@ -60,6 +62,24 @@ def _free_branch(repo: Path, wanted: str) -> str:
         n += 1
         name = f"{wanted}-{n}"
     return name
+
+
+def compare_url(repo: Path, *, base: str, branch: str) -> str | None:
+    """The page that opens a pull request for *branch*, when ``origin`` is on github.com.
+
+    In GitHub Actions ``GITHUB_SERVER_URL`` and ``GITHUB_REPOSITORY`` say where the
+    repository is (Enterprise hosts too).
+    """
+    server, slug = os.environ.get("GITHUB_SERVER_URL", ""), os.environ.get("GITHUB_REPOSITORY", "")
+    if not (server and slug):
+        url = _git(repo, "remote", "get-url", "origin").stdout.strip()
+        match = re.match(
+            r"^(?:https://github\.com/|git@github\.com:)([^/]+/[^/]+?)(?:\.git)?/?$", url
+        )
+        if not match:
+            return None
+        server, slug = "https://github.com", match.group(1)
+    return f"{server.rstrip('/')}/{slug}/compare/{base}...{branch}?expand=1"
 
 
 def open_setup_pr(
