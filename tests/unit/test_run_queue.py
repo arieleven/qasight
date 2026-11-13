@@ -100,7 +100,10 @@ def test_a_waiting_run_survives_a_restart_with_the_db_queue(
 
     busy = before._start(RunRequest(kind="cycle", cycle="busy"), blocked)
     deadline = time.monotonic() + 5
-    while busy.status != "running":  # the worker has claimed (deleted) its row
+    # The worker sets "running" just before it claims (deletes) its row, so wait for both.
+    while busy.status != "running" or any(
+        p.execution_id == busy.execution_id for p in store.pending()
+    ):
         assert time.monotonic() < deadline
         time.sleep(0.01)
     waiting = before.create_execution(cycle="smoke", config_path=config, report_db=False)
