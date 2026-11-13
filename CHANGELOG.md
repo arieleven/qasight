@@ -8,6 +8,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-13
+
+### Upgrading
+- Nothing to change by hand. The run history and the team server database add the scorecard tables (migrations `0007` and `0008`) the first time 1.7.0 opens them, and keep every run
+- New dependencies: `defusedxml` (always) and `pyjwt[crypto]` (in the `api` extra, for single sign-on); `pip install -U qasight` and the Docker images bring them
+- The web UI's Project health page is now Test health (`/test-health`) and the Scorecard page is Code quality (`/code-quality`); old links and bookmarks redirect
+- `uses: arieleven/qasight@v1` moves to 1.7.0 on its own. Its after-run work (summary, pull request comment, alerts) now goes through `qasight ci publish`, the same step the GitLab, Jenkins and CircleCI templates from `qasight init` use
+- The weekly digest now uses the Flaky page's rule, so it can list fewer newly flaky tests than before
+
 ### Added
 - Set QASight up without a terminal: commit the one-time `qasight-setup.yml` workflow from Getting Started (its button opens GitHub's editor with the file filled in) and the Action's new `setup: "true"` mode runs `qasight init --scan --attach --pr` and opens the setup pull request. When a pull request can't be opened (no `gh`, or a token that may not), `qasight init --pr` prints the GitHub link that opens it in one click
 - `qasight init --attach` adds QASight to the GitHub workflows that already run your tests instead of writing a second workflow that runs them again: the test command gets a result-file flag (pytest, Jest, Vitest, npm/pnpm/yarn scripts, dotnet test, RSpec, PHPUnit; Maven and Gradle need none), each job gets one QASight step after its last test step that records those files, and a `permissions:` block gets `pull-requests: write`. Edited as text, so comments and formatting stay; `--dry-run` shows the diff, and commands it can't extend safely are listed, not guessed
@@ -48,6 +57,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - A JSON report with a wrong-typed field says which format it looked like and that a field is missing or has an unexpected type, instead of a bare `TypeError`
 - The single-file HTML report (`qasight report --html`) works again with the on-demand page loading
 - Accessibility (found by axe): Compare and the test page keep their heading while loading or empty, the report's small print has 4.8:1 contrast instead of 2.6:1, and its wide tables scroll from the keyboard
+- On laptop-width screens the dashboard's eye art no longer covers the latest run's headline
 
 ### Performance
 - The API keeps the manager report, Needs attention and project health in memory until a run is added, finishes or is deleted (`TESTO_READ_CACHE_S`, default 60 s, `0` off). With 50 users the API answers 5.7 times as many requests, median 0.16 s instead of 2.6 s
@@ -60,9 +70,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Web UI polish: cards have a soft light edge, the Last 7 days numbers sit in darker tiles, list rows are split by fading lines, the desktop top bar sticks and turns to glass as you scroll, the sidebar has a "Need help?" card, every page ends with Docs, GitHub and Report an issue links, and the version under the sidebar says "made by arieleven" with a link to the author's GitHub. See `docs/Specs & ADRs/UI Polish - 2026-11-08.md`
 - Tidier pages: Needs attention and Recent runs on the dashboard open and close on click, and long lists (recent runs, failing, flaky and broken tests, release tests) show 3 rows with "Show all". The run page's Test mix, Details and Artifacts and the cycle page's Stages start closed. A card you close stays closed in that browser
 - The live demo shows made-up examples, each marked "Fake example for the live demo", where it has nothing of its own: an AI failure summary per failed run, an AI review, an Ask conversation and two pretend releases. Only the demo export does this; `qasight export-site` does not
-
-### Fixed
-- On laptop-width screens the dashboard's eye art no longer covers the latest run's headline
 
 ## [1.6.0] - 2026-11-05
 

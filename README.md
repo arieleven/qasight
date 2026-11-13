@@ -54,8 +54,14 @@ test) and opens the UI on them. More ways in, from Jest to `go test`, are in the
 
 ## What's new
 
-1.6.0 renames Testosterone to QASight (`pip install qasight`; the old `testo` command, config
-file and `testo-core` package keep working) and adds `qasight init` to set a project up in one
+1.7.0 makes setup plug-and-play: `qasight run -- <any test command>` records a run with no config,
+`qasight init --attach` adds QASight to the workflows that already run your tests, a one-time workflow sets it
+up from the GitHub website, `qasight ingest --from-github` fills the history from past CI runs, monorepos get a
+cycle per package, a stage's `serve:` starts the app for end-to-end tests, and `npx qasight` needs no Python.
+It also adds a release scorecard (`qasight scorecard`, on MegaLinter) and a release gate, single sign-on,
+Deploy to Render and a Helm chart, live pytest results, `qasight ci publish` for any CI, server-side digest
+schedules, and SBOMs with signed provenance on every release. 1.6.0 renamed Testosterone to QASight (`pip install qasight`; the old `testo` command, config
+file and `testo-core` package keep working) and added `qasight init` to set a project up in one
 command, a Report page and `qasight export` for managers, `qasight demo`, `qasight try`,
 `qasight mcp`, `qasight export-site` for a read-only history site on GitHub Pages, quarantine from the UI, releases and environments on runs, and storage limits for
 the team server. 1.5.0 added `qasight affected`, OpenTelemetry export and `qasight pool`. 1.4.0 brought `qasight ingest` for Jest, Vitest, .NET, Go, Robot,

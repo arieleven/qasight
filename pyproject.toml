@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "qasight"
-version = "1.6.0"
+version = "1.7.0"
 description = "Run and track your tests, compare and export results, and catch the flaky ones. Get deeper insight with AI, using your own model."
 dynamic = ["readme"]
 requires-python = ">=3.11"

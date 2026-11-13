@@ -34,7 +34,7 @@ body:
     attributes:
       label: qasight version
       description: Output of `qasight --version`.
-      placeholder: qasight 1.6.0
+      placeholder: qasight 1.7.0
     validations:
       required: true
   - type: input

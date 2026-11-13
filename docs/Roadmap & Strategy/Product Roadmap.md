@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-06-25
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Product Roadmap
@@ -21,13 +21,15 @@ Where QASight (`qasight`, CLI `qasight`) stands today and what comes next. Open 
 | UI | React + Vite + Tailwind frontend on the FastAPI `/api/v1` API; frontend types generated from the OpenAPI schema ([Phase 5 UI Redesign](../Specs%20&%20ADRs/Phase%205%20UI%20Redesign%20-%20Cycles-First%20Navigation.md)). The Streamlit prototype was removed |
 | Analytics | Dashboard, run-to-run delta with per-stage and per-test changes ([Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md)), test pyramid, flaky test detection ([Open Source Features](../Specs%20&%20ADRs/Open%20Source%20Features%20-%202026-10-19.md)) |
 | AI | Bring-your-own-key failure summaries ([Phase 4 BYOK and Failure Analysis](../Specs%20&%20ADRs/Phase%204%20BYOK%20and%20Failure%20Analysis.md)) |
-| CI | GitHub Action and GitLab template wrapping `qasight run --ci` ([CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md)) |
+| CI | GitHub Action (`uses: arieleven/qasight@v1`) plus GitLab, Jenkins and CircleCI templates; `qasight ci publish` is the one after-run step for all of them (summary, pull request or merge request comment, alerts) ([CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md), [Automation and Unification](../Specs%20&%20ADRs/Automation%20and%20Unification%20-%202026-11-12.md)) |
+| Setup | `qasight init --scan`, `--attach` (adds QASight to the workflows that already run tests) and `--per-package` (monorepos), `qasight run -- <command>` with no config, a one-time setup workflow from the GitHub website, `qasight ingest --from-github` for day-one history, `npx qasight` ([Plug and Play](../Specs%20&%20ADRs/Plug%20and%20Play%20-%202026-11-12.md)) |
+| Code quality | `qasight scorecard` scores a repository with MegaLinter and the security scanners, in pull requests and as a release gate; releases carry SBOMs and signed provenance ([Release Gate](../Specs%20&%20ADRs/Release%20Gate%20-%202026-11-12.md), [Standards Compliance](../Specs%20&%20ADRs/Standards%20Compliance%20-%202026-11-12.md)) |
 | Demo | A Pages pipeline runs qasight on itself and on the deliberately broken fake-api app, then publishes the React UI as a read-only snapshot ([GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md)) |
-| Distribution | 1.2.0 is released: PyPI (`qasight`), GHCR images, and the `v1` Action tag; a GitHub Release publishes all of them ([Publishing to PyPI](../Processes%20&%20Guides/Publishing%20to%20PyPI.md)) |
+| Distribution | 1.7.0 is the current release: PyPI (`qasight`, plus the `testo-core` compatibility package), GHCR images, the `v1` Action tag and, from 1.7.0, `npx qasight` on npm. A GitHub Release publishes them after the [release gate](../Specs%20&%20ADRs/Release%20Gate%20-%202026-11-12.md) passes, with CycloneDX SBOMs and signed SLSA provenance ([Publishing to PyPI](../Processes%20&%20Guides/Publishing%20to%20PyPI.md)) |
 
 ## Next
 
-The current ranked list is [Adoption Blockers - 2026-11-12](../Specs%20&%20ADRs/Adoption%20Blockers%20-%202026-11-12.md): what keeps teams from picking QASight first, and which of those code can fix (single sign-on, one-click hosting, live results from pytest, the scorecard in pull requests). What stays stable while it changes is in the [Stability and Deprecation Policy](../Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md).
+The current ranked list is [Adoption Blockers - 2026-11-12](../Specs%20&%20ADRs/Adoption%20Blockers%20-%202026-11-12.md): what keeps teams from picking QASight first, and which of those code can fix (single sign-on, one-click hosting, live results from pytest, the scorecard in pull requests). 1.7.0 shipped the items on it that code can fix, together with [Plug and Play](../Specs%20&%20ADRs/Plug%20and%20Play%20-%202026-11-12.md), [Automation and Unification](../Specs%20&%20ADRs/Automation%20and%20Unification%20-%202026-11-12.md) and [Standards Compliance](../Specs%20&%20ADRs/Standards%20Compliance%20-%202026-11-12.md); the OpenSSF Best Practices badge waits on the maintainer submitting its form. What stays stable while it changes is in the [Stability and Deprecation Policy](../Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md).
 
 Earlier lists, mostly done:
 

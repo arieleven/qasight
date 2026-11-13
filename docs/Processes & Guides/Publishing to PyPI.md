@@ -61,7 +61,7 @@ It is released by hand when its version in `package.json` changes: run **Publish
 ## Verifying a release
 
 ```bash
-pip install qasight==1.6.0
+pip install qasight==1.7.0
 qasight --version
 qasight run --help
 ```
