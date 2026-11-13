@@ -134,3 +134,7 @@ jobs:
             TESTO_CREATED=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # Supply chain: a signed SLSA provenance attestation and an SPDX SBOM are
+          # pushed with every image (docker buildx imagetools inspect --format '{{json .SBOM}}').
+          provenance: mode=max
+          sbom: true

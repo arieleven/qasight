@@ -465,6 +465,11 @@ def add_security_headers(request: Request, response: Response) -> None:
     """
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    # OWASP ASVS 14.4.6: links out of the app never carry run ids or paths in Referer.
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    # ASVS 14.4.5: once served over HTTPS, browsers keep to HTTPS for a year.
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
     path = request.url.path
     if path.startswith("/history/") and any(m in path for m in _ATTACHMENT_MARKERS):
         response.headers["Content-Security-Policy"] = "sandbox; frame-ancestors 'self'"

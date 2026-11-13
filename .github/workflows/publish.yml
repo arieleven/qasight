@@ -137,3 +137,45 @@ jobs:
           done
           echo "::error::qasight $VERSION was not installable from PyPI after 5 minutes"
           exit 1
+
+  # The release's software bill of materials: every Python package `pip install
+  # qasight` brings, and every npm package bundled into the web UI, as CycloneDX
+  # JSON attached to the GitHub release. The PyPI upload above carries signed
+  # PEP 740 / SLSA provenance attestations (trusted publishing).
+  sbom:
+    name: SBOM on the release
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Write the SBOMs
+        run: |
+          version="${TAG#v}"
+          python -m venv "$RUNNER_TEMP/sbom-venv"
+          "$RUNNER_TEMP/sbom-venv/bin/pip" install --quiet "qasight[api]==$version" cyclonedx-bom==7.2.1
+          "$RUNNER_TEMP/sbom-venv/bin/cyclonedx-py" environment "$RUNNER_TEMP/sbom-venv" \
+            --output-format JSON -o "qasight-$version-python.cdx.json"
+          (cd frontend && npm ci --ignore-scripts --no-audit --no-fund && npm sbom --sbom-format cyclonedx --omit dev) \
+            > "qasight-$version-ui.cdx.json"
+
+      - name: Attach them to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" qasight-*.cdx.json --clobber

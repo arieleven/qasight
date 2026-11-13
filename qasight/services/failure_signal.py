@@ -165,13 +165,12 @@ def build_signal(
     costly: list[CostlyFlakyTest] = []
     for cycle, cycle_runs in by_cycle.items():
         with_cases = [(r, flaky_service._cases_for_run(r)) for r in cycle_runs]
-        observations: dict[str, list[dict[str, Any]]] = {}
-        names: dict[str, str] = {}
-        for run, cases in with_cases:
-            for key, case in cases.items():
-                observations.setdefault(key, []).append(flaky_service.observation(run, case))
-                names[key] = str(case.get("name") or key)
-        flaky = {k for k, obs in observations.items() if flaky_service.classify(k, obs)}
+        names = {
+            key: str(case.get("name") or key)
+            for _run, cases in with_cases
+            for key, case in cases.items()
+        }
+        flaky = flaky_service.flaky_keys(with_cases)
         messages = {
             str(c.get("message"))
             for run, cases in with_cases

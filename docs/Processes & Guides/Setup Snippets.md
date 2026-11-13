@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-11-01
-updated: 2026-11-04
+updated: 2026-11-12
 ---
 
 # Setup Snippets
@@ -60,6 +60,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -81,7 +82,7 @@ pytest:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -114,7 +115,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -152,7 +153,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-pytest-{{ .Branch }}-{{ .BuildNum }}
@@ -205,6 +206,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -226,7 +228,7 @@ jest:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -259,7 +261,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -297,7 +299,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-jest-{{ .Branch }}-{{ .BuildNum }}
@@ -350,6 +352,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -371,7 +374,7 @@ vitest:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -404,7 +407,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -442,7 +445,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-vitest-{{ .Branch }}-{{ .BuildNum }}
@@ -496,6 +499,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -518,7 +522,7 @@ playwright:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -552,7 +556,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -591,7 +595,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-playwright-{{ .Branch }}-{{ .BuildNum }}
@@ -642,6 +646,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -662,7 +667,7 @@ go:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -694,7 +699,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -731,7 +736,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-go-{{ .Branch }}-{{ .BuildNum }}
@@ -782,6 +787,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -802,7 +808,7 @@ dotnet:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -834,7 +840,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -871,7 +877,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-dotnet-{{ .Branch }}-{{ .BuildNum }}
@@ -924,6 +930,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -944,7 +951,7 @@ maven:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -976,7 +983,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -1013,7 +1020,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-maven-{{ .Branch }}-{{ .BuildNum }}
@@ -1066,6 +1073,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -1086,7 +1094,7 @@ gradle:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -1118,7 +1126,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -1155,7 +1163,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-gradle-{{ .Branch }}-{{ .BuildNum }}
@@ -1206,6 +1214,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -1227,7 +1236,7 @@ rspec:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -1260,7 +1269,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -1298,7 +1307,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-rspec-{{ .Branch }}-{{ .BuildNum }}
@@ -1350,6 +1359,7 @@ jobs:
 
 ```yaml
 # QASight: records each run's results and keeps their history in the GitLab cache.
+# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.
 # Docs: https://arieleven.github.io/qasight/docs/
 stages: [test]
 
@@ -1371,7 +1381,7 @@ phpunit:
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
-    - qasight report markdown --cycle my-app --out testo-summary.md
+    - qasight ci publish --cycle my-app --out testo-summary.md
   artifacts:
     when: always
     paths: [testo-summary.md, test-results/]
@@ -1404,7 +1414,7 @@ pipeline {
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
-          qasight report markdown --cycle my-app --out testo-summary.md
+          qasight ci publish --cycle my-app --out testo-summary.md
       '''
       archiveArtifacts artifacts: 'testo-summary.md', allowEmptyArchive: true
     }
@@ -1442,7 +1452,7 @@ jobs:
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
-            qasight report markdown --cycle my-app --out testo-summary.md
+            qasight ci publish --cycle my-app --out testo-summary.md
       - save_cache:
           when: always
           key: testo-history-phpunit-{{ .Branch }}-{{ .BuildNum }}

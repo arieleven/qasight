@@ -116,11 +116,7 @@ def list_releases() -> tuple[ReleaseSummary, ...]:
 
 def _flaky_keys(runs: list[CompletedRunView]) -> set[str]:
     """Tests that both passed and failed (or passed on retry) across ``runs`` (newest first)."""
-    per_test: dict[str, list[dict[str, Any]]] = {}
-    for run in reversed(runs):
-        for key, case in cases_for_run(run).items():
-            per_test.setdefault(key, []).append(flaky_service.observation(run, case))
-    return {key for key, obs in per_test.items() if flaky_service.classify(key, obs) is not None}
+    return flaky_service.flaky_keys((run, cases_for_run(run)) for run in reversed(runs))
 
 
 def _test(

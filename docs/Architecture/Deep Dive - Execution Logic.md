@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Deep Dive — Execution Logic

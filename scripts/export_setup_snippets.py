@@ -56,7 +56,7 @@ _HEADER = """---
 type: guide
 status: current
 created: 2026-11-01
-updated: 2026-11-04
+updated: 2026-11-12
 ---
 
 # Setup Snippets
