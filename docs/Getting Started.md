@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Getting Started
@@ -13,6 +13,52 @@ You need Python 3.11 or newer and a project with tests. The examples use pytest;
 
 **Start here:** `pip install qasight && qasight init` does steps 2, 3 and 5 for you: it detects your test runners (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit), writes `qasight.yaml` and `.github/workflows/qasight.yml`, and records a first run. `qasight init --dry-run` shows the files first, and `qasight init --pr` also commits them on a new branch and opens the pull request. Tests in several folders (a monorepo)? `qasight init --scan --check` finds each one and checks it with its runner. Details: [Command Reference § qasight init](CLI%20Commands/Command%20Reference.md#qasight-init).
 
+**No terminal? Set it up from GitHub.** Commit the workflow below as `.github/workflows/qasight-setup.yml`. It runs once, finds your tests (`qasight init --scan --attach`) and opens a pull request with the config and the change to your CI; nothing else happens until you merge it. On the docs site, type your repository and the button opens GitHub's editor with the file filled in:
+
+<div class="qasight-setup" markdown="0">
+<input id="qs-repo" placeholder="owner/repository" aria-label="Repository (owner/name)" size="28">
+<input id="qs-branch" value="main" aria-label="Default branch" size="8">
+<button type="button" onclick="qasightSetup()">Open in GitHub</button>
+</div>
+<script>
+function qasightSetup() {
+  var repo = document.getElementById("qs-repo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "");
+  var branch = document.getElementById("qs-branch").value.trim() || "main";
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { document.getElementById("qs-repo").focus(); return; }
+  var text = document.querySelector("#qasight-setup-workflow code").innerText;
+  window.open("https://github.com/" + repo + "/new/" + encodeURIComponent(branch) +
+    "?filename=.github/workflows/qasight-setup.yml&value=" + encodeURIComponent(text), "_blank", "noopener");
+}
+</script>
+
+<div id="qasight-setup-workflow" markdown="1">
+
+```yaml
+# Sets QASight up: finds your tests and opens a pull request that adds it.
+# Runs when this file is committed (or from the Actions tab); delete it afterwards.
+# Docs: https://arieleven.github.io/qasight/docs/getting-started/
+name: QASight setup
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/qasight-setup.yml"]
+permissions:
+  contents: write  # push the qasight-setup branch
+  pull-requests: write  # open the pull request
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arieleven/qasight@v1
+        with:
+          setup: "true"
+```
+
+</div>
+
+GitHub doesn't let a pull request opened by Actions start your other workflows; push any commit to it (or close and reopen it) to run them. If your repository doesn't let Actions open pull requests (Settings, Actions, General), the step prints a link that opens it in one click.
+
 ## 1. Install
 
 ```bash
@@ -22,6 +68,8 @@ qasight --version          # qasight 1.x.y
 ```
 
 Not a Python project? `npx qasight init` runs it with no Python installed (the [npm package](https://github.com/arieleven/qasight/tree/main/integrations/npm-qasight) fetches it with uv). With uv or pipx: `uvx --from qasight qasight init` (or `pipx run --spec qasight qasight init`). The UI needs the `api` extra: `uvx --from 'qasight[api]' qasight ui` (`npx qasight ui` adds it itself).
+
+No config yet? `qasight run -- pytest -q` (or `-- npm test`, `-- go test ./...`) runs your usual command and records it; see [Command Reference § Any test command](CLI%20Commands/Command%20Reference.md#any-test-command-no-config).
 
 `qasight` is the `qasight` CLI. It doesn't install your test runner, so keep installing pytest (or Behave, Jest...) the way your project already does.
 

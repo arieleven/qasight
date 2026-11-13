@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-11-05
+updated: 2026-11-13
 ---
 
 # QA Strategies
@@ -116,6 +116,18 @@ See [Deep Dive § Orchestrator level](../Architecture/Deep%20Dive%20-%20Executio
         junit_xml: ["reports/go-*.xml"]   # required for junit
 ```
 
+**The app the tests need (`serve:`):** end-to-end stages (Cypress, Selenium, Behave against a web app) can start the app themselves. `command` runs through the shell in `target_repo` with the stage's environment before the stage; the stage starts once `url` answers (any HTTP status below 500) and the app's whole process group is stopped when the stage ends. Its output goes to `serve.log` in the stage's artifacts folder. If the command exits first or `url` doesn't answer within `timeout_s` (default 120), the stage fails like a timeout (exit `3`) and `run.log` says why. [`qasight init`](../CLI%20Commands/Command%20Reference.md#qasight-init) writes it for Cypress. Code: `qasight/engine/stage_server.py`.
+
+```yaml
+      - name: cypress
+        equipment: cypress
+        tier: e2e
+        serve:
+          command: "npm run dev"
+          url: "http://localhost:5173"
+          timeout_s: 180
+```
+
 **Post-run reporters** (global `reporters:` block) run after all stages complete — Allure HTML, Extent dashboard, ReportPortal upload, TestBeats Slack/Teams preview.
 
 Validate before running:
@@ -146,7 +158,7 @@ qasight run --cycle all --tag smoke
 
 ### 2. Selective triggers
 
-Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `qasight/config/triggers.py`:
+Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Paths are relative to the folder of `qasight.yaml`; `**` spans any number of folders (`api/**`, `**/*.py`). [`qasight init --scan --per-package`](../CLI%20Commands/Command%20Reference.md#qasight-init) writes one triggered cycle per package. Evaluation lives in `qasight/config/triggers.py`:
 
 | Mode | Behavior |
 |------|----------|

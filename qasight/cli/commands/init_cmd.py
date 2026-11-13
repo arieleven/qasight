@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import difflib
 import json
 import os
 from collections.abc import Iterator
@@ -178,6 +179,12 @@ def init(
         "--listTests, go test -list...) and leave out stages with none. Loads your test "
         "code; never runs a test.",
     ),
+    per_package: bool = typer.Option(
+        False,
+        "--per-package",
+        help="With --scan: one cycle per project folder, each run only when its folder "
+        "changed (qasight run --cycle all); the CI workflow runs them all that way.",
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="With --scan: write without asking."),
     force: bool = typer.Option(False, "--force", help="Overwrite files that already exist."),
     dry_run: bool = typer.Option(
@@ -210,6 +217,13 @@ def init(
         help="GitHub: also comment on pull requests from forks (their token is read-only): "
         "the test workflow uploads the comment and a second workflow posts it.",
     ),
+    attach: bool = typer.Option(
+        False,
+        "--attach",
+        help="GitHub: add QASight to the workflows that already run your tests (a result "
+        "flag on the test command, one QASight step after it) instead of writing a second "
+        "workflow that runs them again.",
+    ),
     dependabot: bool = typer.Option(
         False,
         "--dependabot",
@@ -232,6 +246,8 @@ def init(
             f"unknown stack {unknown[0]!r}; pick from {', '.join(project_setup.STACK_KEYS)}",
             param_hint="--stack",
         )
+    if per_package and not scan:
+        raise typer.BadParameter("needs --scan (it splits the folders --scan finds)")
     if scan:
         scanned = repo_scan.scan_repo(repo, only=stack)
         facts = dataclasses.replace(scanned.facts, skipped=scanned.notes)
@@ -268,13 +284,38 @@ def init(
     keep_config = config_path.exists() and not force
     if keep_config:
         cycle_name = _existing_cycle(config_path, cycle_name)
+    packages = per_package and not keep_config
+    if packages and len(project_setup.package_cycles(facts, cycle=cycle_name)) < 2:
+        console.print("[muted]--per-package: the tests are in one folder, so one cycle.[/]")
+        packages = False
     ci_kind = _resolve_ci(ci, repo)
     branch = ci_templates.default_branch(repo)
-    files: list[tuple[Path, str, bool]] = [
-        (config_path, project_setup.config_yaml(facts, cycle=cycle_name), keep_config)
-    ]
+    config_text = project_setup.config_yaml(
+        facts, cycle=cycle_name, per_package=packages, base=branch
+    )
+    if packages:
+        for name, folder, _stacks in project_setup.package_cycles(facts, cycle=cycle_name):
+            when = "always" if folder == "." else f"when {folder}/ changed"
+            console.print(f"  cycle [bold]{name}[/]: runs {when}", highlight=False)
+    run_cycle = "all" if packages else cycle_name
+    files: list[tuple[Path, str, bool]] = [(config_path, config_text, keep_config)]
     ci_hint = ""
-    if ci_kind != "none":
+    edited: set[Path] = set()
+    if attach and ci_kind != "github":
+        raise typer.BadParameter("works with GitHub Actions workflows only", param_hint="--attach")
+    if attach:
+        edited = _attach(
+            console, repo=repo, cycle=cycle_name, files=files, forks=forks or bool(server_url)
+        )
+    elif ci_kind == "github" and not (repo / ci_templates.GITHUB_WORKFLOW_PATH).exists():
+        from qasight.services.ci_attach import has_test_steps
+
+        if has_test_steps(repo):
+            console.print(
+                "[muted]Your workflows already run tests: `qasight init --attach` adds QASight "
+                "to them instead of a second workflow that runs them again.[/]"
+            )
+    if ci_kind != "none" and not edited:
         main_file, side_file = ci_templates.CI_FILES[ci_kind]
         target = repo / main_file
         if target.exists() and not force and side_file != main_file:
@@ -282,7 +323,13 @@ def init(
             target = repo / side_file
             ci_hint = _INCLUDE_HINTS[ci_kind]
         text = ci_templates.ci_file_text(
-            ci_kind, facts, cycle=cycle_name, branch=branch, server=server_url, forks=forks
+            ci_kind,
+            facts,
+            cycle=run_cycle if ci_kind == "github" else cycle_name,
+            branch=branch,
+            server=server_url,
+            forks=forks,
+            full_history=packages,
         )
         files.append((target, text, target.exists() and not force))
     if forks and ci_kind == "github":
@@ -299,6 +346,17 @@ def init(
     if dry_run:
         for target, text, keep in files:
             rel = target.relative_to(repo)
+            if target in edited:
+                console.print(f"\n[bold]--- {rel} (your workflow, changed like this)[/]")
+                before = target.read_text(encoding="utf-8")
+                diff = difflib.unified_diff(
+                    before.splitlines(keepends=True),
+                    text.splitlines(keepends=True),
+                    fromfile=f"a/{rel.as_posix()}",
+                    tofile=f"b/{rel.as_posix()}",
+                )
+                console.print("".join(diff), markup=False, highlight=False, end="")
+                continue
             state = " (exists, would be kept; --force overwrites)" if keep else ""
             console.print(f"\n[bold]--- {rel}{state}[/]")
             if not keep:
@@ -315,7 +373,7 @@ def init(
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
-        console.print(f"[ok]Wrote {rel}[/]")
+        console.print(f"[ok]{'Updated' if target in edited else 'Wrote'} {rel}[/]")
     if ci_hint:
         console.print(f"Your CI file exists, so it was left alone; to use the new one, {ci_hint}")
 
@@ -333,7 +391,9 @@ def init(
 
     code = 0
     if run_first:
-        code = _first_run(console=console, repo=repo, cycle=cycle_name, config=config_path)
+        code = _first_run(
+            console=console, repo=repo, cycle=run_cycle, config=config_path, ingest=not packages
+        )
 
     written = [t.relative_to(repo).as_posix() for t, _, keep in files if not keep]
     if missing:
@@ -350,7 +410,7 @@ def init(
     console.print(
         "  qasight ui          # the run history in your browser (pip install 'qasight\\[api]')"
     )
-    console.print(f"  qasight run --cycle {cycle_name}")
+    console.print(f"  qasight run --cycle {run_cycle}")
     raise typer.Exit(code=code)
 
 
@@ -382,7 +442,7 @@ def _server_secret(console: Console, *, repo: Path, ci_kind: str, server: str) -
 
 def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle: str) -> bool:
     """``--pr``: branch, commit, push, pull request. True when the pull request is open."""
-    from qasight.services.setup_pr import open_setup_pr
+    from qasight.services.setup_pr import compare_url, open_setup_pr
 
     if not files:
         console.print("\nNothing new was written, so there is no pull request to open.")
@@ -397,11 +457,56 @@ def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle
         )
         return True
     console.print(f"[warn]Couldn't finish the pull request: {result.error}[/]")
+    pushed = bool(result.todo) and result.todo[0].startswith("gh pr create")
+    link = compare_url(repo, base=base, branch=result.branch) if pushed else None
+    if link:
+        # The branch is pushed; only the pull request is missing (no gh, or a token that
+        # can't create one, like Actions' default token in many repositories).
+        console.print(f"The branch is pushed. Open the pull request here: {link}")
     if result.todo:
-        console.print("Left to do:")
+        console.print("Or, with the GitHub CLI:" if link else "Left to do:")
         for line in result.todo:
             console.print(f"  {line}", markup=False, highlight=False)
     return False
+
+
+def _attach(
+    console: Console,
+    *,
+    repo: Path,
+    cycle: str,
+    files: list[tuple[Path, str, bool]],
+    forks: bool,
+) -> set[Path]:
+    """``--attach``: queue the edited workflows in *files*; empty when no workflow runs tests."""
+    from qasight.services.ci_attach import plan_attach
+
+    plan = plan_attach(repo, cycle=cycle)
+    if not plan.steps:
+        console.print(
+            "No workflow step runs a test command QASight knows, so a workflow of its own "
+            "is written instead."
+        )
+        for note in plan.notes:
+            console.print(f"  [muted]{note}[/]")
+        return set()
+    console.print("Recording the tests your workflows already run:")
+    for step in plan.steps:
+        change = "adds a result file" if step.edited else "writes results already"
+        console.print(
+            f"  {step.workflow} job {step.job!r}: {step.runner} ({change}: {step.result})",
+            highlight=False,
+        )
+    for note in plan.notes:
+        console.print(f"  [muted]{note}[/]")
+    if forks:
+        console.print(
+            "  [muted]--forks and --server aren't added to existing workflows; add the "
+            "Action's comment-artifact or server-url inputs to the QASight step yourself.[/]"
+        )
+    for path, text in plan.texts.items():
+        files.append((path, text, False))
+    return set(plan.texts)
 
 
 def _print_stages(console: Console, facts: ProjectFacts) -> None:
@@ -459,12 +564,18 @@ def _confirm(console: Console, files: list[Path], run_first: bool) -> None:
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
 
-def _first_run(*, console: Console, repo: Path, cycle: str, config: Path) -> int:
-    """Record the results already on disk, else run *cycle* once. Failing tests still count as recorded."""
+def _first_run(
+    *, console: Console, repo: Path, cycle: str, config: Path, ingest: bool = True
+) -> int:
+    """Record the results already on disk, else run *cycle* once. Failing tests still count as recorded.
+
+    With ``ingest=False`` (one cycle per package) the results on disk are left alone:
+    they couldn't be told apart by package, so the cycles run instead.
+    """
     from qasight.cli.runner import execute_ingest_command, execute_plan_command
     from qasight.services.project_setup import find_result_files, result_patterns
 
-    found = find_result_files(repo)
+    found = find_result_files(repo) if ingest else []
     with _cwd(repo):
         if found:
             reports = result_patterns(found, repo=repo)

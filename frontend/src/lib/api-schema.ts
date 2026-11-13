@@ -2506,6 +2506,8 @@ export interface components {
             stage: string;
             /** Status */
             status: string;
+            /** Suggested Cause */
+            suggested_cause: ("product_bug" | "test_bug" | "environment" | "flaky" | "other") | null;
             triage: components["schemas"]["TriageItem"] | null;
         };
         /** FailureGroupItem */

@@ -50,9 +50,17 @@ def ci_file_text(
     branch: str,
     server: str = "",
     forks: bool = False,
+    full_history: bool = False,
 ) -> str:
     if system == "github":
-        return github_workflow(facts, cycle=cycle, branch=branch, server=server, forks=forks)
+        return github_workflow(
+            facts,
+            cycle=cycle,
+            branch=branch,
+            server=server,
+            forks=forks,
+            full_history=full_history,
+        )
     if system == "gitlab":
         return gitlab_ci(facts, cycle=cycle)
     if system == "jenkins":
@@ -177,8 +185,12 @@ def github_workflow(
     branch: str = "main",
     server: str = "",
     forks: bool = False,
+    full_history: bool = False,
 ) -> str:
     """``.github/workflows/qasight.yml``: set up the stacks, then run *cycle* with the Action.
+
+    With *full_history* the checkout fetches every commit, so the cycles' ``trigger``
+    can compare the branch with ``origin/<branch>`` (``qasight init --per-package``).
 
     With *server*, each run is also uploaded to that team server, with the token
     from the ``TESTO_API_TOKEN`` repository secret. With *forks*, the comment is
@@ -207,6 +219,14 @@ def github_workflow(
         "    runs-on: ubuntu-latest",
         "    steps:",
         "      - uses: actions/checkout@v4",
+        *(
+            [
+                "        with:",
+                "          fetch-depth: 0  # each package's trigger compares with the base branch",
+            ]
+            if full_history
+            else []
+        ),
     ]
     for language in _languages(facts.stacks):
         lines += _github_setup(facts, language)
@@ -227,6 +247,44 @@ def github_workflow(
             f"          server-token: ${{{{ secrets.{SERVER_TOKEN_SECRET} }}}}",
         ]
     return "\n".join(lines) + "\n"
+
+
+SETUP_WORKFLOW_PATH = ".github/workflows/qasight-setup.yml"
+
+
+def setup_workflow() -> str:
+    """The one-time workflow that sets QASight up from the GitHub website, no terminal.
+
+    Committing it (the docs link opens GitHub's editor with it filled in) runs it
+    once: the Action's ``setup`` mode runs ``qasight init --scan --attach --pr``
+    and opens a pull request. Nothing else changes until that is merged.
+    """
+    return (
+        "\n".join(
+            [
+                "# Sets QASight up: finds your tests and opens a pull request that adds it.",
+                "# Runs when this file is committed (or from the Actions tab); delete it afterwards.",
+                "# Docs: https://arieleven.github.io/qasight/docs/getting-started/",
+                "name: QASight setup",
+                "on:",
+                "  workflow_dispatch:",
+                "  push:",
+                f"    paths: [{_q(SETUP_WORKFLOW_PATH)}]",
+                "permissions:",
+                "  contents: write  # push the qasight-setup branch",
+                "  pull-requests: write  # open the pull request",
+                "jobs:",
+                "  setup:",
+                "    runs-on: ubuntu-latest",
+                "    steps:",
+                "      - uses: actions/checkout@v4",
+                f"      - uses: {ACTION_REF}",
+                "        with:",
+                '          setup: "true"',
+            ]
+        )
+        + "\n"
+    )
 
 
 COMMENT_WORKFLOW_PATH = ".github/workflows/qasight-comment.yml"
@@ -320,6 +378,8 @@ def ci_test_command(stack: Stack) -> str:
     import shlex
 
     args = [str(a) for a in stack.stage.get("args") or []]
+    if stack.key == "cypress":
+        return in_folder(stack, _cypress_command(stack, args))
     if stack.key in _NATIVE_COMMANDS:
         cmd = _NATIVE_COMMANDS[stack.key].format(args=shlex.join(args)).replace("  ", " ")
     elif args[:2] == ["sh", "-c"] and len(args) == 3:
@@ -329,6 +389,26 @@ def ci_test_command(stack: Stack) -> str:
     # A runner that writes a file there needs the folder; `--results-directory` creates its own.
     needs_dir = "test-results/" in cmd and "--results-directory" not in cmd
     return in_folder(stack, f"mkdir -p test-results && {cmd}" if needs_dir else cmd)
+
+
+def _cypress_command(stack: Stack, args: list[str]) -> str:
+    """Start the app in the background, wait for its URL, then run Cypress with JUnit output."""
+    import shlex
+
+    run = (
+        "npx cypress run "
+        + (shlex.join(args) + " " if args else "")
+        + "--reporter junit --reporter-options "
+        + shlex.quote("mochaFile=test-results/testo-cypress-[hash].xml,toConsole=false")
+    )
+    serve = stack.stage.get("serve")
+    if not serve:
+        return f"mkdir -p test-results && {run}"
+    url = shlex.quote(str(serve["url"]))
+    return (
+        f"mkdir -p test-results && ({serve['command']} > test-results/serve.log 2>&1 &) && "
+        f"for i in $(seq 120); do curl -s -o /dev/null {url} && break; sleep 1; done && {run}"
+    )
 
 
 def in_folder(stack: Stack, cmd: str) -> str:
@@ -367,7 +447,8 @@ def _record(cycle: str, history_dir: str) -> list[str]:
         f'mkdir -p "{history_dir}"',
         f'export DATABASE_URL="sqlite:///{history_dir}/testo_history.db"',
         f"qasight ingest --cycle {cycle}",
-        f"qasight report markdown --cycle {cycle} --out testo-summary.md",
+        # Summary file, merge request comment (GitLab: TESTO_GITLAB_TOKEN), chat alerts.
+        f"qasight ci publish --cycle {cycle} --out testo-summary.md",
     ]
 
 
@@ -412,6 +493,7 @@ def gitlab_ci(facts: ProjectFacts, *, cycle: str) -> str:
     """``.gitlab-ci.yml`` jobs: run the tests, record them in ``after_script`` (runs on failure too)."""
     lines = [
         "# QASight: records each run's results and keeps their history in the GitLab cache.",
+        "# Add a TESTO_GITLAB_TOKEN CI/CD variable (api scope) to get a merge request comment.",
         "# Docs: https://arieleven.github.io/qasight/docs/",
         "stages: [test]",
     ]

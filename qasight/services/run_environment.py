@@ -9,9 +9,13 @@ same environment always compare equal. It comes from, first to last:
 2. the ``TESTO_ENV`` variable, ``"browser=firefox,os=linux"`` (handy in a CI matrix);
 3. Allure's own ``environment.properties`` file in the run's results.
 
+4. in CI, when none of those set one, the runner's OS: ``"os=linux"``
+   (:func:`~qasight.services.ci_provenance.ci_os`), so an OS matrix is kept apart
+   with no setup. ``TESTO_AUTO_METADATA=0`` turns this off.
+
 Flaky detection keeps each environment apart, so a test that always fails on one
-browser is "fails on firefox", not "flaky". Nothing is filled in automatically:
-an unset environment is one environment, as before.
+browser is "fails on firefox", not "flaky". Outside CI an unset environment is
+one environment, as before.
 """
 
 from __future__ import annotations
@@ -89,12 +93,22 @@ def from_allure(root: Path) -> str:
 
 
 def resolve(explicit: str | None, environ: Mapping[str, str], results_root: Path | None) -> str:
-    """The run's environment: ``explicit``, else ``TESTO_ENV``, else Allure's file; ``""`` if none."""
+    """The run's environment: ``explicit``, else ``TESTO_ENV``, else Allure's file, else
+    the CI runner's OS; ``""`` if none."""
     if explicit and (env := canonical(parse(explicit))):
         return env
     if env := from_environ(environ):
         return env
-    return from_allure(results_root) if results_root is not None else ""
+    if results_root is not None and (env := from_allure(results_root)):
+        return env
+    return detected(environ)
+
+
+def detected(environ: Mapping[str, str]) -> str:
+    """What CI says about the machine (``"os=linux"``); ``""`` outside CI or when turned off."""
+    from qasight.services.ci_provenance import ci_os
+
+    return canonical({"os": os_name}) if (os_name := ci_os(environ)) else ""
 
 
 def apply_cli_pairs(pairs: Iterable[str], environ: dict[str, str] | Mapping[str, str]) -> None:

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-07-01
-updated: 2026-11-05
+updated: 2026-11-12
 ---
 
 # Publishing Docker Images
@@ -26,7 +26,7 @@ Three images are published to GitHub Container Registry (GHCR) via GitHub Action
    - Checks the tag matches the `pyproject.toml` version.
    - For each image, scans its Dockerfile with Trivy for configuration issues.
    - Builds the `linux/amd64` image locally, scans it with Trivy for fixable critical vulnerabilities and checks it starts (`qasight run --help` for the runner; the API imports and the UI build is in place for the server). Nothing is pushed if either fails.
-   - Builds the multi-arch image (`linux/amd64`, `linux/arm64`) via Docker Buildx and pushes it to GHCR, tagged with semver (`1.0.0`), major.minor (`1.0`), major (`1`), commit SHA, and `latest`.
+   - Builds the multi-arch image (`linux/amd64`, `linux/arm64`) via Docker Buildx and pushes it to GHCR, tagged with semver (`1.0.0`), major.minor (`1.0`), major (`1`), commit SHA, and `latest`. Each image carries a signed SLSA provenance attestation (`provenance: mode=max`) and an SPDX SBOM (`sbom: true`).
 3. To rebuild the image for an existing release (for example after a base-image fix), run the workflow by hand from the Actions tab with the tag as input. It builds the selected branch, so use it only when that branch carries the same package version.
 4. The first push of each image creates a private package (`qasight-server` is new as of 2026-10-22, `qasight-runner-service` as of the release after 1.2.0). Make it public once under the package's settings (Package settings → Danger Zone → Change visibility).
 

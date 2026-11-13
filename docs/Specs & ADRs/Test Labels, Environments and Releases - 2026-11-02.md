@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-02
-updated: 2026-11-04
+updated: 2026-11-12
 ---
 
 # Test Labels, Environments and Releases - 2026-11-02
@@ -37,7 +37,7 @@ Manual test case management stays out of scope, as the [comparison page](../Comp
 ### N2: environments per run
 
 - **One string per run.** `services/run_environment.py` stores what a run tested on as run metadata `environment`, `"browser=firefox, os=linux"`: keys cleaned to lower case and sorted, at most 8 pairs, so two runs on the same environment compare equal as plain strings. No migration: it lives in the run's metadata JSON like the CI provenance.
-- **Where it comes from**, first to last: `--env KEY=VALUE` on `qasight run` and `qasight ingest` (merged into `TESTO_ENV` for the process, so the stages and an upload see it too); the `TESTO_ENV` variable; Allure's own `environment.properties` in the run's results. `POST /api/v1/ingest` takes an `environment` field, which `qasight ingest --server` fills from the same places. The GitHub Action has an `environment` input that sets `TESTO_ENV`. Nothing is filled in automatically (no OS or Python version), because splitting runs nobody asked to split would only weaken flaky detection.
+- **Where it comes from**, first to last: `--env KEY=VALUE` on `qasight run` and `qasight ingest` (merged into `TESTO_ENV` for the process, so the stages and an upload see it too); the `TESTO_ENV` variable; Allure's own `environment.properties` in the run's results. `POST /api/v1/ingest` takes an `environment` field, which `qasight ingest --server` fills from the same places. The GitHub Action has an `environment` input that sets `TESTO_ENV`. Since 2026-11-12, a CI run with none of those gets the runner's OS (`os=linux`; see [Automation and Unification - 2026-11-12](Automation%20and%20Unification%20-%202026-11-12.md)), and `TESTO_AUTO_METADATA=0` turns that off. Runs outside CI get nothing, and no Python version or browser is guessed.
 - **Flaky detection keeps environments apart.** `flaky_service` lanes were per branch; they are now per branch and environment, a same-commit conflict needs the same environment, and a failing streak counts runs of the latest run's environment. So a test that always fails on firefox and passes on chromium is a failure on firefox, not flaky. Runs without an environment share one lane, as before.
 - **Run failures.** A run's failing streak and "new" baseline use runs of the same environment (or with none recorded); a pull request's target-branch baseline prefers the run on the same environment.
 - **UI and API.** `environment` on `GET /api/v1/runs`, the run detail, and each point of the test history; the test history adds `environments`, pass and fail counts per environment. The run page and the cycle's runs list show it; the test page has a "By environment" card that says "Fails only on browser=firefox" when that's the case.
@@ -52,7 +52,7 @@ Manual test case management stays out of scope, as the [comparison page](../Comp
 
 ### N4: releases
 
-- **One value per run.** `services/run_release.py` stores the release a run tested as run metadata `release` (`"2.3"`). It comes from `--release` on `qasight run` and `qasight ingest`, else `TESTO_RELEASE`; `POST /api/v1/ingest` takes a `release` field and the GitHub Action a `release` input. Names are letters, digits, `.`, `-`, `+` and `_` (up to 60), because they go into URLs and the static demo's file names. Nothing is guessed from git tags: a run without one belongs to no release. Like the environment, it needs no migration.
+- **One value per run.** `services/run_release.py` stores the release a run tested as run metadata `release` (`"2.3"`). It comes from `--release` on `qasight run` and `qasight ingest`, else `TESTO_RELEASE`; `POST /api/v1/ingest` takes a `release` field and the GitHub Action a `release` input. Names are letters, digits, `.`, `-`, `+` and `_` (up to 60), because they go into URLs and the static demo's file names. Since 2026-11-12 a CI job that builds a git tag uses the tag when neither is set (`TESTO_AUTO_METADATA=0` turns it off); a branch or pull request run without one belongs to no release. Like the environment, it needs no migration.
 - **A release is its latest runs.** `services/releases.py` groups every cycle's stored runs by release. A release's pass rate and failing count add up the latest run of each cycle that tested it; its flaky count is the tests flaky detection flags across that cycle's runs of the release. Releases are ordered by when they were first tested, not by parsing version numbers, so `2.10` after `2.9` and date-style names both work.
 - **Compared with the release before.** Each release's page lists its failing tests, marking the ones that passed (or did not run) in the previous release's latest run of the same cycle as new, and the tests the previous release failed and this one passes as fixed.
 - **UI and API.** `GET /api/v1/releases` and `GET /api/v1/releases/{release}`, `release` on run items and the run detail. A Releases page in the navigation lists them; a release page shows pass rate, failing and flaky counts, the change from the release before, each cycle's latest run, and the failing and fixed tests. The run page links its release. The static demo export writes `releases.json` and `releases/<name>.json`.

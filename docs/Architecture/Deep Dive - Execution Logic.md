@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-11-05
+updated: 2026-11-13
 ---
 
 # Deep Dive — Execution Logic
@@ -242,6 +242,8 @@ subprocess.Popen(argv, cwd=target_repo, stdout=PIPE, stderr=STDOUT)
 ### Post-stage hook
 
 For `behavex`, `_finish_behavex_reports` runs best-effort. The adapter starts BehaveX without `--formatter` (BehaveX skips `report.html` whenever one is set), so BehaveX writes its own HTML report and `report.json` to `behave_reports/`. The hook then converts `report.json` into Allure results in `allure-results/behavex/` with BehaveX's own Allure formatter (`qasight/reporting/behavex_allure.py`), and calls `ensure_behavex_report_html`, which renders `report.html` only if a stage passed its own `--formatter`. A failure in either step is logged, appended to `run.log` and set as the stage's `error` (unless a timeout or launch error is already there). The exit code is unchanged. See [BehaveX Reports - 2026-10-21](../Specs%20&%20ADRs/BehaveX%20Reports%20-%202026-10-21.md).
+
+A stage with `serve:` starts its app first (`qasight/engine/stage_server.serving`, wrapped around `_run_process_stage` in `_run_resolved_stage`): the command in its own process group, output to `serve.log`, polled until `url` answers; the group is stopped when the stage returns. A command that exits early or a URL that never answers gives returncode `124` (like a timeout) without running the stage.
 
 A `junit` stage skips the subprocess entirely: `_record_junit_stage` imports its `junit_xml` reports without the age filter (they predate the stage by definition), sets the returncode to 1 when a case failed or broke or no file matched (0 otherwise), uses the reports' summed test time as the stage duration, and writes what it read to `run.log` as `[qasight] junit: ...`. The plan's `duration_s` is the larger of the wall clock and the summed stage durations, so an ingested run shows its test time rather than the milliseconds the import took.
 

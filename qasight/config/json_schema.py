@@ -151,6 +151,19 @@ def build_json_schema() -> dict[str, Any]:
                     {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
                 ],
             },
+            "serve": {
+                "description": "The app the tests need: started (through the shell, in "
+                "target_repo) before the stage, stopped after. The stage starts once url "
+                "answers; exit 3 when it doesn't within timeout_s.",
+                "type": "object",
+                "required": ["command", "url"],
+                "properties": {
+                    "command": {"type": "string", "minLength": 1},
+                    "url": {"type": "string", "pattern": "^https?://"},
+                    "timeout_s": {"type": "number", "exclusiveMinimum": 0, "default": 120},
+                },
+                "additionalProperties": False,
+            },
         },
         "additionalProperties": False,
     }

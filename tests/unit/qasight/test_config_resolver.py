@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from qasight.config.resolver import resolve_stages_for_plan
-from qasight.config.schema import Plan, Stage
+from qasight.config.schema import Plan, Stage, StageServe
 from qasight.resources.pools import ResourceItem, ResourcePool, StageResources
 from qasight.services.cycle_run import apply_workers_override
 
@@ -33,6 +33,7 @@ def _stage() -> Stage:
         ),
         workers_auto=True,
         workers_explicit=False,
+        serve=StageServe(command="npm run dev", url="http://localhost:5173"),
     )
 
 

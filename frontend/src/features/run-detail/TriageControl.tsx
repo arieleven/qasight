@@ -149,7 +149,8 @@ export function TriageControl({ test, runId, cycle }: { test: FailingTestItem; r
     return <CauseForm initial={triage} onCancel={() => setEditing(false)} onSave={save} />;
   }
   if (!triage) {
-    return canEdit ? (
+    const suggested = test.suggested_cause ?? null;
+    const mark = canEdit ? (
       <button
         type="button"
         onClick={() => setEditing(true)}
@@ -158,6 +159,32 @@ export function TriageControl({ test, runId, cycle }: { test: FailingTestItem; r
         Mark the cause
       </button>
     ) : null;
+    if (!suggested) return mark;
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="suggested-cause">
+        <span className="text-ink-300">Looks like: {CAUSE_LABELS[suggested]}</span>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              save(suggested, "Suggested by QASight from the message").catch((err: unknown) =>
+                setError(err instanceof Error ? err.message : "Couldn't save the cause.")
+              );
+            }}
+            className="-my-1 inline-block py-1 font-medium text-brand-300 hover:underline"
+          >
+            Accept
+          </button>
+        ) : null}
+        {mark}
+        {error ? (
+          <span role="alert" className="text-danger-300">
+            {error}
+          </span>
+        ) : null}
+      </div>
+    );
   }
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="triage">

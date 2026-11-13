@@ -183,7 +183,8 @@ class HeldLease:
         self._thread.start()
 
     def _beat(self) -> None:
-        interval = max(1.0, self.lease.ttl_s / 3)
+        # Three beats per TTL; a 1 s floor would leave a 1.5 s lease only half a second of slack.
+        interval = max(0.2, self.lease.ttl_s / 3)
         while not self._stop.wait(interval):
             try:
                 if self.backend.heartbeat(self.lease.lease_id) is None:

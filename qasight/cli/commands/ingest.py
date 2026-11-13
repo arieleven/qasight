@@ -14,6 +14,11 @@ defaults to the folder's name, so plain ``qasight ingest`` after the tests works
 
 With ``--server`` the files go to a shared QASight server instead, so
 every CI job of a team records into one history.
+
+With ``--from-github`` it fills the history from CI runs that happened before
+QASight: the result files a repository's past workflow runs uploaded as
+artifacts are each recorded as one run, dated when it happened
+(:mod:`qasight.services.github_backfill`).
 """
 
 from __future__ import annotations
@@ -98,6 +103,24 @@ def ingest(
             "Flaky detection and the test page keep environments apart. Default: $TESTO_ENV."
         ),
     ),
+    from_github: bool = typer.Option(
+        False,
+        "--from-github",
+        help=(
+            "Fill the history from past GitHub Actions runs: download each run's artifacts "
+            "with the GitHub CLI and record the result files in them, dated when the run "
+            "happened. Runs already recorded are skipped."
+        ),
+    ),
+    runs: int = typer.Option(
+        20, "--runs", min=1, max=1000, help="With --from-github: how many recent runs to read."
+    ),
+    workflow: str | None = typer.Option(
+        None, "--workflow", help="With --from-github: only this workflow (name or file name)."
+    ),
+    branch: str | None = typer.Option(
+        None, "--branch", help="With --from-github: only runs on this branch."
+    ),
     release: str | None = typer.Option(
         None,
         "--release",
@@ -139,6 +162,36 @@ def ingest(
     )
 
     repo_dir = repo.expanduser().resolve()
+    if from_github:
+        if server or reports:
+            message = "--from-github records locally and finds the files itself; drop " + (
+                "--server" if server else "the file arguments"
+            )
+            console.print(f"error: {message}" if ci else f"[fail]{message}[/]")
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+        raise typer.Exit(
+            code=_from_github(
+                console=console,
+                repo_dir=repo_dir,
+                cycle=(cycle or "").strip() or cycle_name_for(repo_dir),
+                runs=runs,
+                workflow=workflow,
+                branch=branch,
+                record=lambda files, folder, name: execute_ingest_command(
+                    console=console,
+                    reports=files,
+                    cycle=name,
+                    stage=stage,
+                    tier=tier,
+                    repo=folder,
+                    config_path=config,
+                    ci=ci,
+                    persist=not no_persist,
+                    coverage=[],
+                ),
+                ci=ci,
+            )
+        )
     if not reports:
         found = find_result_files(repo_dir)
         if not found:
@@ -167,3 +220,50 @@ def ingest(
         coverage=coverage or [],
     )
     raise typer.Exit(code=int(exit_code))
+
+
+def _from_github(
+    *,
+    console,  # noqa: ANN001 — a Rich console
+    repo_dir: Path,
+    cycle: str,
+    runs: int,
+    workflow: str | None,
+    branch: str | None,
+    record,  # noqa: ANN001 — (files, folder, cycle) -> exit code
+    ci: bool,
+) -> int:
+    """``qasight ingest --from-github``: record past CI runs; 0, or 2 when gh couldn't list them."""
+    from qasight.services import github_backfill
+
+    def say(text: str) -> None:
+        if not ci:
+            console.print(text)
+
+    try:
+        report = github_backfill.backfill(
+            cwd=repo_dir,
+            cycle=cycle,
+            limit=runs,
+            workflow=workflow,
+            branch=branch,
+            record=lambda files, folder: int(record(files, folder, cycle)),
+            progress=say,
+        )
+    except github_backfill.BackfillError as exc:
+        console.print(f"error: --from-github: {exc}" if ci else f"[fail]--from-github: {exc}[/]")
+        return int(EngineExitCode.INVALID_INPUT)
+    say(
+        f"Recorded {len(report.recorded)} past run(s) into cycle '{cycle}'"
+        f"; {len(report.already)} already recorded"
+        f", {len(report.no_results)} without result files"
+        f", {len(report.failed)} failed."
+    )
+    for run, error in report.failed:
+        say(f"  run {run.run_id}: {error}")
+    if report.no_results and not report.recorded and not report.already:
+        say(
+            "None of these runs uploaded result files as artifacts. Upload them "
+            "(actions/upload-artifact) or add QASight to the workflow: qasight init --attach."
+        )
+    return 0

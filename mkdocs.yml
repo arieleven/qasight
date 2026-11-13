@@ -120,6 +120,7 @@ nav:
       - Adoption Blockers: Specs & ADRs/Adoption Blockers - 2026-11-12.md
       - Release Scorecard: Specs & ADRs/Release Scorecard - 2026-11-12.md
       - Menu by Question: Specs & ADRs/Menu by Question - 2026-11-12.md
+      - Plug and Play: Specs & ADRs/Plug and Play - 2026-11-12.md
       - Scorecard on MegaLinter: Specs & ADRs/Scorecard on MegaLinter - 2026-11-12.md
       - Run Deletion and Stop: Specs & ADRs/Run Deletion and Stop - 2026-11-02.md
       - Test Labels, Environments and Releases: Specs & ADRs/Test Labels, Environments and Releases - 2026-11-02.md
@@ -165,6 +166,8 @@ nav:
       - Security and Install Review: Specs & ADRs/Security and Install Review - 2026-10-31.md
       - External Audit Tools: Specs & ADRs/External Audit Tools - 2026-11-11.md
       - Release Gate: Specs & ADRs/Release Gate - 2026-11-12.md
+      - Automation and Unification: Specs & ADRs/Automation and Unification - 2026-11-12.md
+      - Standards Compliance: Specs & ADRs/Standards Compliance - 2026-11-12.md
       - Crash Detection: Specs & ADRs/Crash Detection - 2026-10-31.md
       - Docs Vault and Wiki Sync: Specs & ADRs/Docs Vault and Wiki Sync - 2026-10-07.md
       - Interview Readiness Fixes: Specs & ADRs/Interview Readiness Fixes - 2026-10-07.md

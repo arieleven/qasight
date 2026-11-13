@@ -93,6 +93,7 @@ STACK_KEYS: tuple[str, ...] = (
     "jest",
     "vitest",
     "playwright",
+    "cypress",
     "go",
     "dotnet",
     "maven",
@@ -138,6 +139,34 @@ def _node_package_manager(repo: Path, pkg: dict[str, Any]) -> str:
     if (repo / "bun.lockb").is_file() or (repo / "bun.lock").is_file():
         return "bun"
     return "npm"
+
+
+_CYPRESS_CONFIGS = (
+    "cypress.config.ts",
+    "cypress.config.js",
+    "cypress.config.mjs",
+    "cypress.config.cjs",
+    "cypress.json",
+)
+_BASE_URL = re.compile(r"""["']?baseUrl["']?\s*:\s*["'`](https?://[^"'`\s]+)["'`]""")
+_SERVE_SCRIPTS = ("start", "dev", "preview", "serve")
+
+
+def cypress_serve(repo: Path, pkg: dict[str, Any], manager: str) -> dict[str, str] | None:
+    """The ``serve:`` a Cypress stage needs: the package's start script and Cypress's ``baseUrl``."""
+    url = next(
+        (
+            found.group(1)
+            for name in _CYPRESS_CONFIGS
+            if (found := _BASE_URL.search(_read_text(repo / name)))
+        ),
+        None,
+    )
+    scripts = pkg.get("scripts") if isinstance(pkg.get("scripts"), dict) else {}
+    script = next((name for name in _SERVE_SCRIPTS if name in (scripts or {})), None)
+    if url is None or script is None:
+        return None
+    return {"command": f"{manager} run {script}", "url": url}
 
 
 def node_install_command(manager: str, repo: Path) -> str:
@@ -278,11 +307,34 @@ def detect_project(repo: Path, *, only: Iterable[str] = ()) -> ProjectFacts:
                 install=(*node_install, "npx playwright install --with-deps"),
             )
         )
-    if not wanted and "cypress" in deps:
-        skipped.append(
-            "Cypress: left out because it needs your app running first; add an "
-            "`equipment: cypress` stage once CI starts the app."
-        )
+    if want("cypress", "cypress" in deps):
+        serve = cypress_serve(repo, pkg, manager)
+        if serve is None and wanted:  # asked for by name: a guess to edit beats nothing
+            serve = {"command": f"{manager} run start", "url": "http://localhost:3000"}
+        if serve is None:
+            skipped.append(
+                "Cypress: left out because it needs your app running and QASight couldn't "
+                "tell how to start it (a `baseUrl` in cypress.config and a start, dev, "
+                "preview or serve script); add an `equipment: cypress` stage with "
+                "`serve: {command: ..., url: ...}`."
+            )
+        else:
+            stacks.append(
+                Stack(
+                    key="cypress",
+                    label="Cypress",
+                    language="node",
+                    stage={
+                        "name": "cypress",
+                        "equipment": "cypress",
+                        "args": [],
+                        "tier": "e2e",
+                        "serve": serve,
+                    },
+                    install=node_install,
+                    result_files=("test-results/testo-cypress-*.xml",),
+                )
+            )
 
     if want("go", (repo / "go.mod").is_file()):
         stacks.append(
@@ -539,8 +591,32 @@ def _yaml_list(values: Iterable[str]) -> str:
     return "[" + ", ".join(json.dumps(str(v)) for v in values) + "]"
 
 
-def config_yaml(facts: ProjectFacts, *, cycle: str) -> str:
-    """A ``qasight.yaml`` with one *cycle* that runs every detected stack, in order."""
+def stack_folder(stack: Stack) -> str:
+    """The folder a stack's stage starts in, relative to the repository (``.`` for the top)."""
+    return str(stack.stage.get("target_repo") or ".")
+
+
+def package_cycles(facts: ProjectFacts, *, cycle: str) -> list[tuple[str, str, list[Stack]]]:
+    """``(cycle name, folder, stacks)`` per project folder: ``<cycle>-<folder>``, *cycle* for the top."""
+    groups: dict[str, list[Stack]] = {}
+    for stack in facts.stacks:
+        groups.setdefault(stack_folder(stack), []).append(stack)
+    out: list[tuple[str, str, list[Stack]]] = []
+    for folder, stacks in groups.items():
+        slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", folder).strip("-.").lower()
+        out.append((cycle if folder == "." or not slug else f"{cycle}-{slug}", folder, stacks))
+    return out
+
+
+def config_yaml(
+    facts: ProjectFacts, *, cycle: str, per_package: bool = False, base: str = "main"
+) -> str:
+    """A ``qasight.yaml`` with one *cycle* that runs every detected stack, in order.
+
+    With *per_package*, one cycle per project folder instead (:func:`package_cycles`),
+    each with a ``trigger`` on its folder, so ``qasight run --cycle all`` runs only the
+    packages a branch changed since *base*; the top folder's cycle always runs.
+    """
     from qasight.config.json_schema import SCHEMA_ID
 
     names = ", ".join(dict.fromkeys(s.label for s in facts.stacks))
@@ -551,11 +627,42 @@ def config_yaml(facts: ProjectFacts, *, cycle: str) -> str:
         "# https://arieleven.github.io/qasight/docs/cli-commands/command-reference/",
         "version: 1",
         "cycles:",
-        f"  {json.dumps(cycle)}:",
-        "    description: Every test suite in this project (found by qasight init).",
-        "    stages:",
     ]
-    for stack in facts.stacks:
+    if per_package:
+        lines.insert(
+            4,
+            "# One cycle per package: `qasight run --cycle all` runs the ones whose folder changed"
+            f" since origin/{base} (--force runs them all).",
+        )
+        for name, folder, stacks in package_cycles(facts, cycle=cycle):
+            where = "the top folder" if folder == "." else f"{folder}/"
+            lines += [
+                f"  {json.dumps(name)}:",
+                f"    description: The tests in {where} (found by qasight init).",
+            ]
+            if folder != ".":
+                lines += [
+                    "    trigger:",
+                    f"      paths: [{json.dumps(folder + '/**')}]",
+                    f"      since_ref: {json.dumps('origin/' + base)}",
+                ]
+            lines.append("    stages:")
+            lines += _stage_lines(stacks)
+    else:
+        lines += [
+            f"  {json.dumps(cycle)}:",
+            "    description: Every test suite in this project (found by qasight init).",
+            "    stages:",
+        ]
+        lines += _stage_lines(list(facts.stacks))
+    for note in facts.skipped:
+        lines.append(f"# Not added: {note}")
+    return "\n".join(lines) + "\n"
+
+
+def _stage_lines(stacks: list[Stack]) -> list[str]:
+    lines: list[str] = []
+    for stack in stacks:
         stage = stack.stage
         lines.append(f"      - name: {json.dumps(stage['name'])}")
         lines.append(f"        equipment: {stage['equipment']}")
@@ -566,9 +673,14 @@ def config_yaml(facts: ProjectFacts, *, cycle: str) -> str:
             lines.append(f"        junit_xml: {_yaml_list(stage['junit_xml'])}")
         if stage.get("tier"):
             lines.append(f"        tier: {stage['tier']}")
-    for note in facts.skipped:
-        lines.append(f"# Not added: {note}")
-    return "\n".join(lines) + "\n"
+        serve = stage.get("serve")
+        if serve:
+            lines += [
+                "        serve:  # started before the stage, stopped after",
+                f"          command: {json.dumps(serve['command'])}",
+                f"          url: {json.dumps(serve['url'])}",
+            ]
+    return lines
 
 
 GITIGNORE_LINES: tuple[str, ...] = ("testo_history.db", "artifacts/", ".testo/", "test-results/")

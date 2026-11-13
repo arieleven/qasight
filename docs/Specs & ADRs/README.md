@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Specs & ADRs
@@ -24,6 +24,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
 | Adoption blockers: single sign-on, one-click hosting (Render, Helm), the stability promise | [Adoption Blockers - 2026-11-12](Adoption%20Blockers%20-%202026-11-12.md) |
 | Release scorecard: the repo review tools on any repository or version, a 0-100 score per version, compared with the last one, and a release gate | [Release Scorecard - 2026-11-12](Release%20Scorecard%20-%202026-11-12.md) |
+| Plug and play: attach to existing CI workflows, `qasight run -- <command>`, setup from GitHub, day-one history, no-Python install, per-package monorepo cycles, Cypress | [Plug and Play - 2026-11-12](Plug%20and%20Play%20-%202026-11-12.md) |
 | Scorecard on MegaLinter: MegaLinter runs the linters for any language, scores follow SonarQube (worst security finding) and Codacy (issue density per 1,000 lines), new findings per version | [Scorecard on MegaLinter - 2026-11-12](Scorecard%20on%20MegaLinter%20-%202026-11-12.md) |
 | Test labels and issue links, then environments, chosen-test runs and releases (gaps found next to Allure TestOps) | [Test Labels, Environments and Releases - 2026-11-02](Test%20Labels,%20Environments%20and%20Releases%20-%202026-11-02.md) |
 | Better flaky signal: retries, same-commit results, flips per branch, broken kept apart | [Better Flaky Signal - 2026-11-01](Better%20Flaky%20Signal%20-%202026-11-01.md) |
@@ -78,5 +79,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | The QASight logo: the eye and the name, where its files come from and how they are rendered | [QASight Logo - 2026-11-05](QASight%20Logo%20-%202026-11-05.md) |
 | External audit tools (gitleaks, pip-audit, Bandit, Semgrep, zizmor, Lighthouse): findings, the fixes, and the checks kept in CI | [External Audit Tools - 2026-11-11](External%20Audit%20Tools%20-%202026-11-11.md) |
 | Release gate: fast third-party checks on every pull request, slow ones before every release, PyPI publish blocked without a pass | [Release Gate - 2026-11-12](Release%20Gate%20-%202026-11-12.md) |
+| Automating hand steps and unifying duplicated processes: one flaky rule, release and environment from CI, one after-run step for every CI | [Automation and Unification - 2026-11-12](Automation%20and%20Unification%20-%202026-11-12.md) |
+| Published standards QASight meets: OpenSSF Best Practices, SLSA and SBOMs, OWASP ASVS level 1, WCAG 2.1 AA, ISO/IEC 25010 | [Standards Compliance - 2026-11-12](Standards%20Compliance%20-%202026-11-12.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

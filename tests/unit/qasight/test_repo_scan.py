@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -257,3 +258,99 @@ def test_init_without_scan_points_at_it(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["init", "--dir", str(tmp_path), "--no-run"])
     assert result.exit_code == 2
     assert "--scan" in result.output
+
+
+# --- --per-package ---------------------------------------------------------------------------
+
+
+def _git(root: Path, *args: str) -> None:
+    import subprocess
+
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
+def test_per_package_cycles_run_only_the_folders_a_branch_changed(tmp_path: Path) -> None:
+    from qasight.config.triggers import evaluate_cycle_trigger
+    from qasight.services.project_setup import config_yaml
+
+    _monorepo(tmp_path)
+    _write(tmp_path, "pyproject.toml", '[project]\nname="top"\n[tool.pytest.ini_options]\n')
+    _write(tmp_path, "tests/test_top.py", "def test_top():\n    pass\n")
+    result = repo_scan.scan_repo(tmp_path)
+    text = config_yaml(result.facts, cycle="mono", per_package=True, base="main")
+    (tmp_path / "qasight.yaml").write_text(text)
+    _write(tmp_path, ".gitignore", "artifacts/\n.testo/\n")
+    cfg = discover_and_load(config_path=tmp_path / "qasight.yaml")
+    assert sorted(cfg.cycles) == [
+        "mono",
+        "mono-api",
+        "mono-libs-core",
+        "mono-libs-empty",
+        "mono-svc",
+        "mono-web",
+    ]
+    assert cfg.cycles["mono"].trigger is None  # the top folder always runs
+    assert [s.name for s in cfg.cycles["mono-api"].stages] == ["api-pytest"]
+    trigger = cfg.cycles["mono-libs-core"].trigger
+    assert trigger is not None
+    assert trigger.paths == ("libs/core/**",)
+    assert trigger.since_ref == "origin/main"
+
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "base")
+    _git(tmp_path, "update-ref", "refs/remotes/origin/main", "HEAD")
+    _write(tmp_path, "libs/core/src/core/deep/module.py", "x = 1\n")  # deeper than one folder
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "change core")
+
+    runs = {
+        name: evaluate_cycle_trigger(plan=plan, cfg=cfg).stimulus
+        for name, plan in cfg.cycles.items()
+        if plan.trigger is not None
+    }
+    assert runs == {
+        "mono-api": False,
+        "mono-libs-core": True,
+        "mono-libs-empty": False,
+        "mono-svc": False,
+        "mono-web": False,
+    }
+
+
+def test_init_per_package_writes_a_workflow_that_runs_all_with_full_history(
+    tmp_path: Path,
+) -> None:
+    _monorepo(tmp_path)
+    result = CliRunner().invoke(
+        app,
+        [
+            "init",
+            "--dir",
+            str(tmp_path),
+            "--scan",
+            "--per-package",
+            "--dry-run",
+            "--cycle",
+            "mono",
+            "--ci",
+            "github",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "cycle mono-web: runs when web/ changed" in result.output
+    assert '"mono-svc":' in result.output
+    assert 'paths: ["svc/**"]' in result.output
+    assert "fetch-depth: 0" in result.output
+    assert 'cycle: "all"' in result.output
+
+    alone = CliRunner().invoke(
+        app, ["init", "--dir", str(tmp_path), "--per-package"], env={"COLUMNS": "200"}
+    )
+    assert alone.exit_code == 2
+    assert "needs --scan" in re.sub(r"\x1b\[[0-9;]*m", "", alone.output)
