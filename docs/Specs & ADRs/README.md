@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Specs & ADRs
