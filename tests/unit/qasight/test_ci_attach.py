@@ -192,3 +192,37 @@ def test_init_suggests_attach_and_falls_back_without_test_steps(tmp_path: Path) 
 
     other = CliRunner().invoke(app, ["init", "--dir", str(tmp_path), "--attach", "--ci", "gitlab"])
     assert other.exit_code == 2
+
+
+def test_setup_workflow_is_valid_and_matches_getting_started() -> None:
+    from qasight.services.ci_templates import SETUP_WORKFLOW_PATH, setup_workflow
+
+    text = setup_workflow()
+    data = yaml.safe_load(text)
+    assert data["permissions"] == {"contents": "write", "pull-requests": "write"}
+    assert data[True]["push"]["paths"] == [SETUP_WORKFLOW_PATH]  # YAML 1.1 reads `on` as true
+    assert data["jobs"]["setup"]["steps"][-1]["with"] == {"setup": "true"}
+    guide = (Path(__file__).resolve().parents[3] / "docs/Getting Started.md").read_text()
+    assert f"```yaml\n{text}```" in guide  # the page's button sends this exact text
+
+
+def test_compare_url_from_actions_env_or_a_github_origin(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    import subprocess
+
+    from qasight.services.setup_pr import compare_url
+
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "acme/shop")
+    assert compare_url(tmp_path, base="main", branch="qasight-setup") == (
+        "https://github.com/acme/shop/compare/main...qasight-setup?expand=1"
+    )
+    monkeypatch.delenv("GITHUB_SERVER_URL")
+    monkeypatch.delenv("GITHUB_REPOSITORY")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "remote", "add", "origin", "git@github.com:acme/shop.git"],
+        check=True,
+    )
+    assert compare_url(tmp_path, base="dev", branch="b") == (
+        "https://github.com/acme/shop/compare/dev...b?expand=1"
+    )

@@ -122,7 +122,16 @@ The sign-in page then shows the SSO button next to the password form. The first 
 
 ## Reports for managers
 
-The Report page (`/report`) summarises a day, week, month or quarter for people who don't read every run, and its Download menu gives the same report as PowerPoint, Excel, HTML, CSV or JSON from the server image as built. PDF and PNG need Chromium in the image, about 400 MB more, so they are opt-in: build with `--build-arg TESTO_REPORT_PDF=1` (`docker build -f Dockerfile.qasight-server --build-arg TESTO_REPORT_PDF=1 .`). Without it the page's "Save as PDF" button still works: the browser prints the page. To email the report every Monday, run [`qasight notify --digest week --to email`](../CLI%20Commands/Command%20Reference.md#qasight-notify) from a scheduled CI job or cron against the same database.
+The Report page (`/report`) summarises a day, week, month or quarter for people who don't read every run, and its Download menu gives the same report as PowerPoint, Excel, HTML, CSV or JSON from the server image as built. PDF and PNG need Chromium in the image, about 400 MB more, so they are opt-in: build with `--build-arg TESTO_REPORT_PDF=1` (`docker build -f Dockerfile.qasight-server --build-arg TESTO_REPORT_PDF=1 .`). Without it the page's "Save as PDF" button still works: the browser prints the page. The server sends it on a schedule itself, with no cron job: set `TESTO_SCHEDULE_DIGEST=week` (Mondays) or `day`.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `TESTO_SCHEDULE_DIGEST` | unset (off) | `week` or `day`: send the digest of every cycle for that period |
+| `TESTO_SCHEDULE_TO` | every channel that is set up | Comma-separated `slack`, `teams`, `email`. Chat gets the [digest](../CLI%20Commands/Command%20Reference.md#qasight-notify), email gets the manager report with a PDF (`TESTO_REPORT_EMAIL_TO` and `TESTO_SMTP_*`) |
+| `TESTO_SCHEDULE_HOUR` | `8` | Hour of the day (UTC) at or after which it is sent |
+| `TESTO_UI_URL` | unset | The server's address, for the "Open QASight" link |
+
+Each period is sent once, even across restarts (the last one sent is kept in `.testo-schedules.json` next to the run history). Turn it on in one replica only. [`qasight notify --digest`](../CLI%20Commands/Command%20Reference.md#qasight-notify) still sends one by hand.
 
 ## Reports on their own origin
 

@@ -52,6 +52,7 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "scorecard-min-score",
         "scorecard-no-new",
         "scorecard-tools",
+        "setup",
     }
     assert set(payload["outputs"].keys()) == {
         "exit_code",
@@ -88,3 +89,43 @@ def test_scorecard_scan_command_carries_the_gate() -> None:
     )
     assert gated[3] == "services/api"
     assert gated[-5:] == ["--min-score", "70", "--no-new", "--tools", "osv-scanner,zizmor"]
+
+
+def test_setup_mode_runs_init_with_scan_attach_and_pr(monkeypatch, tmp_path: Path) -> None:
+    wrapper = _load_wrapper_module()
+    calls: list[list[str]] = []
+
+    class _Done:
+        returncode = 0
+
+    def fake_run(argv, **kwargs):  # noqa: ANN001, ANN003, ANN202
+        calls.append(list(argv))
+        return _Done()
+
+    monkeypatch.setattr(wrapper.subprocess, "run", fake_run)
+    code = wrapper.run_setup(env={"GITHUB_WORKSPACE": str(tmp_path)})
+    assert code == 0
+    assert calls[-1] == [
+        "qasight",
+        "init",
+        "--scan",
+        "--yes",
+        "--attach",
+        "--no-run",
+        "--ci",
+        "github",
+        "--pr",
+    ]
+    assert ["git", "-C", str(tmp_path), "config", "user.name", "github-actions[bot]"] in calls
+
+
+def test_setup_mode_skips_the_run_and_history_steps() -> None:
+    payload = yaml.safe_load(
+        Path("integrations/github-action/action.yml").read_text(encoding="utf-8")
+    )
+    steps = {s.get("id") or s.get("name"): s for s in payload["runs"]["steps"]}
+    assert "inputs.setup != 'true'" in steps["history"]["if"]
+    assert "inputs.setup != 'true'" in steps["run_testo"]["if"]
+    setup = steps["Set up QASight in this repository"]
+    assert setup["if"] == "inputs.setup == 'true'"
+    assert setup["env"]["GH_TOKEN"] == "${{ inputs.github-token }}"

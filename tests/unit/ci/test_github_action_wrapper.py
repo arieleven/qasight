@@ -71,7 +71,8 @@ def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> No
     captured_cmd: list[str] = []
 
     def fake_run(cmd, **_kwargs):  # noqa: ANN001
-        captured_cmd.extend(cmd)
+        if not captured_cmd:
+            captured_cmd.extend(cmd)
         return subprocess.CompletedProcess(
             args=cmd, returncode=1, stdout=json.dumps(plan_finished) + "\n", stderr=""
         )
@@ -260,43 +261,24 @@ def test_notify_sends_only_to_chats_with_a_webhook(tmp_path: Path, monkeypatch) 
     ]
 
 
-def test_flaky_issues_skip_tests_that_already_have_an_open_issue(
-    tmp_path: Path,
-    monkeypatch,  # noqa: ANN001
-) -> None:
+def test_flaky_issues_input_turns_on_the_runs_own_issue_sync(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    """One issue opener: the run's TESTO_ISSUES hook (qasight.services.flaky_issues)."""
     module = _load_wrapper_module()
-    flaky = {
-        "flaky": [
-            {
-                "name": "test_a",
-                "runs": 3,
-                "passed": 2,
-                "failed": 1,
-                "flips": 2,
-                "history": ["passed", "failed", "passed"],
-            },
-            {"name": "test_b", "runs": 3, "passed": 2, "failed": 1, "flips": 2, "history": []},
-        ]
-    }
-    seen = _fake_testo(module, monkeypatch, stdout=json.dumps(flaky))
-    calls: list[tuple[str, str, object]] = []
+    envs: list[dict[str, str]] = []
+    calls: list[list[str]] = []
+    inner = _fake_run(calls, plan="smoke")
 
-    def fake_github(method, url, token, body=None):  # noqa: ANN001
-        calls.append((method, url, body))
-        return [{"title": "Flaky test: test_a (smoke)"}] if method == "GET" else {}
+    def fake_run(cmd, **kwargs):  # noqa: ANN001
+        envs.append(dict(kwargs.get("env") or {}))
+        return inner(cmd, **kwargs)
 
-    monkeypatch.setattr(module, "_github", fake_github)
-    module.open_flaky_issues(cycle="smoke", token="t", env=_github_env(tmp_path))
-
-    assert seen[0] == ["qasight", "flaky", "--cycle", "smoke", "--new", "--json"]
-    posts = [c for c in calls if c[0] == "POST"]
-    assert len(posts) == 1
-    _, url, body = posts[0]
-    assert url == "https://api.example/repos/o/r/issues"
-    assert isinstance(body, dict)
-    assert body["title"] == "Flaky test: test_b (smoke)"
-    assert body["labels"] == ["flaky-test"]
-    assert "qasight flaky --cycle smoke" in body["body"]
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.delenv("TESTO_ISSUES", raising=False)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    module.main(["--results", "junit.xml", "--flaky-issues", "true"])
+    assert envs[0].get("TESTO_ISSUES") == "github"
+    assert not any(c[1] == "flaky" for c in calls)
 
 
 def test_error_event_without_exit_code_is_the_summary() -> None:
@@ -360,13 +342,33 @@ def test_cycle_all_publishes_every_finished_cycle(tmp_path: Path, monkeypatch) -
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     monkeypatch.setenv("TESTO_SLACK_WEBHOOK_URL", "https://hooks.example/x")
     module.main(["--cycle", "all", "--annotations", "true"])
-    markdown = [c for c in calls if c[1:3] == ["report", "markdown"]]
-    assert [c[c.index("--cycle") + 1] for c in markdown] == ["api", "unit"]
-    alerts = [c for c in calls if c[1] == "notify"]
-    assert [c[c.index("--cycle") + 1] for c in alerts] == ["api", "unit"]
-    annotations = [c for c in calls if c[1:3] == ["report", "annotations"]]
-    assert len(annotations) == 2
-    assert (tmp_path / "summary.md").read_text(encoding="utf-8").count("hi") == 2
+    published = [c for c in calls if c[1:3] == ["ci", "publish"]]
+    assert [c[c.index("--cycle") + 1] for c in published] == ["api", "unit"]
+    assert all("--annotations" in c and "--notify-when" in c for c in published)
+
+
+def test_an_older_pinned_qasight_publishes_step_by_step(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+    run_out = '{"event":"plan_finished","plan":"api","exit_code":0}'
+
+    def fake_run(cmd, **_kwargs):  # noqa: ANN001
+        calls.append(list(cmd))
+        if cmd[1:3] == ["ci", "publish"]:
+            return subprocess.CompletedProcess(cmd, 2, "", "Error: No such command 'ci'.")
+        out = run_out if cmd[:2] == ["qasight", "run"] else "<!-- m -->\nhi\n"
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=out, stderr="")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "out.txt"))
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary.md"))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setenv("TESTO_SLACK_WEBHOOK_URL", "https://hooks.example/x")
+    module.main(["--cycle", "api", "--annotations", "true"])
+    assert any(c[1:3] == ["report", "markdown"] for c in calls)
+    assert any(c[1:3] == ["report", "annotations"] for c in calls)
+    assert any(c[1] == "notify" for c in calls)
+    assert (tmp_path / "summary.md").read_text(encoding="utf-8").count("hi") == 1
 
 
 def test_finished_cycles_ignores_other_lines() -> None:
@@ -424,9 +426,6 @@ def test_without_a_config_it_records_results_and_comments(tmp_path: Path, monkey
     calls: list[list[str]] = []
     posted: list[str] = []
     monkeypatch.setattr(module.subprocess, "run", _fake_run(calls))
-    monkeypatch.setattr(
-        module, "upsert_pr_comment", lambda **kw: posted.append(kw["markdown"]) or "created"
-    )
     for key, value in _github_env(tmp_path).items():
         monkeypatch.setenv(key, value)
     monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
@@ -437,8 +436,10 @@ def test_without_a_config_it_records_results_and_comments(tmp_path: Path, monkey
 
     assert code == 0
     assert calls[0] == ["qasight", "ingest", "--ci"]  # results found by qasight ingest itself
-    assert posted, "comment-on-pr defaults to on without a config"
-    assert any(c[:3] == ["qasight", "report", "markdown"] and "my-repo" in c for c in calls)
+    publish = next(c for c in calls if c[1:3] == ["ci", "publish"])
+    assert "--comment" in publish, "comment-on-pr defaults to on without a config"
+    assert publish[publish.index("--cycle") + 1] == "my-repo"
+    assert not posted
 
 
 def test_results_input_records_those_files_even_with_a_config(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001

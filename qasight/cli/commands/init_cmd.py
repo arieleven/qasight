@@ -416,7 +416,7 @@ def _server_secret(console: Console, *, repo: Path, ci_kind: str, server: str) -
 
 def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle: str) -> bool:
     """``--pr``: branch, commit, push, pull request. True when the pull request is open."""
-    from qasight.services.setup_pr import open_setup_pr
+    from qasight.services.setup_pr import compare_url, open_setup_pr
 
     if not files:
         console.print("\nNothing new was written, so there is no pull request to open.")
@@ -431,8 +431,14 @@ def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle
         )
         return True
     console.print(f"[warn]Couldn't finish the pull request: {result.error}[/]")
+    pushed = bool(result.todo) and result.todo[0].startswith("gh pr create")
+    link = compare_url(repo, base=base, branch=result.branch) if pushed else None
+    if link:
+        # The branch is pushed; only the pull request is missing (no gh, or a token that
+        # can't create one, like Actions' default token in many repositories).
+        console.print(f"The branch is pushed. Open the pull request here: {link}")
     if result.todo:
-        console.print("Left to do:")
+        console.print("Or, with the GitHub CLI:" if link else "Left to do:")
         for line in result.todo:
             console.print(f"  {line}", markup=False, highlight=False)
     return False
