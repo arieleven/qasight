@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -348,6 +349,8 @@ def test_init_per_package_writes_a_workflow_that_runs_all_with_full_history(
     assert "fetch-depth: 0" in result.output
     assert 'cycle: "all"' in result.output
 
-    alone = CliRunner().invoke(app, ["init", "--dir", str(tmp_path), "--per-package"])
+    alone = CliRunner().invoke(
+        app, ["init", "--dir", str(tmp_path), "--per-package"], env={"COLUMNS": "200"}
+    )
     assert alone.exit_code == 2
-    assert "needs --scan" in alone.output
+    assert "needs --scan" in re.sub(r"\x1b\[[0-9;]*m", "", alone.output)
