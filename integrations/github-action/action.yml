@@ -1,3 +1,5 @@
+# Generated from the root action.yml by scripts/sync_action_copy.py; edit that file.
+# This path (.../integrations/github-action@v1) is kept working for older workflows.
 name: QASight Test History
 description: Run your tests or read JUnit XML, keep their history, and show what broke, what's flaky and what got slower.
 branding:
