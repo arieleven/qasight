@@ -33,7 +33,7 @@ class ServeError(RuntimeError):
 
 def _answers(url: str) -> bool:
     try:
-        with urllib.request.urlopen(url, timeout=5):  # noqa: S310 — the config's own http(s) URL
+        with urllib.request.urlopen(url, timeout=5):  # noqa: S310  # nosec B310 - config http(s) URL
             return True
     except urllib.error.HTTPError as exc:
         return exc.code < 500  # a 404 on "/" still means the server is up
@@ -80,7 +80,7 @@ def serving(
     """Run *serve*'s command until the block ends; raise :class:`ServeError` if it never answers."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("wb") as log:
-        proc = subprocess.Popen(  # noqa: S602 — the config author's own command
+        proc = subprocess.Popen(  # noqa: S602  # nosec B602 - the config author's command
             serve.command,
             shell=True,
             cwd=cwd,
