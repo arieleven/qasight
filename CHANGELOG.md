@@ -34,6 +34,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The web UI sends a full Content Security Policy (everything from its own origin, no plugins, no foreign forms). The Plus Jakarta Sans font is bundled with the app instead of loaded from Google Fonts
 
 ### Fixed
+- A resource lease with a TTL under 3 seconds is now heartbeated three times per TTL instead of once a second, so a busy machine no longer loses it
 - The weekly digest and the run page's failing tests judge flakiness with the Flaky page's rule (per branch, commit and environment); the digest listed a pull request that broke and fixed a test as newly flaky.
 - API: a `config_path` or `artifacts_root` that is not a usable path (a NUL byte, an unknown `~user`) answers 400 instead of 500. Found by the first full run of the release gate.
 - The API answers a dashboard `limit` / `recent_limit` too large for the database, and a request body it cannot parse, with a 422 instead of a 500 (found by Schemathesis)
