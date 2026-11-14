@@ -138,7 +138,7 @@ dev = [
     "build>=1.2.0",
     # One ruff for CI and the pre-commit hook (tests/contract/ci/test_ruff_pin.py
     # checks .pre-commit-config.yaml matches); bump both together.
-    "ruff==0.17.3",
+    "ruff==0.17.4",
     "mypy>=2.1.0",
     "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
