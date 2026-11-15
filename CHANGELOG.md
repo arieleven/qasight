@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- CI: `no-bot-authors` check fails a pull request whose commits are authored by, or co-authored by, Claude, Cursor or Dependabot, so they stay off the Contributors list
 - Code quality: CodeQL as a scorecard tool (Python, or JavaScript/TypeScript), opt-in
 
 ### Fixed
