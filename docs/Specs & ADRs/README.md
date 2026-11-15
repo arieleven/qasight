@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-13
+updated: 2026-11-15
 ---
 
 # Specs & ADRs
@@ -81,5 +81,6 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Release gate: fast third-party checks on every pull request, slow ones before every release, PyPI publish blocked without a pass | [Release Gate - 2026-11-12](Release%20Gate%20-%202026-11-12.md) |
 | Automating hand steps and unifying duplicated processes: one flaky rule, release and environment from CI, one after-run step for every CI | [Automation and Unification - 2026-11-12](Automation%20and%20Unification%20-%202026-11-12.md) |
 | Published standards QASight meets: OpenSSF Best Practices, SLSA and SBOMs, OWASP ASVS level 1, WCAG 2.1 AA, ISO/IEC 25010 | [Standards Compliance - 2026-11-12](Standards%20Compliance%20-%202026-11-12.md) |
+| Removing Claude, Cursor and Dependabot from the Contributors list: the two history rewrites, moved tags, and the CI check that keeps them off | [Contributors Cleanup - 2026-11-15](Contributors%20Cleanup%20-%202026-11-15.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

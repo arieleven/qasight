@@ -10,6 +10,11 @@ fi
 
 cd "$CLAUDE_PROJECT_DIR"
 
+# Commit as the maintainer, never as Claude: a Claude author or co-author puts
+# Claude in GitHub's Contributors list (see CLAUDE.md, "Rules").
+git config user.name "Ariel Even"
+git config user.email "228741870+taltal-beep@users.noreply.github.com"
+
 if [ ! -x .venv/bin/python ]; then
   python3 -m venv .venv
 fi

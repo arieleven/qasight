@@ -26,6 +26,7 @@ Before planning, debugging, or implementing anything in this repo, read [docs/In
 - **Behave features must be explicitly targeted** (`behave features/smoke.feature`), never rely on cwd auto-discovery. Applies to CLI wrappers, CI, Dockerfiles, adapters.
 - If a change alters CLI args, exit codes, or `qasight.yaml` parsing, update the matching `docs/` note in the same change.
 - The vault's own rules (frontmatter, links, ingest per pull request, log) are in [docs/CLAUDE.md](docs/CLAUDE.md). Run `python scripts/docs_vault.py lint` after editing notes.
+- **No bot authors (STRICT).** Commit as the maintainer (`Ariel Even`), never as `Claude`/`Cursor`, and never add `Co-Authored-By: Claude`, `Cursor` or `dependabot` trailers: they put those accounts in GitHub's Contributors list. Dependabot PRs are not merged as they are; land the update as your own commit. CI (`commitlint.yml`, `no-bot-authors`) enforces this. See [Contributors Cleanup](docs/Specs%20&%20ADRs/Contributors%20Cleanup%20-%202026-11-15.md).
 - Code review runs as a local pre-push hook (`.claude/settings.json`), not in CI.
 
 ## Commands

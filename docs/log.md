@@ -272,3 +272,7 @@ New ADR [Automation and Unification - 2026-11-12](Specs%20&%20ADRs/Automation%20
 ## 2026-11-12: added Standards Compliance
 
 New ADR [Standards Compliance - 2026-11-12](Specs%20&%20ADRs/Standards%20Compliance%20-%202026-11-12.md): where QASight stands against OpenSSF Best Practices, SLSA, OWASP ASVS, WCAG 2.1 AA and ISO/IEC 25010. Linked from the Specs README and the docs site menu.
+
+## 2026-11-15: added Contributors Cleanup
+
+New ADR [Contributors Cleanup - 2026-11-15](Specs%20&%20ADRs/Contributors%20Cleanup%20-%202026-11-15.md): why `main` was rewritten to take Claude, Cursor and Dependabot off the Contributors list, and the CI check that keeps them off. Linked from the Specs README and the docs site menu.
