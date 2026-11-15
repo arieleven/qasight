@@ -169,6 +169,7 @@ def try_comment(
     from qasight.services.project_setup import (
         cycle_name_for,
         find_result_files,
+        latest_result_set,
         result_patterns,
     )
 
@@ -197,6 +198,16 @@ def try_comment(
                     err=True,
                 )
                 raise typer.Exit(int(EngineExitCode.INVALID_INPUT))
+            found, older = latest_result_set(found)
+            if older:
+                names = ", ".join(o.name for o in older[:5]) + (
+                    f" and {len(older) - 5} more" if len(older) > 5 else ""
+                )
+                typer.echo(
+                    f"Left out {len(older)} older result file(s) of the same tests: {names}. "
+                    "Pass the files to choose them yourself.",
+                    err=True,
+                )
             patterns = [str(results_root / p) for p in result_patterns(found, repo=results_root)]
         typer.echo("Previewing: " + ", ".join(Path(p).name for p in patterns), err=True)
 

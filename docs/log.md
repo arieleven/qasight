@@ -276,3 +276,7 @@ New ADR [Standards Compliance - 2026-11-12](Specs%20&%20ADRs/Standards%20Complia
 ## 2026-11-15: added Closed Network Install
 
 New guide [Closed Network Install](Processes%20&%20Guides/Closed%20Network%20Install.md) and ADR [Closed Network Install - 2026-11-15](Specs%20&%20ADRs/Closed%20Network%20Install%20-%202026-11-15.md): installing with no internet, a self-hosted GitLab and an internal AI model. Linked from Index, the Specs README, the Agent Context Guide and the docs site menu.
+
+## 2026-11-15: added CLI-Only Bug Hunt
+
+New note [CLI-Only Bug Hunt - 2026-11-15](Specs%20&%20ADRs/CLI-Only%20Bug%20Hunt%20-%202026-11-15.md): bugs a UI review can't see, eight fixed, and a CLI end-to-end CI job. Linked from the Specs README and the docs site menu.

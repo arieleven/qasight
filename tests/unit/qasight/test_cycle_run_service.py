@@ -123,7 +123,11 @@ def test_archives_report_and_reports_id_to_listener(
     calls: list[tuple[str, int | None]] = []
 
     def fake_archive(
-        *, artifacts_root: Path, plan_name: str, exit_code_override: int | None = None
+        *,
+        artifacts_root: Path,
+        plan_name: str,
+        exit_code_override: int | None = None,
+        run_id: str | None = None,
     ) -> UUID:
         calls.append((plan_name, exit_code_override))
         return report_id
@@ -132,10 +136,35 @@ def test_archives_report_and_reports_id_to_listener(
     cfg, plan = _load(write_minimal_config(tmp_path), "smoke")
     listener = _RecordingListener()
 
-    CycleRunService(listener=listener).run(cfg=cfg, plan=plan, renderer=NoopRenderer())
+    outcome = CycleRunService(listener=listener).run(cfg=cfg, plan=plan, renderer=NoopRenderer())
 
     assert calls == [("smoke", 0)]
-    assert listener.events == [("archived", report_id)]
+    # The run's own id (what the UI, API and MCP know), not the archive's, when there is one.
+    expected = UUID(outcome.run_id) if outcome.run_id else report_id
+    assert listener.events == [("archived", expected)]
+
+
+def test_reports_the_archive_id_when_the_run_has_no_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report_id = uuid4()
+    monkeypatch.setattr(report_archive, "try_persist_cycle_report", lambda **_kwargs: report_id)
+    listener = _RecordingListener()
+    service = CycleRunService(listener=listener)
+
+    service._archive_cycle_report(
+        artifacts_root=tmp_path, plan_name="smoke", exit_code=0, background=False, run_id=None
+    )
+    run_id = uuid4()
+    service._archive_cycle_report(
+        artifacts_root=tmp_path,
+        plan_name="smoke",
+        exit_code=0,
+        background=False,
+        run_id=str(run_id),
+    )
+
+    assert listener.events == [("archived", report_id), ("archived", run_id)]
 
 
 def test_no_persist_skips_archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

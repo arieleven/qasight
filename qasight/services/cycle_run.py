@@ -222,6 +222,7 @@ class CycleRunService:
                     plan_name=effective_plan.name,
                     exit_code=exit_code,
                     background=opts.async_report_db,
+                    run_id=run_id,
                 )
 
         if opts.persist and run_id:
@@ -260,7 +261,13 @@ class CycleRunService:
             logger.warning(message)
 
     def _archive_cycle_report(
-        self, *, artifacts_root: Path, plan_name: str, exit_code: int, background: bool
+        self,
+        *,
+        artifacts_root: Path,
+        plan_name: str,
+        exit_code: int,
+        background: bool,
+        run_id: str | None = None,
     ) -> None:
         from qasight.services.report_archive import try_persist_cycle_report
 
@@ -269,13 +276,18 @@ class CycleRunService:
                 artifacts_root=artifacts_root,
                 plan_name=plan_name,
                 exit_code_override=exit_code,
+                run_id=run_id,
             )
 
         if background:
             threading.Thread(target=_job, daemon=True, name="testo-report-archive").start()
             self._listener.report_archived(None, background=True)
             return
-        self._listener.report_archived(_job(), background=False)
+        archive_id = _job()
+        # The run's own id is the one the UI, the API, MCP and `qasight ai summary --run-id`
+        # know; the archive's id differs from it, so show the run id when there is one.
+        shown = _as_uuid(run_id) if archive_id is not None else None
+        self._listener.report_archived(shown or archive_id, background=False)
 
 
 ADHOC_PLAN_NAME = "adhoc"
@@ -501,3 +513,10 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
                 "could not snapshot native report of stage %s", stage.name, exc_info=True
             )
             continue
+
+
+def _as_uuid(value: str | None) -> UUID | None:
+    try:
+        return UUID(value) if value else None
+    except ValueError:
+        return None

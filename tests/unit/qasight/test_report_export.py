@@ -307,3 +307,16 @@ def test_notify_digest_by_email(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(report_email.RECIPIENTS_ENV, raising=False)
     nobody = CliRunner().invoke(app, ["notify", "--digest", "week", "--to", "email"])
     assert nobody.exit_code == 2 and "no recipients" in nobody.output
+
+
+def test_export_cli_takes_the_format_from_the_out_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(manager_report, "build_report", lambda **kw: _report())
+    out = tmp_path / "report.JSON"
+    result = CliRunner().invoke(app, ["export", "--out", str(out)])
+    assert result.exit_code == 0, result.output
+    assert json.loads(out.read_text())["title"] == "Weekly test report"
+
+    neither = CliRunner().invoke(app, ["export"])
+    assert neither.exit_code == 2 and "--out file" in neither.output

@@ -122,7 +122,7 @@ qasight ingest --from-github --runs 50 --workflow ci.yml     # history from past
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `REPORTS...` | found | Files, folders (their files) or quoted globs, relative to `--repo` (absolute paths must be inside it). Each file is recognised by its content; see the table below. None given: every result file under `--repo` that git doesn't track (fixtures are tracked) and isn't in a dependency folder (`node_modules`, `.venv`, ...); exit `2` when there is none |
+| `REPORTS...` | found | Files, folders (their files) or quoted globs, relative to `--repo` (absolute paths must be inside it). Each file is recognised by its content; see the table below. None given: every result file under `--repo` that git doesn't track (fixtures are tracked) and isn't in a dependency folder (`node_modules`, `.venv`, ...), leaving out a JUnit file whose tests a newer file has (an earlier run's copy; newest by time, then by the number in the name); exit `2` when there is none |
 | `--cycle` | folder name | Cycle name the run is recorded under: letters, digits, `.`, `_`, `-`. Reuse it so runs build a history. Default: the `--repo` folder's name, as `qasight init` and `pytest --qasight` use |
 | `--stage` | `junit` | Stage name the tests are grouped under |
 | `--tier` | `unit` | Test-pyramid tier: `unit`, `integration`, `e2e` |
@@ -280,7 +280,7 @@ ok — version=1 cycles=6 reporters=4 defaults_target=.
 
 ## `qasight diff` / `qasight summary`
 
-Compare two archived report runs by UUID (from `qasight report list`).
+Compare two recorded runs by id: from `qasight report list`, the UI, MCP, or the "Recorded run" line `qasight run` and `qasight ingest` print.
 
 ```bash
 qasight diff <BASELINE_ID> <CURRENT_ID>
@@ -291,7 +291,7 @@ Rich terminal diff of metrics and (for full diff) extracted Allure deltas. Reads
 
 Prefer **`qasight report compare`** for Rich diff plus Allure visual comparison pipeline.
 
-Note: this operates on `ReportArchive` UUIDs (`qasight report list`), a separate id space from run-history `run_id`s — see [Architecture Overview § Persistence](../Architecture/Architecture%20Overview.md#persistence). The React Compare page (`GET /api/v1/analytics/delta` + `/analytics/delta/cases`) reaches equivalent per-stage and per-test detail by `run_id` instead, per [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md).
+Note: a run's report archive (`qasight report list`) takes the run's own id, so one id names a run in the CLI, the UI, the API and MCP. Archives recorded by 1.7.x and earlier have ids of their own; given a run id, `qasight diff` finds such a run's archive by its cycle and time. See [Architecture Overview § Persistence](../Architecture/Architecture%20Overview.md#persistence). The React Compare page (`GET /api/v1/analytics/delta` + `/analytics/delta/cases`) reaches equivalent per-stage and per-test detail by `run_id` instead, per [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md).
 
 ---
 
@@ -450,7 +450,7 @@ qasight try --run                                        # run the tests first, 
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `REPORTS...` | found | Result files, folders or globs; none = every result file in `--repo` that git doesn't track, as [`qasight ingest`](#qasight-ingest) finds them |
+| `REPORTS...` | found | Result files, folders or globs; none = the result files in `--repo` that git doesn't track, as [`qasight ingest`](#qasight-ingest) finds them, leaving out older JUnit files of the same tests (`run-1.xml` ... `run-7.xml` next to `run-8.xml`) |
 | `--repo` | `.` | The project |
 | `--cycle` | folder name | The cycle to compare with |
 | `--from-github` | off | Download the artifacts of the latest finished workflow run with the [GitHub CLI](https://cli.github.com) (`gh run download`) and preview the result files in them. The workflow must upload them (`actions/upload-artifact`) |
@@ -533,11 +533,12 @@ qasight export pdf                                   # weekly-test-report-2026-1
 qasight export pptx --period month --brand "Acme QA" # slides with editable charts
 qasight export xlsx --period quarter --cycle api --cycle web -o q4.xlsx
 qasight export json -o -                             # the numbers on stdout
+qasight export -o report.pdf                         # the format from the file's extension
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `FORMAT` | required | `pdf` (A4), `png` (the whole report as one image), `html` (one file that opens offline), `pptx` (6 slides: title, headline numbers, trend charts, cycles, what needs attention, fixed and what to fix first; native charts and tables), `xlsx` (Summary, Trend with a chart, Cycles, Tests and Findings sheets), `csv` (the cycles table), `json` (the whole report) |
+| `FORMAT` | from `--out` | `pdf` (A4), `png` (the whole report as one image), `html` (one file that opens offline), `pptx` (6 slides: title, headline numbers, trend charts, cycles, what needs attention, fixed and what to fix first; native charts and tables), `xlsx` (Summary, Trend with a chart, Cycles, Tests and Findings sheets), `csv` (the cycles table), `json` (the whole report) |
 | `--period` | `week` | `day`, `week`, `month` (30 days) or `quarter` (90 days), each compared with the one before |
 | `--cycle` | every cycle | Only this cycle; repeat for several |
 | `--title` | "Weekly test report" … | Report title |
@@ -692,7 +693,7 @@ Exit `0`, or `2` for a bad `--format`. With no run of `--cycle`, the grey badge 
 
 ## `qasight doctor`
 
-Health check: config load, framework CLIs on PATH, Node.js + Allure Report 3 CLI, optional Docker warnings, DB probe if `DATABASE_URL` or config URL is set.
+Health check: config load, framework CLIs on PATH, Node.js + Allure Report 3 CLI, optional Docker warnings, DB probe if `DATABASE_URL` or config URL is set (with or without a config).
 
 ```bash
 qasight doctor
@@ -705,7 +706,7 @@ A `Disk` row shows the free space where the history is kept (`WARN` under `TESTO
 
 The `qasight` row says when PyPI has a newer release (`WARN`, with the `pip install -U` line; never a failure). The check asks `https://pypi.org/pypi/qasight/json` at most once a day (the answer is cached in `~/.cache/qasight/update-check.json`), sends nothing about the project, and is off in CI (`CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, ... set) and with `TESTO_NO_UPDATE_CHECK=1`. The web UI's sidebar shows the same (`GET /api/v1/version`).
 
-Exits **2** on hard failures (config or missing required executables) — see [Troubleshooting and Error Codes § Commands that use exit codes](Troubleshooting%20and%20Error%20Codes.md#commands-that-use-exit-codes).
+No `qasight.yaml` is `INFO`, not a failure: `qasight ingest`, `qasight ui` and `qasight run -- <command>` need none. Exits **2** on hard failures (a config named with `-c` that is missing, a config that doesn't load, or missing required executables) — see [Troubleshooting and Error Codes § Commands that use exit codes](Troubleshooting%20and%20Error%20Codes.md#commands-that-use-exit-codes).
 
 ---
 

@@ -260,3 +260,30 @@ def test_init_ci_auto_follows_the_ci_already_in_use(project: Path) -> None:
     assert result.exit_code == 0, result.output
     assert (project / ".circleci/qasight.yml").is_file()
     assert not (project / ".github").exists()
+
+
+def _junit(path: Path, *names: str) -> Path:
+    cases = "".join(f'<testcase classname="t" name="{n}"/>' for n in names)
+    path.write_text(f'<testsuite tests="{len(names)}">{cases}</testsuite>', encoding="utf-8")
+    return path
+
+
+def test_latest_result_set_leaves_out_older_runs_of_the_same_tests(tmp_path: Path) -> None:
+    """A folder with run-1.xml ... run-10.xml is ten runs, not one run of ten times the tests."""
+    import os
+
+    from qasight.services.project_setup import latest_result_set
+
+    runs = [_junit(tmp_path / f"run-{i}.xml", "a", "b") for i in range(1, 11)]
+    for path in runs:  # written in the same second, as `qasight demo` does
+        os.utime(path, (1_000, 1_000))
+    shard = _junit(tmp_path / "shard-2.xml", "c")  # other tests: part of the same run
+    os.utime(shard, (900, 900))
+    other = tmp_path / "jest.json"
+    other.write_text("{}", encoding="utf-8")
+
+    kept, older = latest_result_set([*runs, shard, other])
+
+    assert tmp_path / "run-10.xml" in kept  # the number in the name breaks the tie
+    assert shard in kept and other in kept
+    assert sorted(p.name for p in older) == sorted(f"run-{i}.xml" for i in range(1, 10))

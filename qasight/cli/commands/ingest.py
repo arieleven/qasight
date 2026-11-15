@@ -158,6 +158,7 @@ def ingest(
     from qasight.services.project_setup import (
         cycle_name_for,
         find_result_files,
+        latest_result_set,
         result_patterns,
     )
 
@@ -202,9 +203,18 @@ def ingest(
             )
             console.print(f"error: {message}" if ci else f"[fail]{message}[/]")
             raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+        found, older = latest_result_set(found)
         reports = result_patterns(found, repo=repo_dir)
         if not ci:
             console.print(f"Found {len(reports)} result file(s): {', '.join(reports)}")
+        if older and not ci:
+            skipped = ", ".join(str(o.relative_to(repo_dir)) for o in older[:5])
+            more = f" and {len(older) - 5} more" if len(older) > 5 else ""
+            console.print(
+                f"Left out {len(older)} older result file(s) of the same tests: {skipped}{more}. "
+                "Pass the files to choose them yourself.",
+                markup=False,
+            )
     exit_code = execute_ingest_command(
         console=console,
         reports=reports,

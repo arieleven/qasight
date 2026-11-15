@@ -141,8 +141,12 @@ def try_persist_cycle_report(
     artifacts_root: Path,
     plan_name: str,
     exit_code_override: int | None = None,
+    run_id: str | None = None,
 ) -> uuid.UUID | None:
-    """Best-effort insert of a zipped cycle directory into ``ReportArchive``."""
+    """Best-effort insert of a zipped cycle directory into ``ReportArchive``.
+
+    With ``run_id`` the archive takes the run's id, so one id names the run everywhere.
+    """
     from qasight.repository.db import get_report_archive_repository
 
     log = logging.getLogger(__name__)
@@ -159,10 +163,18 @@ def try_persist_cycle_report(
             exit_code=ec,
             summary_json=summary,
             artifact_bytes=payload,
+            report_id=_uuid_or_none(run_id),
             **metrics,
         )
         return row.id
     except Exception:
         # Broad on purpose: the caller turns None into exit 3 under --ci (or ignores it otherwise).
         log.exception("report archive persistence failed for cycle %s", plan_name)
+        return None
+
+
+def _uuid_or_none(value: str | None) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(value) if value else None
+    except ValueError:
         return None

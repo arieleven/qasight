@@ -299,7 +299,10 @@ def run_tool(
     )
     if not ctx.out.is_file() or ctx.out.stat().st_size == 0:
         raise ReportError(_failure(tool, proc.returncode, proc.stderr or proc.stdout or ""))
-    return tool.parse(ctx.out)
+    from qasight.services.scorecard.paths import scan_root
+
+    with scan_root(ctx.repo):
+        return tool.parse(ctx.out)
 
 
 def _run_step(argv: list[str], cwd: Path, timeout_s: int) -> None:

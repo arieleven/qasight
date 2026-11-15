@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -136,6 +138,35 @@ def lint_exclude_regex() -> str:
 
 # Files counted when the scan walks a big repository (the Linux kernel has ~80,000).
 WALK_LIMIT = 200_000
+
+
+# The repository a scan is reading, while its tools' reports are parsed: some tools
+# (Ruff) report absolute paths, and the folders above the repository say nothing about
+# its files. A checkout under /build/ or ~/test/ isn't generated code or a test.
+_SCAN_ROOT: ContextVar[tuple[str, ...]] = ContextVar("scorecard_scan_root", default=())
+
+
+@contextmanager
+def scan_root(repo: Path) -> Iterator[None]:
+    """Read report paths relative to ``repo`` inside this block."""
+    spellings = {str(repo.expanduser()), str(repo.expanduser().resolve())}
+    roots = tuple(
+        sorted({r.replace("\\", "/").rstrip("/") for r in spellings}, key=len, reverse=True)
+    )
+    token = _SCAN_ROOT.set(roots)
+    try:
+        yield
+    finally:
+        _SCAN_ROOT.reset(token)
+
+
+def relative_to_scan_root(location: str) -> str:
+    """``location`` without the scanned repository's absolute path in front, if it has it."""
+    clean = location.removeprefix("file://").replace("\\", "/")
+    for root in _SCAN_ROOT.get():
+        if root and clean.startswith(root + "/"):
+            return clean[len(root) + 1 :]
+    return location
 
 
 def classify(path: str) -> PathClass:

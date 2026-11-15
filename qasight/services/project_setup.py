@@ -569,6 +569,49 @@ def find_result_files(repo: Path, *, include_tracked: bool = False) -> list[Path
     return found
 
 
+def _junit_case_keys(path: Path) -> frozenset[str] | None:
+    """``classname::name`` of every test case in a JUnit XML file, or None for other files."""
+    if path.suffix.lower() != ".xml":
+        return None
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    keys = set()
+    for tag in re.finditer(r"<testcase\b([^>]*)>?", text):
+        attrs = dict(re.findall(r'(\w+)\s*=\s*"([^"]*)"', tag.group(1)))
+        keys.add(f"{attrs.get('classname', '')}::{attrs.get('name', '')}")
+    return frozenset(keys) if keys else None
+
+
+def _natural_key(path: Path) -> list[object]:
+    return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", path.name)]
+
+
+def latest_result_set(files: Iterable[Path]) -> tuple[list[Path], list[Path]]:
+    """``(kept, older)``: drop result files that are an older run of tests a newer file has.
+
+    A folder can keep the files of earlier runs (``run-1.xml`` ... ``run-8.xml``, or a
+    results folder nobody cleans). Ingesting them all as one run counts every test once
+    per file. Newest first (by time, then by the number in the name), a JUnit file whose
+    test cases a kept file already has is an older copy and is left out. Other formats
+    are kept as they are.
+    """
+    ordered = sorted(files, key=lambda p: (p.stat().st_mtime, _natural_key(p)), reverse=True)
+    kept: list[Path] = []
+    older: list[Path] = []
+    seen: set[str] = set()
+    for path in ordered:
+        keys = _junit_case_keys(path)
+        if keys is not None and keys & seen:
+            older.append(path)
+            continue
+        if keys is not None:
+            seen |= keys
+        kept.append(path)
+    return kept, older
+
+
 def result_patterns(files: Iterable[Path], *, repo: Path) -> list[str]:
     """*files* as ``qasight ingest`` arguments relative to *repo*; an Allure folder becomes one entry."""
     repo = repo.expanduser().resolve()
