@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from qasight.services.project_health import grade_for
 from qasight.services.scorecard.megalinter import name_from_id
@@ -30,6 +30,9 @@ from qasight.services.scorecard.store import (
     is_engine_tool,
 )
 from qasight.services.scorecard.tools import CATEGORIES, TOOLS, TOOLS_BY_ID
+
+if TYPE_CHECKING:
+    from packaging.version import Version
 
 
 @dataclass(frozen=True)
@@ -261,7 +264,7 @@ def _versions(
     return sort_versions(out)
 
 
-def _parsed(version: str) -> object | None:
+def _parsed(version: str) -> Version | None:
     from packaging.version import InvalidVersion, Version
 
     try:
