@@ -18,7 +18,7 @@ are kept: per-file coverage is the coverage tool's job.
 from __future__ import annotations
 
 import re
-import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
+import xml.etree.ElementTree as ET  # noqa: S405  # nosec B405 - types only; parsing goes through defusedxml
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path

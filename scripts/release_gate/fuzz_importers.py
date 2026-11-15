@@ -17,7 +17,7 @@ import sys
 import tempfile
 from collections import Counter
 from pathlib import Path
-from xml.sax.saxutils import escape, quoteattr
+from xml.sax.saxutils import escape, quoteattr  # nosec B406 - escaping output only, nothing is parsed
 
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st

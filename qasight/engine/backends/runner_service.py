@@ -33,7 +33,7 @@ import re
 import select
 import socket
 import struct
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import threading
 import uuid
@@ -334,7 +334,7 @@ class Runner:
 
     def _run(self, spec: RunSpec, name: str, out: _Writer, client: socket.socket | None) -> int:
         try:
-            proc = subprocess.Popen(  # noqa: S603 - argv built above from checked input
+            proc = subprocess.Popen(  # noqa: S603 - argv built above from checked input  # nosec B603 - argv list, no shell
                 docker_argv(self.settings, spec, name),
                 env=docker_env(spec),
                 stdin=subprocess.DEVNULL,
@@ -347,7 +347,8 @@ class Runner:
             write_frame(out, FRAME_OUTPUT, message.encode())
             write_frame(out, FRAME_EXIT, b"125")
             return 125
-        assert proc.stdout is not None  # noqa: S101 - we asked for a pipe
+        if proc.stdout is None:
+            raise RuntimeError("internal error: expected proc.stdout is not None")
         fd = proc.stdout.fileno()
         try:
             client_fd = -1 if client is None else client.fileno()
@@ -372,7 +373,7 @@ class Runner:
             proc.stdout.close()
 
     def kill(self, name: str, signal_name: str = "KILL") -> None:
-        subprocess.run(  # noqa: S603
+        subprocess.run(  # noqa: S603  # nosec B603 - argv list, no shell
             [self.settings.docker, "kill", "--signal", signal_name, name],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -382,7 +383,7 @@ class Runner:
     def remove_leftovers(self) -> None:
         """Remove stage containers a crashed earlier service left behind."""
         try:
-            found = subprocess.run(  # noqa: S603
+            found = subprocess.run(  # noqa: S603  # nosec B603 - argv list, no shell
                 [self.settings.docker, "ps", "-aq", "--filter", f"label={RUN_LABEL}"],
                 capture_output=True,
                 text=True,
@@ -391,7 +392,7 @@ class Runner:
         except OSError:
             return
         if found:
-            subprocess.run(  # noqa: S603
+            subprocess.run(  # noqa: S603  # nosec B603 - argv list, no shell
                 [self.settings.docker, "rm", "-f", *found],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

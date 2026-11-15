@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import os
 import platform
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 from pathlib import Path
 
 
 def _git(cmd: list[str], *, cwd: Path) -> str | None:
     try:
-        p = subprocess.run(["git", *cmd], cwd=str(cwd), capture_output=True, text=True, check=False)
+        p = subprocess.run(["git", *cmd], cwd=str(cwd), capture_output=True, text=True, check=False)  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         out = (p.stdout or "").strip()
         return out or None
     except Exception:

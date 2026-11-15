@@ -22,7 +22,7 @@ that died before or between tests is never recorded as passed.
 from __future__ import annotations
 
 import re
-import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
+import xml.etree.ElementTree as ET  # noqa: S405  # nosec B405 - types only; parsing goes through defusedxml
 from pathlib import Path
 from typing import Any
 

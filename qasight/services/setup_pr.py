@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,7 +46,7 @@ class SetupPrResult:
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(  # noqa: S603 — fixed argv, no shell
+    return subprocess.run(  # noqa: S603 — fixed argv, no shell  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         ["git", "-C", str(repo), *args],  # noqa: S607
         check=False,
         capture_output=True,
@@ -125,7 +125,7 @@ def open_setup_pr(
             error="the GitHub CLI (https://cli.github.com) isn't installed, so open the pull "
             "request yourself",
         )
-    created = subprocess.run(  # noqa: S603 — fixed argv, no shell
+    created = subprocess.run(  # noqa: S603 — fixed argv, no shell  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         [  # noqa: S607
             "gh",
             "pr",
@@ -157,7 +157,7 @@ def set_repo_secret(repo: Path, name: str, value: str) -> str | None:
     """``gh secret set NAME`` for *repo*'s GitHub repository, value on stdin. Returns an error."""
     if shutil.which("gh") is None:
         return "the GitHub CLI (https://cli.github.com) isn't installed"
-    proc = subprocess.run(  # noqa: S603 — fixed argv; the value goes on stdin, never argv
+    proc = subprocess.run(  # noqa: S603 — fixed argv; the value goes on stdin, never argv  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         ["gh", "secret", "set", name],  # noqa: S607
         cwd=repo,
         input=value,

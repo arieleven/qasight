@@ -16,7 +16,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
@@ -464,7 +464,7 @@ def run(
                 + " ".join(a if "PROXY" not in a.upper() else a.split("=")[0] + "=…" for a in argv)
                 + "\n\n"
             )
-            proc = subprocess.Popen(
+            proc = subprocess.Popen(  # nosec B603 - argv list, no shell
                 argv,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -472,7 +472,8 @@ def run(
                 text=True,
                 errors="replace",
             )
-            assert proc.stdout is not None
+            if proc.stdout is None:
+                raise RuntimeError("internal error: expected proc.stdout is not None")
             deadline = started + timeout_s
             for line in proc.stdout:
                 fh.write(line)

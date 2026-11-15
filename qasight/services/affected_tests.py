@@ -25,7 +25,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import re
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -137,7 +137,7 @@ def _is_test_file(path: str, patterns: Sequence[str]) -> bool:
 
 def _git(argv: list[str], cwd: Path) -> str:
     try:
-        proc = subprocess.run(  # noqa: S603 — fixed argv
+        proc = subprocess.run(  # noqa: S603 — fixed argv  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             # quotePath=false: non-ASCII paths come out as themselves, not "tests/test_\\303\\251.py".
             ["git", "-c", "core.quotePath=false", *argv],  # noqa: S607 — git from PATH, like config/triggers.py
             cwd=str(cwd),

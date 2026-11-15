@@ -20,12 +20,12 @@ from __future__ import annotations
 
 import os
 import random
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from xml.sax.saxutils import escape, quoteattr
+from xml.sax.saxutils import escape, quoteattr  # nosec B406 - escaping output only, nothing is parsed
 
 import typer
 
@@ -78,7 +78,7 @@ class _Case:
 
 def demo_cases(run: int) -> list[_Case]:
     """The test outcomes of demo run *run* (1-based). Deterministic."""
-    rng = random.Random(run * 7919)
+    rng = random.Random(run * 7919)  # nosec B311 - not for security
     cases: list[_Case] = []
     for suite, name, base in _TESTS:
         seconds = round(base * rng.uniform(0.9, 1.1), 3)
@@ -141,7 +141,7 @@ def _demo_env(root: Path) -> dict[str, str]:
 def _testo(args: list[str], *, root: Path, env: dict[str, str], quiet: bool) -> int:
     cmd = [sys.executable, "-c", "from qasight.cli.app import main; main()", *args]
     out = subprocess.DEVNULL if quiet else None
-    return subprocess.call(cmd, cwd=root, env=env, stdout=out, stderr=out)  # noqa: S603
+    return subprocess.call(cmd, cwd=root, env=env, stdout=out, stderr=out)  # noqa: S603  # nosec B603 - argv list, no shell
 
 
 def demo(

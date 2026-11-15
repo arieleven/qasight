@@ -92,31 +92,33 @@ def folder_bytes(root: Path) -> int | None:
     return total
 
 
-def _count(table: str) -> int | None:
-    from sqlalchemy import text
+def _count(name: str) -> int | None:
+    from sqlalchemy import func, select, table
 
     from qasight.repository.db_config import get_engine
 
     try:
         with get_engine().connect() as conn:
-            return int(conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one())  # noqa: S608
+            query = select(func.count()).select_from(table(name))
+            return int(conn.execute(query).scalar_one())
     except Exception:  # noqa: BLE001 - a missing table or a DB error is "unknown"
         logger.debug("storage: could not count %s", table, exc_info=True)
         return None
 
 
 def _archive_bytes() -> int | None:
-    from sqlalchemy import text
+    from sqlalchemy import column, func, select, table
 
     from qasight.repository.db_config import get_engine
 
     try:
         engine = get_engine()
-        length = "octet_length" if engine.dialect.name == "postgresql" else "length"
+        size = func.octet_length if engine.dialect.name == "postgresql" else func.length
+        query = select(func.coalesce(func.sum(size(column("artifact_bytes"))), 0)).select_from(
+            table("reportarchive")
+        )
         with engine.connect() as conn:
-            value = conn.execute(
-                text(f"SELECT COALESCE(SUM({length}(artifact_bytes)), 0) FROM reportarchive")  # noqa: S608
-            ).scalar_one()
+            value = conn.execute(query).scalar_one()
             return int(value or 0)
     except Exception:  # noqa: BLE001
         logger.debug("storage: could not size report archives", exc_info=True)

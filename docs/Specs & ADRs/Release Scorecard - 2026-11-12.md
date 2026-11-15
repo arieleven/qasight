@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-12
-updated: 2026-11-12
+updated: 2026-11-15
 related: "Scorecard on MegaLinter - 2026-11-12, Command Reference, CI-CD Pipeline Setup, Releases"
 ---
 
@@ -18,13 +18,13 @@ The same should work on any repository, not only the one QASight tests: a git UR
 
 - **One score per tool, per version, per project.** `qasight/services/scorecard/` keeps a registry of 20 tools (`tools.py`), a parser per report format (`parsers.py`: SARIF, Bandit, Ruff, pip-audit, npm audit, gitleaks, Trivy, OpenSSF Scorecard, ZAP, axe, Lighthouse, k6, Locust, JUnit, coverage, mutation). Results live in the run-history database, table `scorecard_result` (revision `0007`), one row per project, version and tool; a newer report replaces it.
 - **Scores are computed, not judged.** (How findings are scored and which tools run changed the same day: see [Scorecard on MegaLinter](Scorecard%20on%20MegaLinter%20-%202026-11-12.md).) Findings tools lose points per kind of finding by severity (critical 25, high 10, medium 4, low 1), repeats on a log scale, on a curve where 100 points halve the score: never a flat 0, so a big repository's versions stay comparable. Ratio tools (Lighthouse, coverage, mutation, Schemathesis, Scorecard, load) use their own share. A category's score is the mean of its switched-on tools; the overall score is the mean of the categories, so ten linters don't outweigh one load test. No AI.
-- **Versions compare by number.** The previous version is the one before by PEP 440 order (`1.10` after `1.9`) when every version parses, else by when it was first scored.
+- **Versions compare by number.** The previous version is the one before by PEP 440 order (`1.10` after `1.9`). Versions that don't parse (`main`, a branch) are newer than every numbered one and go by when each was first scored (changed 2026-11-15, see below).
 - **Tools switch on and off** (table `scorecard_tool`): a switched-off tool is skipped by scans and left out of the score, but still shown.
 - **Scans run tools, not cycles.** `qasight scorecard scan TARGET` (and the UI's "Scan a repository", `POST /api/v1/scorecard/scans`) clones a git URL shallow or uses a folder, detects its languages (python, node, c, GitHub Actions), and runs the switched-on tools that fit and are installed, each with a time limit. App tools (ZAP, Lighthouse, axe, k6, Schemathesis) run only with `--url` / `--openapi`. A scan is not a cycle on purpose: these tools aren't test runners, their exit codes mean "found something", and their results are scores, not test cases. Cycles still go through `CycleRunService` only. QASight never installs a tool; a missing one is listed with its install command.
 - **Bring your own report** for tools whose run is project-specific (coverage, mutation testing, Locust, any SARIF or JUnit file): `qasight scorecard import TOOL FILE`, or `--server` to send it to a team server (`POST /api/v1/scorecard/results`).
 - **The gate is `qasight scorecard show` (or `scan`) with thresholds**: `--min-score`, `--min-tool`, `--no-drop`; exit `1` when it fails. The summary is Markdown (`--format markdown`, the job summary in GitHub Actions, `GET /api/v1/scorecard/markdown`).
 - **UI**: a Scorecard page (`/scorecard`) with the score ring, categories and the change since the previous version, a bar per version, every tool with its switch, and the scan form. A tool shows its own logo only when one exists in Simple Icons (CC0 path data, `frontend/src/features/scorecard/brandMarks.ts`: ZAP, Lighthouse, k6, Trivy, npm, Ruff); the others show no logo rather than a made-up one.
-- **CI**: `release-gate.yml` has a `release_scorecard` job that scores the last release tag and the commit, and fails under `min_score` (default 60) or, with `no_drop`, when a tool got worse. The Pages demo scores QASight's last two releases, `main` and fake-api with the PyPI tools (Bandit, pip-audit, zizmor, Ruff).
+- **CI**: `release-gate.yml` has a `release_scorecard` job that scores the last release tag and the commit, and fails under `min_score` (default 60) or, with `no_drop`, when a tool got worse. The Pages demo scores every QASight release since 1.0.0, `main` and fake-api with the PyPI tools (Bandit, pip-audit, npm audit, zizmor, Ruff).
 
 ## Consequences
 
@@ -58,3 +58,12 @@ ignore:
 ```
 
 Each entry needs a `tool` and a `rule`, a `path` or both. Ratio tools (Lighthouse, coverage, ...) can't be ignored this way.
+
+## QASight at 100, fake-api as the bad example (2026-11-15)
+
+Taltal asked for QASight's own Code quality score (82 on the Pages demo) to reach 100 by fixing what the tools found, for fake-api to show what a low score looks like, and for the Versions strip to go back to the first release.
+
+- **QASight's findings, fixed.** Bandit's 15 `assert`s in shipped code became explicit `RuntimeError`s (asserts vanish under `python -O`); the storage page's two counts are built with SQLAlchemy instead of f-string SQL; the GitHub Action refuses a non-http(s) API URL before `urlopen`; the login page's HTML constant no longer looks like a token. npm audit's six advisories (glob, minimatch under Allure 3) are fixed with `overrides` in the root `package.json`. zizmor: Dependabot waits 7 days before offering a release (`cooldown`), workflow expressions moved from `run:` into `env:`, the npm publish job uses Node 24's own npm instead of installing one.
+- **Accepted, with the reason next to it.** Calls Bandit can only flag, never prove (`import subprocess`, a `subprocess` call with an argv list and no shell, a tool looked up on `PATH`, `random` for jitter or demo data, a status label named `_PASS`), carry `# nosec <id> - reason` on the line, as the code already did. zizmor's notes for the repo testing its own action (`self-repository`), Artifactory having no trusted publishing, and the npm smoke test installing its own tarball are in `.github/zizmor.yml` with a reason each. Nothing went into `scorecard-ignore.yml`.
+- **fake-api is bad on purpose.** `fake_api/admin.py` (hard-coded secrets, SQL and a shell command built from input, md5 passwords, `pickle` on a request body, `verify=False`), two old pins (`requests==2.31.0`, `jinja2==3.1.2`) and a hand-run workflow with unpinned actions and an input pasted into `run:`. It scores about 66 (D) with every finding listed.
+- **Every release on the strip.** `pages-demo.yml` scores each `vX.Y.Z` tag, or the `chore(release): X.Y.Z` commit on `main` where the tag is gone (1.0.0 and 1.1.0). Because the demo's history database is cached, older releases are first scored after `main`; numbered versions now sort by number whatever their scoring time, with names like `main` above them.

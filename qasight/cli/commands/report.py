@@ -199,7 +199,8 @@ def report_native(
             any_failed = False
             for r in html_targets:
                 target = r.open_path
-                assert target is not None  # filtered above
+                if target is None:
+                    raise RuntimeError("internal error: expected target is not None")
                 if open_native_uri(target):
                     console.print(
                         f"[ok]Opened[/] [html] {relpath_for_display(target)} [muted]({r.routine})[/]"

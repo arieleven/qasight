@@ -1,13 +1,17 @@
 # Weekly update PRs, grouped so each ecosystem opens at most one PR a week.
 # Major versions are left out of the groups and arrive as separate PRs.
 # Commit messages follow Conventional Commits (commitlint), and the
-# no-changelog label satisfies ci.yml's changelog_required job.
+# no-changelog label satisfies ci.yml's changelog_required job. A release has
+# to be a week old before an update PR offers it (cooldown), so a hijacked
+# version that gets yanked within days never reaches the repo.
 version: 2
 updates:
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     labels: ["dependencies", "no-changelog"]
@@ -18,6 +22,8 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     labels: ["dependencies", "no-changelog"]
@@ -33,6 +39,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     labels: ["dependencies", "no-changelog"]
@@ -46,6 +54,8 @@ updates:
     directories: ["/", "/integrations/github-action"]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     labels: ["dependencies", "no-changelog"]
@@ -58,6 +68,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     labels: ["dependencies", "no-changelog"]
@@ -75,6 +87,8 @@ updates:
     directories: ["/", "/deploy/server"]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     labels: ["dependencies", "no-changelog"]

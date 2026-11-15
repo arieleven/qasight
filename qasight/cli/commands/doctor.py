@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,7 @@ def _check_node() -> tuple[str, str]:
     if not node:
         return "[warn]WARN[/]", "Node.js not on PATH (required for Allure Report 3)"
     try:
-        proc = subprocess.run(  # noqa: S603
+        proc = subprocess.run(  # noqa: S603  # nosec B603 - argv list, no shell
             [node, "--version"],
             capture_output=True,
             text=True,

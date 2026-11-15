@@ -21,7 +21,7 @@ is what ``robot --test`` takes to rerun a test.
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
+import xml.etree.ElementTree as ET  # noqa: S405  # nosec B405 - types only; parsing goes through defusedxml
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -30,7 +30,7 @@ from defusedxml import ElementTree as SafeET
 
 from qasight.reporting.imported_results import iso_ms, make_result
 
-_STATUS = {"PASS": "passed", "FAIL": "failed", "SKIP": "skipped", "NOT RUN": "skipped"}
+_STATUS = {"PASS": "passed", "FAIL": "failed", "SKIP": "skipped", "NOT RUN": "skipped"}  # nosec B105 - a name or label, not a password
 
 
 def is_robot_root(root: ET.Element) -> bool:

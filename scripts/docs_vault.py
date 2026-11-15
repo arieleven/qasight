@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -173,7 +173,7 @@ def lint(docs_root: Path = DOCS_ROOT) -> list[str]:
 
 def lint_updated_dates(base: str) -> list[str]:
     """Fail when a note changed against `base` but its `updated` date did not."""
-    diff = subprocess.run(
+    diff = subprocess.run(  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         ["git", "diff", "--name-only", "--diff-filter=AM", f"{base}...HEAD", "--", "docs"],
         cwd=REPO_ROOT,
         check=True,
@@ -187,7 +187,7 @@ def lint_updated_dates(base: str) -> list[str]:
         if path.suffix != ".md" or "/." in name or not path.exists():
             continue
         note = Note(path, path.relative_to(DOCS_ROOT).as_posix(), path.read_text("utf-8"))
-        old = subprocess.run(
+        old = subprocess.run(  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             ["git", "show", f"{base}:{name}"], cwd=REPO_ROOT, capture_output=True, text=True
         )
         if old.returncode != 0:

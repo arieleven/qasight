@@ -20,7 +20,7 @@ import contextlib
 import json
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import tempfile
 from pathlib import Path
@@ -54,7 +54,7 @@ def _try_env(root: Path, *, source_db: Path | None) -> dict[str, str]:
 
 def _testo(args: list[str], *, cwd: Path, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
     cmd = [sys.executable, "-c", "from qasight.cli.app import main; main()", *args]
-    return subprocess.run(  # noqa: S603 — our own CLI, fixed argv
+    return subprocess.run(  # noqa: S603 — our own CLI, fixed argv  # nosec B603 - argv list, no shell
         cmd, cwd=cwd, env=env, check=False, capture_output=True, text=True
     )
 
@@ -67,7 +67,7 @@ def _download_github_results(repo: Path, run_id: str | None, dest: Path) -> str:
             param_hint="--from-github",
         )
     if not run_id:
-        proc = subprocess.run(  # noqa: S603
+        proc = subprocess.run(  # noqa: S603  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             ["gh", "run", "list", "--limit", "1", "--status", "completed", "--json", "databaseId"],  # noqa: S607
             cwd=repo,
             check=False,
@@ -81,7 +81,7 @@ def _download_github_results(repo: Path, run_id: str | None, dest: Path) -> str:
                 param_hint="--from-github",
             )
         run_id = str(runs[0]["databaseId"])
-    proc = subprocess.run(  # noqa: S603
+    proc = subprocess.run(  # noqa: S603  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         ["gh", "run", "download", run_id, "--dir", str(dest)],  # noqa: S607
         cwd=repo,
         check=False,

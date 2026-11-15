@@ -15,7 +15,7 @@ import json
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape  # nosec B406 - escaping output only, nothing is parsed
 
 from qasight.reporting.collector import CollectedResults
 

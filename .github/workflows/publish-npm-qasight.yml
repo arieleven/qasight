@@ -29,7 +29,8 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22"
+          # Node 24 ships npm 11, which trusted publishing needs.
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Run it from the packed tarball
@@ -42,6 +43,4 @@ jobs:
           grep -q "^qasight " out.txt
 
       - name: Publish to npm
-        run: |
-          npm install -g npm@11
-          npm publish --provenance --access public
+        run: npm publish --provenance --access public

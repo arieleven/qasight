@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import platform
 import re
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -114,7 +114,7 @@ def detect_git_checkout(repo: Path | None) -> dict[str, str]:
         ("git_commit", ["rev-parse", "HEAD"]),
     ):
         try:
-            out = subprocess.run(
+            out = subprocess.run(  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
                 ["git", "-C", str(repo), *args],
                 capture_output=True,
                 text=True,
@@ -149,7 +149,7 @@ def github_repository_of(repo: Path | None) -> str | None:
     if repo is None:
         return None
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             ["git", "-C", str(repo), "remote", "get-url", "origin"],
             capture_output=True,
             text=True,

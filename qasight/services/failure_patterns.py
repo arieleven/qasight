@@ -31,7 +31,7 @@ from qasight.services import flaky_service
 from qasight.services.failure_signal import CauseLookup, triage_causes
 from qasight.services.run_failures import message_signature
 
-_PASS = "passed"
+_PASS = "passed"  # nosec B105 - a name or label, not a password
 _FAIL = frozenset({"failed", "broken"})
 _NOISE = frozenset({"test_bug", "environment", "flaky"})
 MAX_ITEMS = 10

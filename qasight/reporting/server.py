@@ -18,7 +18,7 @@ import shutil
 import signal
 import socket
 import socketserver
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -62,7 +62,7 @@ def open_generated_report(*, report_dir: Path, host: str = "127.0.0.1", port: in
         raise FileNotFoundError(f"report directory not found: {report_dir}")
     if shutil.which("allure") is None:
         return 127
-    proc = subprocess.Popen(  # noqa: S603 - argv is trusted
+    proc = subprocess.Popen(  # noqa: S603 - argv is trusted  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         [
             "allure",
             "open",

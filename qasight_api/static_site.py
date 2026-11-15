@@ -79,7 +79,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import time
 from collections.abc import Iterator
@@ -122,7 +122,7 @@ def _provenance() -> dict[str, Any]:
 
 def _git(*args: str) -> str | None:
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             ["git", *args], cwd=Path.cwd(), capture_output=True, text=True, timeout=15
         )
     except (OSError, subprocess.SubprocessError):

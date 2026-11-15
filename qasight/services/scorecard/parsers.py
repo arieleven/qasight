@@ -24,7 +24,7 @@ import hashlib
 import json
 import math
 import re
-import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
+import xml.etree.ElementTree as ET  # noqa: S405  # nosec B405 - types only; parsing goes through defusedxml
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -448,7 +448,7 @@ def parse_gitleaks(path: Path) -> ToolResult:
         secret = str(d.get("Secret") or "")
         key = (
             (rule, secret)
-            if secret and secret != "REDACTED"
+            if secret and secret != "REDACTED"  # nosec B105 - a name or label, not a password
             else (rule, f"{file}:{d.get('StartLine', '')}")
         )
         if key in seen:
@@ -725,7 +725,8 @@ def parse_locust(path: Path) -> ToolResult:
         total is not None and "Request Count" in total,
         "expected Locust's stats CSV (--csv prefix, the *_stats.csv file)",
     )
-    assert total is not None
+    if total is None:
+        raise RuntimeError("internal error: expected total is not None")
     p95 = total.get("95%")
     return _load_result(
         requests=float(total.get("Request Count") or 0),

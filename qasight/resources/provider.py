@@ -191,7 +191,8 @@ def _require(pool: ResourcePool, verb: str, listing: Listing) -> tuple[str, str]
     if listing.problem:
         raise ProviderRefused(f"{listing.problem}; not guessing which keys exist.")
     command = getattr(provider, verb)
-    assert command and provider.name_prefix  # parse_pool checks allowed verbs have both
+    if not (command and provider.name_prefix):
+        raise RuntimeError("internal error: expected command and provider.name_prefix")
     return command, provider.name_prefix
 
 

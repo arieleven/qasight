@@ -192,7 +192,8 @@ def overall_score(
     counts: dict[str, dict[str, int]] = {}
     for result in rows:
         category = category_of(result)
-        assert category is not None
+        if category is None:
+            raise RuntimeError("internal error: expected category is not None")
         if lines and _is_findings(result):
             total = counts.setdefault(category, {})
             for sev, n in result.counts.items():
@@ -200,7 +201,8 @@ def overall_score(
         else:
             by_category.setdefault(category, []).append(result.score)
     for category, total in counts.items():
-        assert lines is not None
+        if lines is None:
+            raise RuntimeError("internal error: expected lines is not None")
         by_category.setdefault(category, []).append(findings_score(category, total, lines))
     categories = {key: _half_up(sum(scores) / len(scores)) for key, scores in by_category.items()}
     if not categories:
@@ -269,12 +271,18 @@ def _parsed(version: str) -> object | None:
 
 
 def sort_versions(versions: list[VersionSummary]) -> list[VersionSummary]:
-    """Newest first: by version number when every version is one (1.10 after 1.9), else by when it was first scored."""
-    parsed = [_parsed(v.version) for v in versions]
-    if versions and all(p is not None for p in parsed):
-        pairs = sorted(zip(parsed, versions, strict=True), key=lambda pv: pv[0], reverse=True)  # type: ignore[arg-type,return-value]
-        return [v for _p, v in pairs]
-    return sorted(versions, key=lambda v: v.first_at, reverse=True)
+    """Newest first. Numbered versions go by number (1.10 after 1.9), whenever each was scored.
+
+    Versions that aren't numbers (``main``, a branch) are newer than every
+    numbered one, and among themselves the most recently first scored leads.
+    So scoring old releases after ``main`` (backfilling history) still puts
+    them in release order, below ``main``.
+    """
+    named = [v for v in versions if _parsed(v.version) is None]
+    numbered = [(p, v) for v in versions if (p := _parsed(v.version)) is not None]
+    named.sort(key=lambda v: v.first_at, reverse=True)
+    numbered.sort(key=lambda pv: pv[0], reverse=True)
+    return named + [v for _p, v in numbered]
 
 
 def projects(store: ScorecardStore | None = None) -> list[ProjectSummary]:

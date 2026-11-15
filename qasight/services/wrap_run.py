@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import time
 from collections.abc import Callable
@@ -103,7 +103,7 @@ def _direct(words: list[str]) -> str:
 def prepare(argv: list[str], *, cwd: Path, out_dir: Path) -> Wrapped:
     """*argv* changed so it also writes results into *out_dir* (an absolute folder)."""
     if len(argv) == 1 and re.search(r"[\s;&|<>$`]", argv[0]):
-        return Wrapped("", "your command", ["sh", "-c", argv[0]], shell=True)
+        return Wrapped("", "your command", ["sh", "-c", argv[0]], shell=True)  # nosec B604 - the user's own command line, run as typed
     argv = list(argv)
     i = _runner_word(argv)
     words = argv[i:]
@@ -200,16 +200,17 @@ def run(wrapped: Wrapped, *, cwd: Path, env: dict[str, str]) -> int:
             print(f"qasight: command not found: {wrapped.argv[0]}", file=sys.stderr)
             return 127
     if not wrapped.go_json:
-        return subprocess.run(wrapped.argv, cwd=cwd, env=full_env, check=False).returncode  # noqa: S603
+        return subprocess.run(wrapped.argv, cwd=cwd, env=full_env, check=False).returncode  # noqa: S603  # nosec B603 - argv list, no shell
     target = wrapped.files[0]
     target.parent.mkdir(parents=True, exist_ok=True)
     with (
         target.open("w", encoding="utf-8") as sink,
-        subprocess.Popen(  # noqa: S603
+        subprocess.Popen(  # noqa: S603  # nosec B603 - argv list, no shell
             wrapped.argv, cwd=cwd, env=full_env, stdout=subprocess.PIPE, text=True
         ) as proc,
     ):
-        assert proc.stdout is not None
+        if proc.stdout is None:
+            raise RuntimeError("internal error: expected proc.stdout is not None")
         for line in proc.stdout:
             sink.write(line)
             _echo_go_line(line, sys.stdout.write)

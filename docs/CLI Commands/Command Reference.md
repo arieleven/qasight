@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-13
+updated: 2026-11-15
 ---
 
 # Command Reference
@@ -636,7 +636,7 @@ qasight scorecard tools --off semgrep --on locust
 | `tools [--on a,b] [--off c] [--reset] [--json]` | List the tools: on or off, installed here, what they read. Switching one off makes scans skip it and leaves it out of the score |
 | `--server URL` | On `scan` and `import`: send the results to a [team server](../Processes%20&%20Guides/Team%20Server.md) (default `$TESTO_SERVER_URL`, token `$TESTO_API_TOKEN`) |
 
-When Docker (or Podman) is installed, `scan` runs **MegaLinter** first and each linter it ran becomes a tool (`megalinter:PYTHON_RUFF`); the built-in scanners it covers are skipped, and run instead when it can't. Scores per category follow SonarQube and Codacy: [Scorecard on MegaLinter](../Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md). The scan keeps its **coverage**, how many of the tools that fit the repository ran; under half, the grade is capped at C (`scan`, `show` and the UI say so). `scan`, `import` and `show` print which history database they use. Versions compare by number when every version of the project is one (`1.10.0` after `1.9.0`), else by when each was first scored. Exit `2` for a bad target, tool or file, `1` when no tool produced a result or the gate fails, `3` when a server can't be reached. API: `GET /api/v1/scorecard` (`?project=&version=`), `/scorecard/projects`, `/scorecard/markdown`, `/scorecard/sarif`, `/scorecard/badge.svg` and `/scorecard/badge.json` (`?project=&label=`, a shields.io endpoint), `GET` and `PUT /scorecard/tools/{id}`, `POST /scorecard/results`, `POST /scorecard/scans` and `GET /scorecard/scans/{id}` (writes need the token or a `runner` account).
+When Docker (or Podman) is installed, `scan` runs **MegaLinter** first and each linter it ran becomes a tool (`megalinter:PYTHON_RUFF`); the built-in scanners it covers are skipped, and run instead when it can't. Scores per category follow SonarQube and Codacy: [Scorecard on MegaLinter](../Specs%20&%20ADRs/Scorecard%20on%20MegaLinter%20-%202026-11-12.md). The scan keeps its **coverage**, how many of the tools that fit the repository ran; under half, the grade is capped at C (`scan`, `show` and the UI say so). `scan`, `import` and `show` print which history database they use. Numbered versions compare by number (`1.10.0` after `1.9.0`), whenever each was scored; versions that aren't numbers (`main`, a branch) count as newer than every numbered one and go by when each was first scored, so releases backfilled after `main` still line up in release order. Exit `2` for a bad target, tool or file, `1` when no tool produced a result or the gate fails, `3` when a server can't be reached. API: `GET /api/v1/scorecard` (`?project=&version=`), `/scorecard/projects`, `/scorecard/markdown`, `/scorecard/sarif`, `/scorecard/badge.svg` and `/scorecard/badge.json` (`?project=&label=`, a shields.io endpoint), `GET` and `PUT /scorecard/tools/{id}`, `POST /scorecard/results`, `POST /scorecard/scans` and `GET /scorecard/scans/{id}` (writes need the token or a `runner` account).
 
 ---
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 import contextlib
 import os
 import signal
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import time
 import urllib.error

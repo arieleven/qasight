@@ -13,7 +13,7 @@ import json
 import os
 import re
 import signal
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import threading
 from collections.abc import Mapping, Sequence
@@ -24,7 +24,7 @@ from qasight.engine.backends import RunnerError
 from qasight.engine.backends.runner_service import FRAME_EXIT, FRAME_OUTPUT, read_frame
 
 RUNNER_URL_ENV = "TESTO_RUNNER_URL"
-RUNNER_TOKEN_ENV = "TESTO_RUNNER_TOKEN"
+RUNNER_TOKEN_ENV = "TESTO_RUNNER_TOKEN"  # nosec B105 - a name or label, not a password
 # Several heartbeats long: the service sends one every 15 seconds of silence.
 IDLE_TIMEOUT_S = 90.0
 # The runner lost the stage (connection dropped, no exit code): like Docker's own 125.
@@ -168,7 +168,8 @@ class RemoteStageProcess:
     def wait(self, timeout: float | None = None) -> int:
         if not self.done.wait(timeout):
             raise subprocess.TimeoutExpired(self.args, timeout or 0)
-        assert self.returncode is not None  # noqa: S101 - set before done
+        if self.returncode is None:
+            raise RuntimeError("internal error: expected self.returncode is not None")
         return self.returncode
 
     def send_signal(self, sig: int) -> None:

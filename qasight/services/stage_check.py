@@ -17,7 +17,7 @@ import os
 import re
 import shlex
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -169,7 +169,7 @@ def check_stage(stack: Stack, *, root: Path, timeout_s: float = DEFAULT_TIMEOUT_
         )
     env = {**os.environ, "CI": "1", "NO_COLOR": "1", "FORCE_COLOR": "0"}
     try:
-        proc = subprocess.run(  # noqa: S603 — fixed argv per runner, no shell
+        proc = subprocess.run(  # noqa: S603 — fixed argv per runner, no shell  # nosec B603 - argv list, no shell
             argv,
             cwd=folder,
             env=env,

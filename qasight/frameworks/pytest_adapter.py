@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 from pathlib import Path
 
@@ -46,7 +46,7 @@ def _pytest_can_import(module: str) -> bool | None:
     if python is None:
         return None
     try:
-        proc = subprocess.run(  # noqa: S603 - fixed argv, no user input
+        proc = subprocess.run(  # noqa: S603 - fixed argv, no user input  # nosec B603 - argv list, no shell
             [python, "-c", f"import {module}"], capture_output=True, timeout=30, check=False
         )
     except (OSError, subprocess.TimeoutExpired):

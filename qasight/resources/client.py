@@ -26,7 +26,7 @@ import logging
 import os
 import random
 import socket
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import threading
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -290,7 +290,7 @@ def acquire(
                 )
             if on_wait is not None:
                 on_wait(result)
-            pause = poll_s * random.uniform(0.75, 1.25)  # noqa: S311 — jitter, not crypto
+            pause = poll_s * random.uniform(0.75, 1.25)  # noqa: S311 — jitter, not crypto  # nosec B311 - not for security
             if deadline is not None:
                 pause = max(0.0, min(pause, deadline - time.monotonic()))
             time.sleep(pause)

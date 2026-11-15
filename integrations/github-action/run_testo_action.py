@@ -29,7 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import urllib.error
 import urllib.request
@@ -241,7 +241,7 @@ def render_markdown(*, cycle: str, env: dict[str, str]) -> str | None:
         cmd += ["--run-url", f"{server}/{repo}/actions/runs/{run_id}"]
     if _parse_bool(env.get("TESTO_INPUT_AI_SUMMARY", ""), default=False):
         cmd.append("--ai")
-    proc = subprocess.run(cmd, check=False, capture_output=True, text=True, env=env)  # noqa: S603
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True, env=env)  # noqa: S603  # nosec B603 - argv list, no shell
     if proc.returncode != 0 or not proc.stdout.strip():
         _warn(f"could not render the run summary: {proc.stderr.strip() or proc.returncode}")
         return None
@@ -260,6 +260,8 @@ def pull_request_number(env: dict[str, str]) -> int | None:
 
 
 def _github(method: str, url: str, token: str, body: dict[str, Any] | None = None) -> Any:
+    if not url.startswith(("https://", "http://")):
+        raise ValueError(f"not a GitHub API URL: {url}")
     request = urllib.request.Request(  # noqa: S310 - the GitHub API URL comes from the runner
         url,
         method=method,
@@ -270,7 +272,7 @@ def _github(method: str, url: str, token: str, body: dict[str, Any] | None = Non
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as resp:  # noqa: S310
+    with urllib.request.urlopen(request, timeout=30) as resp:  # noqa: S310  # nosec B310 - http(s) checked above
         return json.loads(resp.read() or b"null")
 
 
@@ -418,7 +420,7 @@ def post_comments(*, folder: Path, env: dict[str, str]) -> int:
 
 
 def _testo(cmd: list[str], env: dict[str, str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(  # noqa: S603
+    return subprocess.run(  # noqa: S603  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         ["qasight", *cmd], check=False, capture_output=True, text=True, env=env
     )
 
@@ -593,10 +595,10 @@ def export_static_site(*, out: Path, base_path: str, env: dict[str, str]) -> int
     base = base_path.strip() or pages_base_path(env.get("GITHUB_REPOSITORY", ""))
     reqs = api_requirements()
     if reqs:
-        subprocess.run(  # noqa: S603 — this interpreter's pip, requirements from metadata
+        subprocess.run(  # noqa: S603 — this interpreter's pip, requirements from metadata  # nosec B603 - argv list, no shell
             [sys.executable, "-m", "pip", "install", "--quiet", *reqs], check=False
         )
-    proc = subprocess.run(  # noqa: S603 — fixed argv
+    proc = subprocess.run(  # noqa: S603 — fixed argv  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         ["qasight", "export-site", "--out", str(out), "--base-path", base], check=False, env=env
     )
     if proc.returncode != 0:
@@ -642,7 +644,7 @@ def run_scorecard(
     cmd = build_scorecard_scan_command(
         path=path, out=out, min_score=min_score, no_new=no_new, tools=tools
     )
-    scan = subprocess.run(cmd, check=False, env=env)  # noqa: S603 - fixed argv, inputs as args
+    scan = subprocess.run(cmd, check=False, env=env)  # noqa: S603 - fixed argv, inputs as args  # nosec B603 - argv list, no shell
     written: dict[str, str] = {
         "scorecard_dir": str(out),
         "scorecard_exit_code": str(scan.returncode),
@@ -704,8 +706,8 @@ def run_setup(*, env: dict[str, str]) -> int:
     """
     workspace = Path(env.get("GITHUB_WORKSPACE") or ".")
     for key, value in (("user.name", _BOT[0]), ("user.email", _BOT[1])):
-        subprocess.run(["git", "-C", str(workspace), "config", key, value], check=False)  # noqa: S603, S607
-    proc = subprocess.run(SETUP_COMMAND, cwd=workspace, env=env, check=False)  # noqa: S603
+        subprocess.run(["git", "-C", str(workspace), "config", key, value], check=False)  # noqa: S603, S607  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
+    proc = subprocess.run(SETUP_COMMAND, cwd=workspace, env=env, check=False)  # noqa: S603  # nosec B603 - argv list, no shell
     return proc.returncode
 
 
@@ -801,7 +803,7 @@ def main(argv: list[str] | None = None) -> int:
     if server:
         # The local run feeds the summary and comment; the upload is its own step below.
         run_env.pop("TESTO_SERVER_URL", None)
-    proc = subprocess.run(cmd, check=False, capture_output=True, text=True, env=run_env)  # noqa: S603
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True, env=run_env)  # noqa: S603  # nosec B603 - argv list, no shell
     if proc.stdout:
         sys.stdout.write(proc.stdout)
     if proc.stderr:

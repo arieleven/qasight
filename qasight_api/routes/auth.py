@@ -95,7 +95,7 @@ _PAGE = """<!doctype html>
 """
 
 
-_TOKEN_FIELDS = """<label for="token">Team server token (<code>TESTO_API_TOKEN</code>)</label>
+_SERVER_KEY_FIELDS = """<label for="token">Team server token (<code>TESTO_API_TOKEN</code>)</label>
   <input id="token" name="token" type="password" autocomplete="current-password" required autofocus>"""
 
 _ACCOUNT_FIELDS = """<label for="username">Username</label>
@@ -118,7 +118,7 @@ def _page(next_path: str, error: str = "", status_code: int = 200) -> HTMLRespon
         _PAGE.format(
             action=LOGIN_POST_PATH,
             next=escape(next_path, quote=True),
-            fields=_ACCOUNT_FIELDS if accounts_enabled() else _TOKEN_FIELDS,
+            fields=_ACCOUNT_FIELDS if accounts_enabled() else _SERVER_KEY_FIELDS,
             error=f'<p class="error">{escape(error)}</p>' if error else "",
             sso=_sso_link(next_path),
         ),

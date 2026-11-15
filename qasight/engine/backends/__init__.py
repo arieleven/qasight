@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import os
 import signal
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -86,7 +86,7 @@ class HostStageProcess(subprocess.Popen[bytes]):
     def _taskkill(self, *, force: bool) -> None:
         argv = ["taskkill", "/T", "/PID", str(self.pid)] + (["/F"] if force else [])
         try:
-            subprocess.run(argv, capture_output=True, timeout=10, check=False)  # noqa: S603
+            subprocess.run(argv, capture_output=True, timeout=10, check=False)  # noqa: S603  # nosec B603 - argv list, no shell
         except (OSError, subprocess.SubprocessError):
             super().kill() if force else super().terminate()
 

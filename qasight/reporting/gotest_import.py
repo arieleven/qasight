@@ -35,7 +35,7 @@ from typing import Any
 
 from qasight.reporting.imported_results import iso_ms, make_result
 
-_STATUS = {"pass": "passed", "fail": "failed", "skip": "skipped"}
+_STATUS = {"pass": "passed", "fail": "failed", "skip": "skipped"}  # nosec B105 - a name or label, not a password
 _LOCATION = re.compile(r"^\s*[\w./-]+\.go:\d+:")
 _HEADER = re.compile(r"^\s*(=== (RUN|PAUSE|CONT|NAME)|--- (PASS|FAIL|SKIP))")
 

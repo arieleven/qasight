@@ -52,7 +52,7 @@ class Viewer(HttpUser):
 
     @task(3)
     def run_detail(self) -> None:
-        self.client.get(f"/api/v1/runs/{random.choice(self.run_ids)}", name="/api/v1/runs/{id}")
+        self.client.get(f"/api/v1/runs/{random.choice(self.run_ids)}", name="/api/v1/runs/{id}")  # nosec B311 - not for security
 
     @task(2)
     def cycles(self) -> None:

@@ -9,7 +9,7 @@ would write them.
 from __future__ import annotations
 
 import json
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from pathlib import Path
 
 from qasight.services.project_setup import ProjectFacts, Stack
@@ -77,7 +77,7 @@ def default_branch(repo: Path) -> str:
         ["git", "-C", str(repo), "branch", "--show-current"],
     ):
         try:
-            proc = subprocess.run(  # noqa: S603 — fixed argv, no shell
+            proc = subprocess.run(  # noqa: S603 — fixed argv, no shell  # nosec B603 - argv list, no shell
                 argv, check=False, capture_output=True, text=True, timeout=15
             )
         except (OSError, subprocess.TimeoutExpired):
@@ -175,7 +175,7 @@ def _github_setup(facts: ProjectFacts, language: str) -> list[str]:
     return out
 
 
-SERVER_TOKEN_SECRET = "TESTO_API_TOKEN"
+SERVER_TOKEN_SECRET = "TESTO_API_TOKEN"  # nosec B105 - a name or label, not a password
 
 
 def github_workflow(

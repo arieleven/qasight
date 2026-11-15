@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from pathlib import Path
 
 from qasight.paths import CONFIG_FILE_NAMES
@@ -47,7 +47,7 @@ def remove_tree_if_exists(path: Path) -> bool:
 def docker_prune_stopped_with_label(*, label: str = PROJECT_DOCKER_LABEL) -> tuple[int, str]:
     """Run ``docker container prune`` filtered by label; returns (exit_code, combined stderr+stdout)."""
     try:
-        proc = subprocess.run(  # noqa: S603, S607
+        proc = subprocess.run(  # noqa: S603, S607  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             [
                 "docker",
                 "container",

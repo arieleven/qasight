@@ -125,7 +125,7 @@ def _has_api_extra() -> bool:
 
 def _api_extra_ready() -> bool:
     """True when the ``api`` extra is importable; in a terminal, offer to install it first."""
-    import subprocess
+    import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
     import sys
 
     if _has_api_extra():
@@ -140,7 +140,7 @@ def _api_extra_ready() -> bool:
     ):
         typer.echo(f"Install it with: pip install '{spec}'", err=True)
         return False
-    proc = subprocess.run(  # noqa: S603 — this interpreter's pip, fixed argv
+    proc = subprocess.run(  # noqa: S603 — this interpreter's pip, fixed argv  # nosec B603 - argv list, no shell
         [sys.executable, "-m", "pip", "install", spec], check=False
     )
     if proc.returncode != 0:

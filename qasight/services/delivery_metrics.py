@@ -32,7 +32,7 @@ from qasight.history.views import CompletedRunView
 from qasight.services import flaky_service
 from qasight.services.delta_service import within_noise
 
-_PASS = "passed"
+_PASS = "passed"  # nosec B105 - a name or label, not a password
 _FAIL = frozenset({"failed", "broken"})
 _WELL_KNOWN = ("main", "master", "trunk")
 DAY = 86400.0

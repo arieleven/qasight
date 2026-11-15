@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,7 +38,7 @@ def _gh(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
         raise GithubHistoryError(
             "needs the GitHub CLI (https://cli.github.com), signed in with `gh auth login`"
         )
-    return subprocess.run(  # noqa: S603 — fixed argv, no shell
+    return subprocess.run(  # noqa: S603 — fixed argv, no shell  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
         ["gh", *args],  # noqa: S607
         cwd=cwd,
         check=False,

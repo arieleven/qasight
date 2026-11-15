@@ -38,7 +38,7 @@ MIN_FLIPS = 2
 BROKEN_STREAK = 3
 # How many recent runs (any cycle) to scan when looking for one cycle's window.
 
-_PASS = "passed"
+_PASS = "passed"  # nosec B105 - a name or label, not a password
 _FAIL = frozenset({"failed", "broken"})
 
 

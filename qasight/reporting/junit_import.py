@@ -47,7 +47,7 @@ import hashlib
 import json
 import re
 import uuid
-import xml.etree.ElementTree as ET  # noqa: S405 - types only; parsing goes through defusedxml
+import xml.etree.ElementTree as ET  # noqa: S405  # nosec B405 - types only; parsing goes through defusedxml
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass

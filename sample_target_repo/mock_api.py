@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 app = FastAPI(title="QASight Sandbox Mock API")
 
 # 32+ bytes, the minimum PyJWT accepts for HS256 without a warning.
-JWT_SECRET = "testo-sandbox-secret-for-local-tests-only"
+JWT_SECRET = "testo-sandbox-secret-for-local-tests-only"  # nosec B105 - the sample app's sandbox key, local tests only
 JWT_ALG = "HS256"
 
 
@@ -72,7 +72,7 @@ async def error() -> JSONResponse:
 @app.get("/flaky")
 async def flaky() -> dict[str, str]:
     # ~30% failure rate
-    if random.random() < 0.3:
+    if random.random() < 0.3:  # nosec B311 - not for security
         raise HTTPException(status_code=500, detail="flaky failure")
     return {"status": "ok", "message": "sometimes fails"}
 
@@ -139,7 +139,7 @@ async def upload(
     file: UploadFile | None = None, payload: dict[str, Any] | None = Body(default=None)
 ) -> dict[str, Any]:
     # Randomized latency between 50ms and 2000ms
-    delay = random.uniform(0.05, 2.0)
+    delay = random.uniform(0.05, 2.0)  # nosec B311 - not for security
     await asyncio.sleep(delay)
 
     size = 0
@@ -161,9 +161,9 @@ async def chaos() -> dict[str, Any]:
       - 401 (unauthorized): 15%
       - high latency (3-5 seconds delay): 15% (still 200)
     """
-    p = random.random()
+    p = random.random()  # nosec B311 - not for security
     if p < 0.15:
-        delay = random.uniform(3.0, 5.0)
+        delay = random.uniform(3.0, 5.0)  # nosec B311 - not for security
         await asyncio.sleep(delay)
         return {"status": "ok", "mode": "high_latency", "delay_ms": int(delay * 1000)}
     if p < 0.30:

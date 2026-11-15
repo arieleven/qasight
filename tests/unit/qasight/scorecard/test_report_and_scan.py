@@ -105,6 +105,17 @@ def test_versions_that_are_not_numbers_go_by_time(store: ScorecardStore) -> None
     assert card is not None and (card.version, card.previous_version) == ("main", "abc123")
 
 
+def test_releases_scored_after_main_still_go_in_release_order(store: ScorecardStore) -> None:
+    # The Pages demo scores 1.5.0, 1.6.0 and main, then later backfills 1.0.0.
+    for version in ("1.5.0", "1.6.0", "main", "1.0.0"):
+        _record(store, version, "ruff", 80)
+    card = build_scorecard("app", store=store)
+    assert card is not None
+    assert [v.version for v in card.versions] == ["main", "1.6.0", "1.5.0", "1.0.0"]
+    one = build_scorecard("app", "1.5.0", store=store)
+    assert one is not None and one.previous_version == "1.0.0"
+
+
 def test_newer_report_replaces_the_older_one(store: ScorecardStore) -> None:
     _record(store, "1.0", "ruff", 10)
     _record(store, "1.0", "ruff", 95)

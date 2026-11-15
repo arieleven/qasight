@@ -169,7 +169,7 @@ def run(
     """Hold a key while a command runs: qasight lease run POOL -- CMD [ARGS...]. Exits with CMD's code."""
     import os
     import signal
-    import subprocess
+    import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 
     command = list(ctx.args)
     if command[:1] == ["--"]:
@@ -191,7 +191,7 @@ def run(
     _console(stderr=True).print(f"[muted]qasight lease: holding {pool.name}/{held.id}[/]")
     try:
         try:
-            proc = subprocess.Popen(command, env={**os.environ, **held.env()})
+            proc = subprocess.Popen(command, env={**os.environ, **held.env()})  # nosec B603 - argv list, no shell
         except OSError as exc:
             raise _fail(
                 f"could not start {command[0]}: {exc}", EngineExitCode.INVALID_INPUT
@@ -422,7 +422,8 @@ def demo(
     # Always this machine's database (the one `qasight ui` shows), never a team server.
     env = {k: v for k, v in os.environ.items() if k == LEASE_DB_ENV}
     store = backend_from_env(env=env)
-    assert isinstance(store, LeaseStore)
+    if not isinstance(store, LeaseStore):
+        raise RuntimeError("internal error: expected isinstance(store, LeaseStore)")
     console = default_console()
     if clear:
         freed = clear_demo(store)

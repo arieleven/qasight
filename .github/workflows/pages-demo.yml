@@ -107,18 +107,33 @@ jobs:
       - name: QASight tests fake-api (fails on purpose)
         run: qasight run --cycle fake-api --ci | tee fake-api.ndjson || true
 
-      # The Scorecard page: QASight's last two releases and this commit, and fake-api,
-      # scanned with the tools that install from PyPI (no account, no network service).
-      # MegaLinter is left out here: four full scans would add half an hour to every deploy.
+      # The Code quality page: every QASight release since 1.0.0, this commit, and
+      # fake-api, scanned with the tools that install from PyPI (no account, no
+      # network service), so the Versions strip goes back to the first release.
+      # A release is its vX.Y.Z tag, or its "chore(release): X.Y.Z" commit on main
+      # when the tag is gone (1.0.0 and 1.1.0 lost theirs in the history rewrite).
+      # MegaLinter is left out here: a full scan per version would add hours.
       - name: Score QASight and fake-api
         env:
           TOOLS: bandit,pip-audit,npm-audit,zizmor,ruff
         run: |
           python -m pip install bandit pip-audit zizmor
-          for tag in $(git ls-remote --tags --refs origin 'v*' | awk -F/ '{print $3}' | sort -V | tail -n 2); do
-            git fetch --quiet --depth 1 origin tag "$tag"
-            git worktree add -q "../qasight-$tag" "$tag"
-            qasight scorecard scan "../qasight-$tag" --project qasight --version "${tag#v}" --out "scorecard/$tag" --tools "$TOOLS" || true
+          git fetch --quiet --unshallow origin main || git fetch --quiet origin main
+          declare -A release
+          while read -r version sha; do release[$version]=$sha; done < <(
+            git log origin/main --format='%H %s' |
+              sed -nE 's/^([0-9a-f]+) chore\(release\): (bump to )?v?([0-9]+\.[0-9]+\.[0-9]+)([^0-9].*)?$/\3 \1/p')
+          for tag in $(git ls-remote --tags --refs origin 'v*.*.*' | awk -F/ '{print $3}'); do
+            release[${tag#v}]="tags/$tag"
+          done
+          for version in $(printf '%s\n' "${!release[@]}" | sort -V); do
+            ref=${release[$version]}
+            if [[ $ref == tags/* ]]; then
+              git fetch --quiet --depth 1 origin tag "${ref#tags/}"
+              ref=${ref#tags/}
+            fi
+            git worktree add -q "../qasight-$version" "$ref"
+            qasight scorecard scan "../qasight-$version" --project qasight --version "$version" --out "scorecard/v$version" --tools "$TOOLS" || true
           done
           qasight scorecard scan . --project qasight --version main --out scorecard/main --tools "$TOOLS" || true
           qasight scorecard scan .demo/fake-api --project fake-api --out scorecard/fake-api --tools "$TOOLS" || true

@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import tomllib
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -492,13 +492,13 @@ def cycle_name_for(repo: Path) -> str:
 def _git_tracked(repo: Path) -> set[Path] | None:
     """Files git tracks under *repo* (fixtures, not results), or ``None`` outside a checkout."""
     try:
-        proc = subprocess.run(  # noqa: S603 — fixed argv, no shell
+        proc = subprocess.run(  # noqa: S603 — fixed argv, no shell  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             ["git", "-C", str(repo), "ls-files", "-z", "--full-name"],  # noqa: S607
             check=False,
             capture_output=True,
             timeout=30,
         )
-        top = subprocess.run(  # noqa: S603
+        top = subprocess.run(  # noqa: S603  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             ["git", "-C", str(repo), "rev-parse", "--show-toplevel"],  # noqa: S607
             check=False,
             capture_output=True,

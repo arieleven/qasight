@@ -39,7 +39,7 @@ from qasight.services.ci_provenance import detect_ci_provenance
 
 Provider = Literal["github", "gitlab", "other"]
 GITHUB_TOKEN_ENVS = ("TESTO_GITHUB_TOKEN", "GITHUB_TOKEN")
-GITLAB_TOKEN_ENV = "TESTO_GITLAB_TOKEN"
+GITLAB_TOKEN_ENV = "TESTO_GITLAB_TOKEN"  # nosec B105 - a name or label, not a password
 _PR_EVENTS = {"pull_request", "pull_request_target"}
 _MAX_PAGES = 10
 

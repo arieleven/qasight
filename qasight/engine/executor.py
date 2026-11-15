@@ -24,7 +24,7 @@ import logging
 import os
 import shutil
 import signal
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import sys
 import threading
 import time
@@ -426,7 +426,8 @@ def _run_process_stage(
                 target_repo=target_repo,
             )
 
-        assert proc.stdout is not None  # noqa: S101 — we asked for a pipe
+        if proc.stdout is None:
+            raise RuntimeError("internal error: expected proc.stdout is not None")
         reader = threading.Thread(
             target=drain_stream_into_buffer,
             args=(proc.stdout, buffer),

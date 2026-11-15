@@ -22,7 +22,7 @@ from qasight.services import flaky_service
 
 MIN_RUNS = 3
 MAX_NAMES = 10
-_PASS = "passed"
+_PASS = "passed"  # nosec B105 - a name or label, not a password
 _SKIP = frozenset({"skipped"})
 
 

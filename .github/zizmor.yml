@@ -13,3 +13,20 @@ rules:
       # major tag), so they keep the persisted credentials on purpose.
       - changelog-on-main.yml
       - move-major-tag.yml
+  self-repository:
+    ignore:
+      # ci.yml tests the repository's own composite action (`uses: ./` and
+      # `uses: ./integrations/github-action`) on purpose: that is the change
+      # under review, not a third-party action.
+      - ci.yml
+  use-trusted-publishing:
+    ignore:
+      # Artifactory is a private index with no trusted publishing for this
+      # workflow; PyPI itself already publishes through trusted publishing
+      # (publish.yml).
+      - artifactory-publish.yml
+  adhoc-packages:
+    ignore:
+      # The smoke test installs the tarball `npm pack` just built, to run it
+      # the way a user would; nothing comes from the registry.
+      - publish-npm-qasight.yml:41

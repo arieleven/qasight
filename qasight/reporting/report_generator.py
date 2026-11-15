@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path

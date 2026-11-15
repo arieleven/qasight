@@ -340,7 +340,9 @@ jobs:
           cycle: unit
           python-version: "3.11"
       - name: Check the action's outputs
-        run: test "${{ steps.qasight.outputs.status }}" = success
+        env:
+          STATUS: ${{ steps.qasight.outputs.status }}
+        run: test "$STATUS" = success
 
   github_action:
     name: github action (this checkout, PR comment)
@@ -372,7 +374,9 @@ jobs:
           cycle: unit
           comment-on-pr: "true"
       - name: Check the action's outputs
-        run: test "${{ steps.qasight.outputs.status }}" = success
+        env:
+          STATUS: ${{ steps.qasight.outputs.status }}
+        run: test "$STATUS" = success
       # Recording results instead of running a cycle (what a repo with no
       # qasight.yaml gets): the tests write JUnit XML, the action ingests it.
       - run: python -m pytest -q --junitxml=test-results/example.xml
@@ -385,7 +389,9 @@ jobs:
           cycle: example-ingest
           comment-on-pr: "false"
       - name: Check the ingest run's outputs
-        run: test "${{ steps.ingest.outputs.status }}" = success
+        env:
+          STATUS: ${{ steps.ingest.outputs.status }}
+        run: test "$STATUS" = success
 
   team_server:
     name: team server (image + compose + qasight ingest --server)

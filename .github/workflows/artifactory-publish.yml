@@ -68,11 +68,14 @@ jobs:
       - name: Verify install from Artifactory
         env:
           INDEX: ${{ vars.ARTIFACTORY_URL }}/artifactory/api/pypi/${{ vars.ARTIFACTORY_PYPI_REPO }}/simple
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           python -m pip install \
-            --index-url "https://${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_TOKEN }}@${INDEX#https://}" \
+            --index-url "https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_TOKEN}@${INDEX#https://}" \
             --extra-index-url https://pypi.org/simple/ \
-            qasight==${{ steps.version.outputs.version }}
+            "qasight==${VERSION}"
           qasight --version
 
   docker:
@@ -120,7 +123,6 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Verify image
-        run: |
-          docker run --rm \
-            ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/qasight-runner:${{ steps.version.outputs.version }} \
-            run --help
+        env:
+          IMAGE: ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/qasight-runner:${{ steps.version.outputs.version }}
+        run: docker run --rm "$IMAGE" run --help

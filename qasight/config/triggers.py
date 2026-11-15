@@ -6,7 +6,7 @@ import dataclasses
 import json
 import logging
 import re
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -33,7 +33,8 @@ class TriggerResult:
 def evaluate_cycle_trigger(*, plan: Plan, cfg: QASightConfig) -> TriggerResult:
     """Return whether the cycle should run based on ``plan.trigger`` (must be non-None)."""
     trigger = plan.trigger
-    assert trigger is not None  # caller guards
+    if trigger is None:
+        raise RuntimeError("internal error: expected trigger is not None")
     source = cfg.source_path
     artifacts_root = cfg.defaults.artifacts_root.expanduser().resolve()
     if source is None:
@@ -115,7 +116,7 @@ def _git_repo_root(anchor: Path) -> Path | None:
 
 
 def _git_run(argv: list[str], cwd: Path) -> tuple[int, str, str]:
-    proc = subprocess.run(  # noqa: S603 — fixed argv
+    proc = subprocess.run(  # noqa: S603 — fixed argv  # nosec B603 - argv list, no shell
         argv,
         cwd=str(cwd),
         capture_output=True,

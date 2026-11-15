@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import tempfile
 import time
 from collections.abc import Callable
@@ -116,7 +116,7 @@ def _owner_repo(url: str) -> tuple[str | None, str | None]:
 
 def _git(repo: Path, *args: str) -> str | None:
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607 - argv list, no shell; the tool is found on PATH
             ["git", "-C", str(repo), *args], capture_output=True, text=True, timeout=60, check=False
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -155,7 +155,7 @@ def resolve_target(
             argv += ["--branch", ref]
         argv += ["--", url, str(repo)]
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # nosec B603 - argv list, no shell
                 argv,
                 capture_output=True,
                 text=True,
@@ -268,7 +268,8 @@ def run_tool(
     tool: Tool, ctx: ScanContext, *, timeout_s: int = DEFAULT_TOOL_TIMEOUT_S
 ) -> ToolResult:
     """Run one tool and parse its report; raises :class:`ReportError` or :class:`LookupError`."""
-    assert tool.command is not None
+    if tool.command is None:
+        raise RuntimeError("internal error: expected tool.command is not None")
     cmd = tool.command(ctx)
     if cmd is None:
         raise LookupError("nothing for it to check in this repository")
@@ -276,7 +277,7 @@ def run_tool(
         path.write_text(text, encoding="utf-8")
     ctx.out.unlink(missing_ok=True)
     try:
-        proc = subprocess.run(
+        proc = subprocess.run(  # nosec B603 - argv list, no shell
             cmd.argv,
             cwd=cmd.cwd,
             capture_output=True,
@@ -451,7 +452,8 @@ def _run_engine(
     image: str | None = None,
 ) -> bool:
     """Run MegaLinter and keep a result per linter it ran; False when it ran nothing."""
-    assert outcome.profile is not None
+    if outcome.profile is None:
+        raise RuntimeError("internal error: expected outcome.profile is not None")
     off = [
         tool.removeprefix(megalinter.PREFIX)
         for tool, on in enabled.items()

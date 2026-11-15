@@ -112,7 +112,8 @@ def diff_case_maps(
         elif b is not None and c is None:
             kind = "removed"
         else:
-            assert b is not None and c is not None
+            if b is None or c is None:
+                raise RuntimeError("internal error: expected b is not None and c is not None")
             if bs == cs:
                 kind = None
             elif bs in {"passed"} and cs in {"failed", "broken"}:
