@@ -56,7 +56,7 @@ _HEADER = """---
 type: guide
 status: current
 created: 2026-11-01
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Setup Snippets
@@ -73,7 +73,7 @@ How each CI keeps the history between runs:
 - **GitLab CI** and **CircleCI**: the snippet caches `.testo-history/` per branch, falling back to the default branch's.
 - **Jenkins**: the history stays in the agent's workspace. For one history across agents and CI systems, run a [team server](Team%20Server.md) and replace `qasight ingest ...` with `qasight ingest --server https://your-server --token "$TESTO_API_TOKEN" ...`.
 
-Outside GitHub, the snippets install `qasight` with [uv](https://docs.astral.sh/uv/) (one binary that brings its own Python, so the image needs only `curl`). An image that has Python can run `pip install qasight` instead. Each run's summary is saved as `testo-summary.md` next to the build.
+Outside GitHub, the snippets install `qasight` with [uv](https://docs.astral.sh/uv/) (one binary that brings its own Python, so the image needs only `curl`). An image that has Python can run `pip install qasight` instead, and an image that already has `qasight` downloads nothing, which is how they run on a network with no internet ([Closed Network Install](Closed%20Network%20Install.md)). Each run's summary is saved as `testo-summary.md` next to the build.
 """
 
 

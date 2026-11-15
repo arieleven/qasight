@@ -433,11 +433,12 @@ def _image(table: dict[str, str], stack: Stack, facts: ProjectFacts) -> str:
 
 # Installs qasight with uv (a single binary that brings its own Python), so the
 # language image needs nothing but curl. An image with Python can use
-# `pip install qasight` instead.
+# `pip install qasight` instead. An image that already has qasight (the usual
+# case on a network with no internet) downloads nothing.
 _INSTALL_TESTO = [
-    "command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    "command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh",
     'export PATH="$HOME/.local/bin:$PATH"',
-    "uv tool install --quiet qasight",
+    "command -v qasight >/dev/null || uv tool install --quiet qasight",
 ]
 
 

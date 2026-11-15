@@ -129,7 +129,7 @@ variables:
   TESTO_CYCLE: "smoke"
 ```
 
-Variables: `TESTO_CONFIG_PATH` (empty = discovery), `TESTO_CYCLE` (empty = the only cycle), `TESTO_PERSIST` (`true` default). Artifacts: `testo-output.ndjson` and `testo-summary.json` (the `plan_finished` line).
+Variables: `TESTO_CONFIG_PATH` (empty = discovery), `TESTO_CYCLE` (empty = the only cycle), `TESTO_PERSIST` (`true` default), `TESTO_IMAGE` (the job's image, default `python:3.11-slim`), `TESTO_PACKAGE` (what `pip install` installs, default `qasight`) and `TESTO_INSTALL` (`auto` installs only when the image has no `qasight`, `always`, `never`). pip reads `PIP_INDEX_URL`, so on a self-hosted GitLab with no internet set `TESTO_IMAGE` to an image from your registry and either bake `qasight` into it or point `PIP_INDEX_URL` at your PyPI mirror; the template can also be committed into your own project (`include: local:`) instead of included from this one ([Closed Network Install](Closed%20Network%20Install.md)). Artifacts: `testo-output.ndjson` and `testo-summary.json` (the `plan_finished` line).
 
 ## Runner image
 
