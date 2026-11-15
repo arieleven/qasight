@@ -47,6 +47,8 @@ class ScanContext:
     openapi: str | None = None
     # "owner/name" when the code is on GitHub (OpenSSF Scorecard reads it there).
     github_repo: str | None = None
+    # What detect_languages found: python, node, c, github-actions.
+    languages: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,8 @@ class Command:
     stdout_is_report: bool = False
     # Files the command needs written first (a k6 script), path -> text.
     files: dict[Path, str] = field(default_factory=dict)
+    # Commands that run first, in order (CodeQL builds its database before analyzing it).
+    before: tuple[list[str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -209,6 +213,23 @@ def _semgrep(ctx: ScanContext) -> Command:
         ],
         ctx.repo,
     )
+
+
+# CodeQL language for each language the scan detects, in the order a scan prefers them.
+_CODEQL_LANGUAGES = (("python", "python"), ("node", "javascript-typescript"))
+
+
+def _codeql(ctx: ScanContext) -> Command | None:
+    # One language per scan (CodeQL builds one database per language): the first that fits.
+    lang = next((cq for ours, cq in _CODEQL_LANGUAGES if ours in ctx.languages), None)
+    if lang is None:
+        return None
+    db = str(ctx.out.parent / "codeql-db")
+    create = ["codeql", "database", "create", db, f"--language={lang}", "--build-mode=none"]
+    create += ["--source-root", ".", "--overwrite", "--quiet"]
+    analyze = ["codeql", "database", "analyze", db, f"codeql/{lang.split('-')[0]}-queries"]
+    analyze += ["--format=sarif-latest", "--output", str(ctx.out), "--download", "--quiet"]
+    return Command(analyze, ctx.repo, before=(create,))
 
 
 def _trivy(ctx: ScanContext) -> Command:
@@ -397,6 +418,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW,
         homepage="https://semgrep.dev",
         kind="repo",
+        default_on=False,
         in_engine=True,
         report="SARIF (semgrep --sarif)",
         parser="sarif",
@@ -407,6 +429,24 @@ TOOLS: tuple[Tool, ...] = (
         failure_hint="The p/default rules download from semgrep.dev, so Semgrep needs network.",
     ),
     Tool(
+        id="codeql",
+        name="CodeQL",
+        category="security",
+        tagline="GitHub's semantic code analysis (the code-scanning queries) for Python or JavaScript/TypeScript.",
+        how=_FINDINGS_HOW,
+        homepage="https://codeql.github.com",
+        kind="repo",
+        default_on=False,
+        report="SARIF (codeql database analyze --format=sarif-latest)",
+        parser="sarif",
+        languages=frozenset({"python", "node"}),
+        binary="codeql",
+        install="the CodeQL bundle from github.com/github/codeql-action/releases (free for open source; private code needs GitHub Advanced Security)",
+        report_name="report.sarif",
+        command=_codeql,
+        failure_hint="CodeQL downloads its query packs on first use, so it needs network once.",
+    ),
+    Tool(
         id="gitleaks",
         name="gitleaks",
         category="security",
@@ -415,6 +455,7 @@ TOOLS: tuple[Tool, ...] = (
         + " Private and cloud keys are critical, provider tokens high, generic matches medium; each secret counts once.",
         homepage="https://gitleaks.io",
         kind="repo",
+        default_on=False,
         in_engine=True,
         report="gitleaks JSON (--report-format json)",
         parser="gitleaks",
@@ -494,6 +535,7 @@ TOOLS: tuple[Tool, ...] = (
         how=_FINDINGS_HOW,
         homepage="https://trivy.dev",
         kind="repo",
+        default_on=False,
         in_engine=True,
         report="Trivy JSON or SARIF (trivy fs --format json)",
         parser="trivy",

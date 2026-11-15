@@ -55,7 +55,7 @@ def _record(
 
 def test_overall_is_the_mean_of_category_means(store: ScorecardStore) -> None:
     _record(store, "1.0", "bandit", 40)  # security
-    _record(store, "1.0", "semgrep", 80)  # security -> 60
+    _record(store, "1.0", "flawfinder", 80)  # security -> 60
     _record(store, "1.0", "ruff", 100)  # code -> 100
     card = build_scorecard("app", "1.0", store=store)
     assert card is not None
@@ -228,7 +228,12 @@ def test_plan_tools_says_why_each_tool_is_left_out(monkeypatch: pytest.MonkeyPat
     run, skipped = plan_tools(languages={"python"}, enabled=enabled)
     assert [t.id for t in run] == ["bandit"]
     assert skipped["ruff"] == "switched off"
-    assert skipped["semgrep"].startswith("not installed")
+    assert skipped["pip-audit"].startswith("not installed")
+    # The extra scanners are opt-in: Bandit is the default security tool.
+    for opt_in in ("semgrep", "gitleaks", "trivy", "codeql"):
+        assert skipped[opt_in] == "switched off"
+    run, _ = plan_tools(languages={"python"}, enabled={**enabled, "codeql": True})
+    assert "codeql" not in [t.id for t in run]  # switched on, but not installed here
     assert skipped["flawfinder"] == "no c code found"
     assert skipped["lighthouse"] == "needs a running app (--url)"
     run, _ = plan_tools(languages={"python"}, enabled=enabled, url="http://localhost:1")
@@ -289,3 +294,36 @@ def test_run_scan_records_each_tool_and_survives_a_broken_one(
         "running",
         "done",
     ]
+
+
+def test_codeql_builds_its_database_then_analyzes(tmp_path: Path) -> None:
+    from qasight.services.scorecard.tools import TOOLS_BY_ID, ScanContext
+
+    tool = TOOLS_BY_ID["codeql"]
+    assert tool.command is not None and not tool.default_on
+    out = tmp_path / "codeql" / "report.sarif"
+    py = tool.command(ScanContext(tmp_path, out, languages=frozenset({"python", "node"})))
+    assert py is not None
+    assert py.before[0][:3] == ["codeql", "database", "create"]
+    assert "--language=python" in py.before[0] and "--build-mode=none" in py.before[0]
+    assert py.argv[:3] == ["codeql", "database", "analyze"] and "codeql/python-queries" in py.argv
+    js = tool.command(ScanContext(tmp_path, out, languages=frozenset({"node"})))
+    assert js is not None and "--language=javascript-typescript" in js.before[0]
+    assert "codeql/javascript-queries" in js.argv
+    assert tool.command(ScanContext(tmp_path, out, languages=frozenset({"c"}))) is None
+
+
+def test_a_failed_first_step_says_which_and_why(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from qasight.services.scorecard.scan import ReportError, run_tool
+    from qasight.services.scorecard.tools import TOOLS_BY_ID, Command, ScanContext
+
+    tool = replace(
+        TOOLS_BY_ID["codeql"],
+        command=lambda ctx: Command(
+            ["true"], ctx.repo, before=(["sh", "-c", "echo no database >&2; exit 3"],)
+        ),
+    )
+    with pytest.raises(ReportError, match="exited 3: no database"):
+        run_tool(tool, ScanContext(tmp_path, tmp_path / "report.sarif"))

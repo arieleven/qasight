@@ -388,3 +388,26 @@ def test_new_findings_and_the_no_new_gate(store: ScorecardStore) -> None:
         "bandit (Python) has new findings since 1.0: 1 high"
     ]
     assert gate_failures(card) == []
+
+
+def test_the_engine_leaves_opt_in_scanners_out_until_switched_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, store: ScorecardStore
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "main.py").write_text("x = 1\n", encoding="utf-8")
+    seen: list[list[str]] = []
+
+    def fake_run(repo_path: Path, out: Path, **kwargs: object) -> megalinter.EngineOutcome:
+        seen.append(sorted(kwargs.get("disabled") or []))  # type: ignore[call-overload]
+        return megalinter.EngineOutcome(image="x", runs=[])
+
+    monkeypatch.setattr(megalinter, "run", fake_run)
+    monkeypatch.setattr(megalinter, "docker", lambda: "/bin/docker")
+    monkeypatch.setattr("shutil.which", lambda name: "/bin/x" if name == "docker" else None)
+    target = resolve_target(str(repo), project="app", version="1.0")
+    run_scan(target, out_dir=tmp_path / "a", enabled=store.enabled(), record=lambda t, r: None)
+    assert {"REPOSITORY_GITLEAKS", "REPOSITORY_SEMGREP", "REPOSITORY_TRIVY"} <= set(seen[-1])
+    store.set_enabled("gitleaks", True)
+    run_scan(target, out_dir=tmp_path / "b", enabled=store.enabled(), record=lambda t, r: None)
+    assert "REPOSITORY_GITLEAKS" not in seen[-1] and "REPOSITORY_TRIVY" in seen[-1]

@@ -8,10 +8,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Code quality: CodeQL as a scorecard tool (Python, or JavaScript/TypeScript), opt-in
+
 ### Fixed
 - Code quality: Bandit skips folders git ignores, so a clone of another project inside the repository (the Pages demo keeps fake-api in `.demo/`) no longer counts against it
 
 ### Changed
+- Code quality: Semgrep, gitleaks and Trivy are opt-in like CodeQL; Bandit stays the default security scanner. While one is off, MegaLinter leaves its linter out too. Switch them on with `qasight scorecard tools --on <tool>` or in the UI
 - Code quality: numbered versions sort by number whatever order they were scored in, and names such as `main` sit above them, so releases scored after `main` still line up on the Versions strip
 - The Pages demo's Code quality page shows every release since 1.0.0, and fake-api now has real findings to show
 

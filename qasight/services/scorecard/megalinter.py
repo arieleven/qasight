@@ -67,6 +67,13 @@ _NO_FINDINGS = {"REPOSITORY_SYFT", "REPOSITORY_TRIVY_SBOM", "REPOSITORY_GIT_DIFF
 # finds by logging in with it, which sends a found secret to its provider (gitleaks and
 # secretlint find the same secrets offline).
 _OFF_BY_DEFAULT = {"REPOSITORY_TRUFFLEHOG"}
+# MegaLinter's linters for the scorecard's opt-in tools (off by default): the engine
+# leaves them out while the tool is switched off.
+OPT_IN_LINTERS = {
+    "semgrep": "REPOSITORY_SEMGREP",
+    "gitleaks": "REPOSITORY_GITLEAKS",
+    "trivy": "REPOSITORY_TRIVY",
+}
 # Settings in pyproject.toml that MegaLinter doesn't look for on its own.
 _PYPROJECT_SECTIONS = {
     "PYTHON_RUFF": "ruff",

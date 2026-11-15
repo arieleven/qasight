@@ -604,7 +604,7 @@ An entry whose test is an exact name is released on its own once the test passed
 
 ## `qasight scorecard`
 
-Score a release with the repo review tools: security (Bandit, Semgrep, gitleaks, Flawfinder, OWASP ZAP), supply chain (pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor), code quality (Ruff, any SARIF tool), API (Schemathesis), web (Lighthouse), accessibility (axe), performance (k6, Locust) and tests (coverage, mutation testing, JUnit). Each tool gets a 0-100 score for a project's version, the categories and the version get the mean, and the version is compared with the one before. Results live in the run-history database (tables `scorecard_result`, `scorecard_tool`); the UI's **Scorecard** page shows them. How scores are made: [Release Scorecard - 2026-11-12](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md).
+Score a release with the repo review tools: security (Bandit, Semgrep, CodeQL, gitleaks, Flawfinder, OWASP ZAP), supply chain (pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor), code quality (Ruff, any SARIF tool), API (Schemathesis), web (Lighthouse), accessibility (axe), performance (k6, Locust) and tests (coverage, mutation testing, JUnit). Each tool gets a 0-100 score for a project's version, the categories and the version get the mean, and the version is compared with the one before. Results live in the run-history database (tables `scorecard_result`, `scorecard_tool`); the UI's **Scorecard** page shows them. How scores are made: [Release Scorecard - 2026-11-12](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md).
 
 ```bash
 qasight scorecard scan .                                      # this repository, version from git describe
@@ -616,8 +616,10 @@ qasight scorecard show --format markdown -o scorecard.md
 qasight scorecard show --format sarif -o scorecard.sarif      # for GitHub code scanning
 qasight scorecard show --format html -o scorecard.html        # one page, no server
 qasight scorecard show --format svg -o badge.svg              # README badge: quality | B 87
-qasight scorecard tools --off semgrep --on locust
+qasight scorecard tools --on semgrep --on codeql --off locust
 ```
+
+Semgrep, CodeQL, gitleaks and Trivy are **opt-in** (off until `--on`, or the switch in the UI): Bandit is the default security scanner and pip-audit / npm audit the default dependency checks, so the extra scanners only add findings and run time where a team asks for them. While one is off, MegaLinter leaves its linter out as well (`REPOSITORY_SEMGREP`, `REPOSITORY_GITLEAKS`, `REPOSITORY_TRIVY`). CodeQL builds a database for the repository's Python, else its JavaScript/TypeScript (`--build-mode=none`), then runs the code-scanning queries; it is free for open source, while private code needs GitHub Advanced Security.
 
 | Command / flag | Meaning |
 |------|---------|

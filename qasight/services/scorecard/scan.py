@@ -276,6 +276,8 @@ def run_tool(
     for path, text in cmd.files.items():
         path.write_text(text, encoding="utf-8")
     ctx.out.unlink(missing_ok=True)
+    for step in cmd.before:
+        _run_step(step, cmd.cwd, timeout_s)
     try:
         proc = subprocess.run(  # nosec B603 - argv list, no shell
             cmd.argv,
@@ -298,6 +300,30 @@ def run_tool(
     if not ctx.out.is_file() or ctx.out.stat().st_size == 0:
         raise ReportError(_failure(tool, proc.returncode, proc.stderr or proc.stdout or ""))
     return tool.parse(ctx.out)
+
+
+def _run_step(argv: list[str], cwd: Path, timeout_s: int) -> None:
+    """A command that has to succeed before the tool's own (CodeQL's database build)."""
+    try:
+        proc = subprocess.run(  # nosec B603 - argv list, no shell
+            argv,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+            stdin=subprocess.DEVNULL,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ReportError(f"`{' '.join(argv[:3])}` stopped after {timeout_s} s") from exc
+    except OSError as exc:
+        raise ReportError(f"could not start {argv[0]}: {exc}") from exc
+    if proc.returncode != 0:
+        lines = [line for line in (proc.stderr or proc.stdout).strip().splitlines() if line.strip()]
+        why = "; ".join(lines[-3:])
+        raise ReportError(
+            f"`{' '.join(argv[:3])}` exited {proc.returncode}" + (f": {why}" if why else "")
+        )
 
 
 # Lines in a tool's output that say why it stopped.
@@ -405,6 +431,7 @@ def run_scan(
             url=url,
             openapi=openapi,
             github_repo=target.github_repo,
+            languages=frozenset(languages),
         )
         emit({"type": "tool", "tool": tool.id, "status": "running"})
         started = time.monotonic()
@@ -459,6 +486,12 @@ def _run_engine(
         for tool, on in enabled.items()
         if tool.startswith(megalinter.PREFIX) and not on
     ]
+    # The opt-in scanners stay out of the engine too, unless switched on (or their
+    # engine linter is, by name).
+    for tool_id, key in megalinter.OPT_IN_LINTERS.items():
+        tool = TOOLS_BY_ID[tool_id]
+        if not enabled.get(tool_id, tool.default_on) and not enabled.get(megalinter.PREFIX + key):
+            off.append(key)
     image = megalinter.image_for(
         outcome.profile.main_language(), image or os.environ.get("QASIGHT_MEGALINTER_IMAGE")
     )
