@@ -266,3 +266,22 @@ def test_summaries_say_dependencies_not_dependencys() -> None:
     assert plural(2, "vulnerable dependency") == "2 vulnerable dependencies"
     assert plural(1, "vulnerable dependency") == "1 vulnerable dependency"
     assert plural(3, "key") == "3 keys"
+
+
+def test_bandit_skips_folders_git_ignores(tmp_path: Path) -> None:
+    import subprocess
+
+    from qasight.services.scorecard.tools import ScanContext
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / ".gitignore").write_text("/.demo/\n__pycache__/\n")
+    for folder in (".demo/other-app", "app/__pycache__", "app"):
+        (tmp_path / folder).mkdir(parents=True, exist_ok=True)
+        (tmp_path / folder / "x.py").write_text("x = 1\n")
+    tool = TOOLS_BY_ID["bandit"]
+    assert tool.command is not None
+    command = tool.command(ScanContext(repo=tmp_path, out=tmp_path / "report.json"))
+    assert command is not None
+    skipped = command.argv[command.argv.index("-x") + 1].split(",")
+    assert "./.demo" in skipped
+    assert "./app" not in skipped and not any("__pycache__" in s for s in skipped)

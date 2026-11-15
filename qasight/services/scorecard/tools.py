@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess  # nosec B404 - runs git with an argv list, no shell
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -98,11 +99,38 @@ _FINDINGS_HOW = (
 )
 
 
+def _git_ignored_dirs(repo: Path) -> list[str]:
+    """Folders git ignores in ``repo`` (a clone of another project, build output), or none."""
+    if not (repo / ".git").exists():
+        return []
+    try:
+        out = subprocess.run(  # nosec B603 B607 - argv list, no shell; git from PATH
+            ["git", "ls-files", "--others", "--ignored", "--exclude-standard", "--directory"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    dirs: list[str] = []
+    for line in sorted(out.splitlines()):
+        path = line.rstrip("/")
+        # Bytecode caches hold no source, and a folder inside one already listed is covered.
+        if not line.endswith("/") or path.endswith("__pycache__"):
+            continue
+        if not any(path.startswith(f"{d}/") for d in dirs):
+            dirs.append(path)
+    return dirs
+
+
 def _bandit(ctx: ScanContext) -> Command:
-    skip = ",".join(
-        f"./{d}"
-        for d in (".git", ".venv", "venv", "node_modules", "tests", "test", "build", "dist")
-    )
+    # Ignored folders aren't the repository's code: the Pages demo clones fake-api
+    # into QASight's own (ignored) .demo/ folder, and its findings aren't QASight's.
+    standard = (".git", ".venv", "venv", "node_modules", "tests", "test", "build", "dist")
+    ignored = [d for d in _git_ignored_dirs(ctx.repo) if d not in standard]
+    skip = ",".join(f"./{d}" for d in (*standard, *ignored))
     return Command(
         ["bandit", "-r", ".", "-f", "json", "-o", str(ctx.out), "-q", "-x", skip, "--exit-zero"],
         ctx.repo,

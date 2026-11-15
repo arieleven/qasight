@@ -8,12 +8,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- Code quality: Bandit skips folders git ignores, so a clone of another project inside the repository (the Pages demo keeps fake-api in `.demo/`) no longer counts against it
+
 ### Changed
 - Code quality: numbered versions sort by number whatever order they were scored in, and names such as `main` sit above them, so releases scored after `main` still line up on the Versions strip
 - The Pages demo's Code quality page shows every release since 1.0.0, and fake-api now has real findings to show
 
 ### Security
-- QASight's own scan is clean (Bandit, pip-audit, npm audit, zizmor, Ruff): asserts in shipped code are explicit errors, storage counts use SQLAlchemy instead of f-string SQL, the GitHub Action checks its API URL's scheme, Allure's glob and minimatch are overridden to fixed versions, and Dependabot waits 7 days before offering a new release
+- QASight's own scan is clean (Bandit, pip-audit, npm audit, zizmor, Ruff): asserts in shipped code are explicit errors, storage counts use SQLAlchemy instead of f-string SQL, the GitHub Action checks its API URL's scheme, Allure's glob and minimatch and the frontend's eslint minimatch are overridden to fixed versions, and Dependabot waits 7 days before offering a new release
 
 ## [1.7.0] - 2026-11-13
 
