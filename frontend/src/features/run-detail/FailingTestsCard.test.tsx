@@ -29,6 +29,9 @@ function failing(
     new: true,
     triage,
     suggested_cause: null,
+    suggested_from: null,
+    suggested_confidence: null,
+    suggested_example: null,
     crash_kind,
     labels: [],
     links: []
@@ -147,6 +150,53 @@ describe("FailingTestsCard suggested cause", () => {
     await waitFor(() => expect(screen.getByTestId("triage")).toBeInTheDocument());
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT");
     expect(JSON.parse(String(put?.[1]?.body)).cause).toBe("environment");
+  });
+});
+
+describe("FailingTestsCard learned cause and Jira", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("shows how sure a learned suggestion is and files the failure in Jira", async () => {
+    let current = failures([
+      {
+        ...failing("test_total", "AssertionError: total 3 != 4"),
+        suggested_cause: "product_bug",
+        suggested_from: "similar",
+        suggested_confidence: 0.72,
+        suggested_example: "AssertionError: total 9 != 10 after discount"
+      }
+    ]);
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/jira")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ enabled: true, project: "SHOP", url: "https://j" }) });
+      }
+      if (url.endsWith("/api/v1/jira/issues") && init?.method === "POST") {
+        const marked = { ...ENVIRONMENT, cause: "product_bug" as const, note: "SHOP-12 https://j/browse/SHOP-12", run_id: "run-2" };
+        current = failures([failing("test_total", "AssertionError: total 3 != 4", marked)]);
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: async () => ({ key: "SHOP-12", url: "https://j/browse/SHOP-12", cause_marked: true })
+        });
+      }
+      if (url.endsWith("/api/v1/runs/run-2/failures")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => current });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderCard();
+
+    const hint = await screen.findByTestId("suggested-cause");
+    expect(within(hint).getByText(/72% sure, like a failure your team marked/)).toBeInTheDocument();
+    fireEvent.click(await within(hint).findByRole("button", { name: "File in Jira (SHOP)" }));
+
+    await waitFor(() => expect(screen.getByTestId("triage")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "https://j/browse/SHOP-12" })).toBeInTheDocument();
+    const post = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/v1/jira/issues"));
+    expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ cycle: "api", test: "test_total", run_id: "run-2" });
   });
 });
 

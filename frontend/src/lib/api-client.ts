@@ -35,6 +35,9 @@ export type FailingTestItem = Schemas["FailingTestItem"];
 export type TriageItem = Schemas["TriageItem"];
 export type TriageRequest = Schemas["TriageRequest"];
 export type TriageCause = TriageItem["cause"];
+export type JiraStatus = Schemas["JiraStatusResponse"];
+export type JiraIssueRequest = Schemas["JiraIssueRequest"];
+export type JiraIssue = Schemas["JiraIssueResponse"];
 export type QuarantineItem = Schemas["QuarantineItem"];
 export type ScorecardToolItem = Schemas["ScorecardToolItem"];
 export type ScorecardToolsResponse = Schemas["ScorecardToolsResponse"];
@@ -191,6 +194,12 @@ export const apiClient = {
   },
   markTriage(payload: TriageRequest): Promise<TriageItem> {
     return api<TriageItem>("/api/v1/triage", { method: "PUT", body: JSON.stringify(payload) });
+  },
+  jiraStatus(): Promise<JiraStatus> {
+    return api<JiraStatus>("/api/v1/jira");
+  },
+  fileJiraIssue(payload: JiraIssueRequest): Promise<JiraIssue> {
+    return api<JiraIssue>("/api/v1/jira/issues", { method: "POST", body: JSON.stringify(payload) });
   },
   clearTriage(cycle: string, signature: string): Promise<void> {
     const query = new URLSearchParams({ cycle, signature });

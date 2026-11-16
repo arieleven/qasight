@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient, type FailingTestItem, type TriageCause, type TriageItem } from "../../lib/api-client";
 import { Badge, Button } from "../../components/ui";
@@ -17,6 +17,64 @@ export const CAUSE_LABELS: Record<TriageCause, string> = {
 
 const inputClass =
   "rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 text-sm text-ink-100 focus:border-brand-500 focus:outline-none";
+
+/** A note with its links clickable (an issue link, say "SHOP-12 https://…/browse/SHOP-12"). */
+export function NoteText({ note }: { note: string }) {
+  const parts = note.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <span className="break-words text-ink-200">
+      {parts.map((part, index) =>
+        /^https?:\/\//.test(part) ? (
+          <a key={index} href={part} target="_blank" rel="noreferrer" className="text-brand-300 hover:underline">
+            {part}
+          </a>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </span>
+  );
+}
+
+/** "File in Jira": creates the issue and marks the cause with it (only when the server has Jira set up). */
+function JiraButton({ test, runId, cycle, onFiled }: { test: FailingTestItem; runId: string; cycle: string; onFiled: () => Promise<void> }) {
+  const jira = useQuery({ queryKey: ["jira-status"], queryFn: () => apiClient.jiraStatus(), staleTime: 5 * 60_000, retry: false });
+  const [state, setState] = useState<"idle" | "filing" | { key: string; url: string } | { error: string }>("idle");
+  if (!jira.data?.enabled) return null;
+  if (typeof state === "object" && "key" in state) {
+    return (
+      <a href={state.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-brand-300 hover:underline">
+        Filed {state.key}
+      </a>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        disabled={state === "filing"}
+        onClick={() => {
+          setState("filing");
+          apiClient
+            .fileJiraIssue({ cycle, test: test.name, message: test.message, run_id: runId, test_key: test.key })
+            .then(async (issue) => {
+              setState({ key: issue.key, url: issue.url });
+              await onFiled();
+            })
+            .catch((err: unknown) => setState({ error: err instanceof Error ? err.message : "Couldn't file the issue." }));
+        }}
+        className="-my-1 inline-block py-1 text-xs font-medium text-brand-300 hover:underline disabled:opacity-60"
+      >
+        {state === "filing" ? "Filing…" : `File in Jira (${jira.data.project})`}
+      </button>
+      {typeof state === "object" && "error" in state ? (
+        <span role="alert" className="text-xs text-danger-300">
+          {state.error}
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 /** Where a cause came from: this failure, or an earlier one with the same message. */
 function origin(triage: TriageItem, runId: string, testKey: string): string {
@@ -150,25 +208,42 @@ export function TriageControl({ test, runId, cycle }: { test: FailingTestItem; r
   }
   if (!triage) {
     const suggested = test.suggested_cause ?? null;
+    const learned = test.suggested_from === "similar";
+    const jira = canEdit ? <JiraButton test={test} runId={runId} cycle={cycle as string} onFiled={refresh} /> : null;
     const mark = canEdit ? (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="-my-1 inline-block py-1 text-xs font-medium text-brand-300 hover:underline"
-      >
-        Mark the cause
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="-my-1 inline-block py-1 text-xs font-medium text-brand-300 hover:underline"
+        >
+          Mark the cause
+        </button>
+        {jira}
+      </>
     ) : null;
-    if (!suggested) return mark;
+    if (!suggested) return mark ? <div className="flex flex-wrap items-center gap-2 text-xs">{mark}</div> : null;
+    const confidence = learned && test.suggested_confidence != null ? Math.round(test.suggested_confidence * 100) : null;
     return (
       <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="suggested-cause">
-        <span className="text-ink-300">Looks like: {CAUSE_LABELS[suggested]}</span>
+        <span className="text-ink-300">
+          Looks like: {CAUSE_LABELS[suggested]}
+          {learned ? (
+            <span className="text-ink-400" title={test.suggested_example ?? undefined}>
+              {" "}
+              ({confidence}% sure, like a failure your team marked: “{(test.suggested_example ?? "").slice(0, 80)}”)
+            </span>
+          ) : null}
+        </span>
         {canEdit ? (
           <button
             type="button"
             onClick={() => {
               setError(null);
-              save(suggested, "Suggested by QASight from the message").catch((err: unknown) =>
+              save(
+                suggested,
+                learned ? "Suggested by QASight from similar marked failures" : "Suggested by QASight from the message"
+              ).catch((err: unknown) =>
                 setError(err instanceof Error ? err.message : "Couldn't save the cause.")
               );
             }}
@@ -189,7 +264,7 @@ export function TriageControl({ test, runId, cycle }: { test: FailingTestItem; r
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="triage">
       <Badge tone="brand">Cause: {CAUSE_LABELS[triage.cause]}</Badge>
-      {triage.note ? <span className="break-words text-ink-200">{triage.note}</span> : null}
+      {triage.note ? <NoteText note={triage.note} /> : null}
       <span className="text-ink-400">{origin(triage, runId, test.key)}</span>
       {canEdit ? (
         <>
