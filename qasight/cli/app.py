@@ -63,6 +63,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import export_cmd as export_mod
     from qasight.cli.commands import export_site as export_site_mod
     from qasight.cli.commands import flaky as flaky_mod
+    from qasight.cli.commands import import_cmd as import_mod
     from qasight.cli.commands import ingest as ingest_mod
     from qasight.cli.commands import init_cmd as init_cmd_mod
     from qasight.cli.commands import issues as issues_mod
@@ -140,6 +141,12 @@ def _register_commands() -> None:
         ci_mod.app,
         name="ci",
         help="After a CI run: summary, pull/merge request comment, annotations, chat alerts.",
+        rich_help_panel="Run and report",
+    )
+    app.add_typer(
+        import_mod.app,
+        name="import",
+        help="Import a ReportPortal project's launches and failure decisions as run history.",
         rich_help_panel="Run and report",
     )
     app.add_typer(

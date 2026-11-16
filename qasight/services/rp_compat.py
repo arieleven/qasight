@@ -607,7 +607,13 @@ class BuiltResults:
     files: dict[str, bytes] = field(default_factory=dict)
 
 
-def build_results(launch: RpLaunch, items: list[RpItem], logs: list[RpLog]) -> BuiltResults:
+def build_results(
+    launch: RpLaunch,
+    items: list[RpItem],
+    logs: list[RpLog],
+    *,
+    links: Mapping[str, list[dict[str, str]]] | None = None,
+) -> BuiltResults:
     """Allure ``*-result.json`` dicts (and their attachment files) for a reported launch.
 
     A test is an item with stats and no children with stats; its nested steps
@@ -749,6 +755,8 @@ def build_results(launch: RpLaunch, items: list[RpItem], logs: list[RpLog]) -> B
         }
         if last.description:
             result["description"] = last.description
+        if links and links.get(last.uuid):
+            result["links"] = links[last.uuid]
         if last.parameters:
             result["parameters"] = last.parameters
         details: dict[str, Any] = {}
