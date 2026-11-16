@@ -937,6 +937,29 @@
         "title": "BrokenTestItem",
         "type": "object"
       },
+      "CauseAccuracyItem": {
+        "properties": {
+          "cause": {
+            "title": "Cause",
+            "type": "string"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cause",
+          "suggested",
+          "correct"
+        ],
+        "title": "CauseAccuracyItem",
+        "type": "object"
+      },
       "CostlyFlakyTest": {
         "properties": {
           "branches": {
@@ -3291,6 +3314,43 @@
             ],
             "title": "Suggested Cause"
           },
+          "suggested_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Confidence"
+          },
+          "suggested_example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Example"
+          },
+          "suggested_from": {
+            "anyOf": [
+              {
+                "enum": [
+                  "similar",
+                  "rule"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested From"
+          },
           "triage": {
             "anyOf": [
               {
@@ -3317,6 +3377,9 @@
           "new",
           "triage",
           "suggested_cause",
+          "suggested_from",
+          "suggested_confidence",
+          "suggested_example",
           "crash_kind",
           "labels",
           "links"
@@ -3943,6 +4006,118 @@
           "flaky"
         ],
         "title": "IssueTestItem",
+        "type": "object"
+      },
+      "JiraIssueRequest": {
+        "properties": {
+          "cycle": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Cycle",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "maxLength": 20000,
+            "title": "Message",
+            "type": "string"
+          },
+          "run_id": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "maxLength": 250,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "test": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Test",
+            "type": "string"
+          },
+          "test_key": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Test Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "test"
+        ],
+        "title": "JiraIssueRequest",
+        "type": "object"
+      },
+      "JiraIssueResponse": {
+        "properties": {
+          "cause_marked": {
+            "title": "Cause Marked",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "url",
+          "cause_marked"
+        ],
+        "title": "JiraIssueResponse",
+        "type": "object"
+      },
+      "JiraStatusResponse": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "enabled",
+          "project",
+          "url"
+        ],
+        "title": "JiraStatusResponse",
         "type": "object"
       },
       "LabelCountItem": {
@@ -9000,6 +9175,61 @@
         "title": "TestSummaryItem",
         "type": "object"
       },
+      "TriageAccuracyResponse": {
+        "properties": {
+          "by_cause": {
+            "items": {
+              "$ref": "#/components/schemas/CauseAccuracyItem"
+            },
+            "title": "By Cause",
+            "type": "array"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "examples": {
+            "title": "Examples",
+            "type": "integer"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "examples",
+          "suggested",
+          "correct",
+          "precision",
+          "coverage",
+          "by_cause"
+        ],
+        "title": "TriageAccuracyResponse",
+        "type": "object"
+      },
       "TriageItem": {
         "properties": {
           "cause": {
@@ -9258,6 +9488,30 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/info": {
+      "get": {
+        "description": "What ReportPortal clients ask a server first (its version decides the time format they send).",
+        "operationId": "server_info_api_info_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Server Info Api Info Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Server Info",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
     "/api/v1/adhoc-executions": {
       "post": {
         "description": "Run one framework directly as a one-stage ``adhoc`` cycle.\n\nSame engine, persistence and event stream as a named cycle: progress and\nstatus live under ``/cycle-executions/{execution_id}``.",
@@ -10545,6 +10799,70 @@
         "summary": "Ingest Reports",
         "tags": [
           "ingest"
+        ]
+      }
+    },
+    "/api/v1/jira": {
+      "get": {
+        "description": "Whether the server can file issues in Jira (``TESTO_JIRA_*`` set), and where.",
+        "operationId": "jira_status_api_v1_jira_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JiraStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Jira Status",
+        "tags": [
+          "jira"
+        ]
+      }
+    },
+    "/api/v1/jira/issues": {
+      "post": {
+        "description": "Create a Jira issue for a failing test and mark its cause with the issue.",
+        "operationId": "file_jira_issue_api_v1_jira_issues_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JiraIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JiraIssueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "File Jira Issue",
+        "tags": [
+          "jira"
         ]
       }
     },
@@ -12842,6 +13160,56 @@
         ]
       }
     },
+    "/api/v1/triage/accuracy": {
+      "get": {
+        "description": "How often a cause suggested from similar marked failures would have been right.",
+        "operationId": "triage_accuracy_api_v1_triage_accuracy_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageAccuracyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Triage Accuracy",
+        "tags": [
+          "triage"
+        ]
+      }
+    },
     "/api/v1/version": {
       "get": {
         "operationId": "version_api_v1_version_get",
@@ -12860,6 +13228,564 @@
         "summary": "Version",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/{version}/{project}/item": {
+      "post": {
+        "description": "Start a top-level item (a suite, usually). Returns ``{\"id\": \"<item uuid>\"}``.",
+        "operationId": "start_root_item_api__version___project__item_post",
+        "parameters": [
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Root Item",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/item/{item_uuid}": {
+      "put": {
+        "description": "Finish an item with its status; a test shows in \"Running now\" right away.",
+        "operationId": "finish_item_api__version___project__item__item_uuid__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_uuid",
+            "required": true,
+            "schema": {
+              "title": "Item Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Finish Item",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/item/{parent_uuid}": {
+      "post": {
+        "description": "Start an item under *parent_uuid*: a test, or a nested step (``hasStats: false``).",
+        "operationId": "start_child_item_api__version___project__item__parent_uuid__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_uuid",
+            "required": true,
+            "schema": {
+              "title": "Parent Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Child Item",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/launch": {
+      "post": {
+        "description": "Start a launch. Returns ``{\"id\": \"<launch uuid>\", \"number\": n}``.",
+        "operationId": "start_launch_api__version___project__launch_post",
+        "parameters": [
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Launch",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/launch/uuid/{launch_uuid}": {
+      "get": {
+        "description": "What agents read back after starting or finishing a launch (its number, for links).",
+        "operationId": "get_launch_api__version___project__launch_uuid__launch_uuid__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "launch_uuid",
+            "required": true,
+            "schema": {
+              "title": "Launch Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Launch",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/launch/{launch_uuid}": {
+      "get": {
+        "description": "What agents read back after starting or finishing a launch (its number, for links).",
+        "operationId": "get_launch_api__version___project__launch__launch_uuid__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "launch_uuid",
+            "required": true,
+            "schema": {
+              "title": "Launch Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Launch",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/launch/{launch_uuid}/finish": {
+      "put": {
+        "description": "Finish a launch: what it reported is recorded as one run of its cycle.",
+        "operationId": "finish_launch_api__version___project__launch__launch_uuid__finish_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "launch_uuid",
+            "required": true,
+            "schema": {
+              "title": "Launch Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Finish Launch",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/log": {
+      "post": {
+        "description": "Save logs: one JSON entry, a JSON list, or multipart with ``json_request_part`` and files.",
+        "operationId": "save_log_api__version___project__log_post",
+        "parameters": [
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Log",
+        "tags": [
+          "reportportal-compatible"
+        ]
+      }
+    },
+    "/api/{version}/{project}/log/entry": {
+      "post": {
+        "description": "Save logs: one JSON entry, a JSON list, or multipart with ``json_request_part`` and files.",
+        "operationId": "save_log_api__version___project__log_entry_post",
+        "parameters": [
+          {
+            "description": "ReportPortal API version the agent uses",
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal API version the agent uses",
+              "pattern": "^v[12]$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "description": "ReportPortal project name",
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "description": "ReportPortal project name",
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Log",
+        "tags": [
+          "reportportal-compatible"
         ]
       }
     }

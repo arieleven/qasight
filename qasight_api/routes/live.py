@@ -9,10 +9,11 @@ from __future__ import annotations
 import time
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from qasight_api.live_runs import LiveSession, live_runs
+from qasight_api.security import require_cycle_role
 
 router = APIRouter(prefix="/api/v1", tags=["live"])
 
@@ -94,8 +95,9 @@ def list_live_runs() -> LiveRunListResponse:
 
 
 @router.post("/live-runs", response_model=LiveRunStarted, status_code=201)
-def start_live_run(body: LiveRunStartRequest) -> LiveRunStarted:
+def start_live_run(body: LiveRunStartRequest, request: Request) -> LiveRunStarted:
     """Start a live session; send results to ``/live-runs/{id}/results``."""
+    require_cycle_role(request, body.cycle)
     session = live_runs.start(body.cycle, total=body.total, branch=body.branch, commit=body.commit)
     return LiveRunStarted(id=session.id)
 

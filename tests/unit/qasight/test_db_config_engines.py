@@ -34,5 +34,7 @@ def test_reset_disposes_every_cached_engine(
 
 
 def test_engine_kwargs_by_dialect() -> None:
-    assert engine_kwargs("sqlite:///x.db") == {"connect_args": {"check_same_thread": False}}
+    assert engine_kwargs("sqlite:///x.db") == {
+        "connect_args": {"check_same_thread": False, "timeout": 30}
+    }
     assert engine_kwargs("postgresql+psycopg://u@h/db") == {"pool_pre_ping": True}

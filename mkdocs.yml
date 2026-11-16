@@ -100,6 +100,9 @@ nav:
       - Setup Snippets: Processes & Guides/Setup Snippets.md
       - Team Server: Processes & Guides/Team Server.md
       - Closed Network Install: Processes & Guides/Closed Network Install.md
+      - Moving from ReportPortal: Processes & Guides/Moving from ReportPortal.md
+      - Benchmark: Processes & Guides/Benchmark.md
+      - Beta Case Study Kit: Processes & Guides/Beta Case Study Kit.md
       - Stability and Deprecation Policy: Processes & Guides/Stability and Deprecation Policy.md
       - Shared Resource Pools: Processes & Guides/Shared Resource Pools.md
       - Setup Prompts: Prompts & Snippets/Setup Prompts.md
@@ -118,6 +121,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Surpass ReportPortal: Specs & ADRs/Surpass ReportPortal - 2026-11-16.md
       - Adoption Blockers: Specs & ADRs/Adoption Blockers - 2026-11-12.md
       - Release Scorecard: Specs & ADRs/Release Scorecard - 2026-11-12.md
       - Menu by Question: Specs & ADRs/Menu by Question - 2026-11-12.md

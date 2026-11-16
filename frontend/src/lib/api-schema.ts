@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Server Info
+         * @description What ReportPortal clients ask a server first (its version decides the time format they send).
+         */
+        get: operations["server_info_api_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/adhoc-executions": {
         parameters: {
             query?: never;
@@ -555,6 +575,46 @@ export interface paths {
          *     server has a token set, like every other write.
          */
         post: operations["ingest_reports_api_v1_ingest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jira": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Jira Status
+         * @description Whether the server can file issues in Jira (``TESTO_JIRA_*`` set), and where.
+         */
+        get: operations["jira_status_api_v1_jira_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jira/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * File Jira Issue
+         * @description Create a Jira issue for a failing test and mark its cause with the issue.
+         */
+        post: operations["file_jira_issue_api_v1_jira_issues_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1449,6 +1509,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/triage/accuracy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Triage Accuracy
+         * @description How often a cause suggested from similar marked failures would have been right.
+         */
+        get: operations["triage_accuracy_api_v1_triage_accuracy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/version": {
         parameters: {
             query?: never;
@@ -1460,6 +1540,186 @@ export interface paths {
         get: operations["version_api_v1_version_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/item": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Root Item
+         * @description Start a top-level item (a suite, usually). Returns ``{"id": "<item uuid>"}``.
+         */
+        post: operations["start_root_item_api__version___project__item_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/item/{item_uuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Finish Item
+         * @description Finish an item with its status; a test shows in "Running now" right away.
+         */
+        put: operations["finish_item_api__version___project__item__item_uuid__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/item/{parent_uuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Child Item
+         * @description Start an item under *parent_uuid*: a test, or a nested step (``hasStats: false``).
+         */
+        post: operations["start_child_item_api__version___project__item__parent_uuid__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/launch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Launch
+         * @description Start a launch. Returns ``{"id": "<launch uuid>", "number": n}``.
+         */
+        post: operations["start_launch_api__version___project__launch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/launch/uuid/{launch_uuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Launch
+         * @description What agents read back after starting or finishing a launch (its number, for links).
+         */
+        get: operations["get_launch_api__version___project__launch_uuid__launch_uuid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/launch/{launch_uuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Launch
+         * @description What agents read back after starting or finishing a launch (its number, for links).
+         */
+        get: operations["get_launch_api__version___project__launch__launch_uuid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/launch/{launch_uuid}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Finish Launch
+         * @description Finish a launch: what it reported is recorded as one run of its cycle.
+         */
+        put: operations["finish_launch_api__version___project__launch__launch_uuid__finish_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Log
+         * @description Save logs: one JSON entry, a JSON list, or multipart with ``json_request_part`` and files.
+         */
+        post: operations["save_log_api__version___project__log_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{version}/{project}/log/entry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Log
+         * @description Save logs: one JSON entry, a JSON list, or multipart with ``json_request_part`` and files.
+         */
+        post: operations["save_log_api__version___project__log_entry_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1804,6 +2064,15 @@ export interface components {
             message: string;
             /** Name */
             name: string;
+        };
+        /** CauseAccuracyItem */
+        CauseAccuracyItem: {
+            /** Cause */
+            cause: string;
+            /** Correct */
+            correct: number;
+            /** Suggested */
+            suggested: number;
         };
         /** CostlyFlakyTest */
         CostlyFlakyTest: {
@@ -2508,6 +2777,12 @@ export interface components {
             status: string;
             /** Suggested Cause */
             suggested_cause: ("product_bug" | "test_bug" | "environment" | "flaky" | "other") | null;
+            /** Suggested Confidence */
+            suggested_confidence: number | null;
+            /** Suggested Example */
+            suggested_example: string | null;
+            /** Suggested From */
+            suggested_from: ("similar" | "rule") | null;
             triage: components["schemas"]["TriageItem"] | null;
         };
         /** FailureGroupItem */
@@ -2740,6 +3015,48 @@ export interface components {
             last_status: string;
             /** Name */
             name: string;
+        };
+        /** JiraIssueRequest */
+        JiraIssueRequest: {
+            /** Cycle */
+            cycle: string;
+            /**
+             * Message
+             * @default
+             */
+            message?: string;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id?: string;
+            /** Summary */
+            summary?: string | null;
+            /** Test */
+            test: string;
+            /**
+             * Test Key
+             * @default
+             */
+            test_key?: string;
+        };
+        /** JiraIssueResponse */
+        JiraIssueResponse: {
+            /** Cause Marked */
+            cause_marked: boolean;
+            /** Key */
+            key: string;
+            /** Url */
+            url: string;
+        };
+        /** JiraStatusResponse */
+        JiraStatusResponse: {
+            /** Enabled */
+            enabled: boolean;
+            /** Project */
+            project: string | null;
+            /** Url */
+            url: string | null;
         };
         /** LabelCountItem */
         LabelCountItem: {
@@ -4391,6 +4708,21 @@ export interface components {
             /** Stage */
             stage: string;
         };
+        /** TriageAccuracyResponse */
+        TriageAccuracyResponse: {
+            /** By Cause */
+            by_cause: components["schemas"]["CauseAccuracyItem"][];
+            /** Correct */
+            correct: number;
+            /** Coverage */
+            coverage: number | null;
+            /** Examples */
+            examples: number;
+            /** Precision */
+            precision: number | null;
+            /** Suggested */
+            suggested: number;
+        };
         /** TriageItem */
         TriageItem: {
             /**
@@ -4504,6 +4836,28 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    server_info_api_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     create_adhoc_execution_api_v1_adhoc_executions_post: {
         parameters: {
             query?: never;
@@ -5332,6 +5686,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    jira_status_api_v1_jira_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JiraStatusResponse"];
+                };
+            };
+        };
+    };
+    file_jira_issue_api_v1_jira_issues_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JiraIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JiraIssueResponse"];
                 };
             };
             /** @description Validation Error */
@@ -6873,6 +7280,37 @@ export interface operations {
             };
         };
     };
+    triage_accuracy_api_v1_triage_accuracy_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriageAccuracyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     version_api_v1_version_get: {
         parameters: {
             query?: never;
@@ -6889,6 +7327,317 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VersionResponse"];
+                };
+            };
+        };
+    };
+    start_root_item_api__version___project__item_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finish_item_api__version___project__item__item_uuid__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_uuid: string;
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_child_item_api__version___project__item__parent_uuid__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_uuid: string;
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_launch_api__version___project__launch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_launch_api__version___project__launch_uuid__launch_uuid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                launch_uuid: string;
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_launch_api__version___project__launch__launch_uuid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                launch_uuid: string;
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finish_launch_api__version___project__launch__launch_uuid__finish_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                launch_uuid: string;
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_log_api__version___project__log_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_log_api__version___project__log_entry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ReportPortal API version the agent uses */
+                version: string;
+                /** @description ReportPortal project name */
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

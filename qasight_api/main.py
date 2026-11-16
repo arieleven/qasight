@@ -29,11 +29,14 @@ from qasight_api.routes.dashboard import router as dashboard_router
 from qasight_api.routes.health import router as health_router
 from qasight_api.routes.history import router as history_router
 from qasight_api.routes.ingest import router as ingest_router
+from qasight_api.routes.jira import router as jira_router
 from qasight_api.routes.live import router as live_router
 from qasight_api.routes.project_health import router as project_health_router
 from qasight_api.routes.quarantine import router as quarantine_router
 from qasight_api.routes.report import router as report_router
 from qasight_api.routes.resources import router as resources_router
+from qasight_api.routes.rp_compat import info_router as rp_info_router
+from qasight_api.routes.rp_compat import router as rp_compat_router
 from qasight_api.routes.scorecard import router as scorecard_router
 from qasight_api.routes.storage import router as storage_router
 from qasight_api.routes.triage import router as triage_router
@@ -246,6 +249,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(health_router)
     app.include_router(ingest_router)
+    app.include_router(jira_router)
     app.include_router(live_router)
     app.include_router(project_health_router)
     app.include_router(triage_router)
@@ -255,6 +259,9 @@ def create_app() -> FastAPI:
     app.include_router(scorecard_router)
     app.include_router(storage_router)
     app.include_router(version_router)
+    # Last: ReportPortal agents' /api/v1/{project}/... paths never shadow QASight's own.
+    app.include_router(rp_info_router)
+    app.include_router(rp_compat_router)
 
     STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
     # Stage logs (<stage>/run.log) open in the browser instead of downloading.
@@ -421,5 +428,38 @@ def run(argv: list[str] | None = None) -> int:
         )
     # A factory, so the app reads the environment as it is now: ``qasight ui`` sets
     # TESTO_CORS_ORIGINS after ``qasight_api`` (and its module-level ``app``) was imported.
-    uvicorn.run("qasight_api.main:create_app", factory=True, host=host, port=port, reload=reload)
+    workers = api_workers()
+    if workers is None:
+        sys.stderr.write("TESTO_WORKERS must be a whole number from 1 to 64.\n")
+        return 2
+    if workers > 1 and reload:
+        sys.stderr.write("TESTO_WORKERS above 1 can't be used with TESTO_API_RELOAD.\n")
+        return 2
+    if workers > 1 and os.environ.get("TESTO_RUN_QUEUE", "memory").strip().lower() != "db":
+        logger.warning(
+            "TESTO_WORKERS=%d with the in-memory run queue: runs started from the UI or API "
+            "wait in the worker that took the request. Set TESTO_RUN_QUEUE=db so a restart "
+            "keeps them; results sent by CI and agents are shared by every worker either way.",
+            workers,
+        )
+    uvicorn.run(
+        "qasight_api.main:create_app",
+        factory=True,
+        host=host,
+        port=port,
+        reload=reload,
+        workers=workers,
+    )
     return 0
+
+
+def api_workers() -> int | None:
+    """``TESTO_WORKERS``: API worker processes (default 1); None when it isn't 1-64."""
+    import os
+
+    raw = os.environ.get("TESTO_WORKERS", "1").strip() or "1"
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if 1 <= value <= 64 else None

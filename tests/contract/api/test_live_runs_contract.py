@@ -82,8 +82,10 @@ def test_writes_need_the_token_and_unknown_sessions_404(server_env: Path) -> Non
     assert client.post(f"/api/v1/live-runs/{sid}/results", json=bad).status_code == 422
 
 
-def test_store_forgets_finished_and_silent_sessions() -> None:
-    store = LiveRunStore()
+def test_store_forgets_finished_and_silent_sessions(tmp_path: Path) -> None:
+    from sqlmodel import create_engine
+
+    store = LiveRunStore(create_engine(f"sqlite:///{tmp_path / 'live.db'}"))
     done = store.start("a", now=0)
     store.finish(done.id, now=10)
     silent = store.start("b", now=0)

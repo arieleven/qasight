@@ -53,6 +53,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import ai as ai_mod
     from qasight.cli.commands import backup as backup_mod
     from qasight.cli.commands import badge as badge_mod
+    from qasight.cli.commands import case_study_cmd as case_study_mod
     from qasight.cli.commands import ci_cmd as ci_mod
     from qasight.cli.commands import clean as clean_mod
     from qasight.cli.commands import config as config_cmd
@@ -63,6 +64,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import export_cmd as export_mod
     from qasight.cli.commands import export_site as export_site_mod
     from qasight.cli.commands import flaky as flaky_mod
+    from qasight.cli.commands import import_cmd as import_mod
     from qasight.cli.commands import ingest as ingest_mod
     from qasight.cli.commands import init_cmd as init_cmd_mod
     from qasight.cli.commands import issues as issues_mod
@@ -79,6 +81,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import scorecard as scorecard_mod
     from qasight.cli.commands import server_cmd as server_mod
     from qasight.cli.commands import split as split_mod
+    from qasight.cli.commands import triage_cmd as triage_mod
     from qasight.cli.commands import try_cmd, ui_cmd
     from qasight.cli.commands import users as users_cmd
     from qasight.cli.commands import version as version_cmd
@@ -143,11 +146,28 @@ def _register_commands() -> None:
         rich_help_panel="Run and report",
     )
     app.add_typer(
+        import_mod.app,
+        name="import",
+        help="Import a ReportPortal project's launches and failure decisions as run history.",
+        rich_help_panel="Run and report",
+    )
+    app.add_typer(
+        triage_mod.app,
+        name="triage",
+        help="How often a cause suggested from similar marked failures would have been right.",
+        rich_help_panel="Run and report",
+    )
+    app.add_typer(
         issues_mod.app,
         name="issues",
         help="Open a GitHub issue per flaky test and close it once the test is stable.",
         rich_help_panel="Run and report",
     )
+    app.command(
+        name="case-study",
+        help="Before/after numbers for a team that switched to QASight, as Markdown.",
+        rich_help_panel="Run and report",
+    )(case_study_mod.case_study)
     app.command(
         name="otel",
         help="Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",

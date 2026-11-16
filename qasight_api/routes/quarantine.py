@@ -16,7 +16,7 @@ from qasight.services.quarantine_store import (
     release_after,
 )
 from qasight_api.models import QuarantineItem, QuarantineListResponse, QuarantineRequest
-from qasight_api.security import TOKEN_PRINCIPAL, current_principal
+from qasight_api.security import TOKEN_PRINCIPAL, current_principal, require_cycle_role
 
 router = APIRouter(prefix="/api/v1", tags=["quarantine"])
 
@@ -48,6 +48,7 @@ def list_quarantine(cycle: str | None = None) -> QuarantineListResponse:
 @router.put("/quarantine", response_model=QuarantineItem)
 def add_quarantine(body: QuarantineRequest, request: Request) -> QuarantineItem:
     """Quarantine a test (exact name or glob) in a cycle; replaces an earlier entry for it."""
+    require_cycle_role(request, body.cycle)
     principal = current_principal(request)
     # The shared API token names no one; an account does.
     added_by = principal.username if principal and principal != TOKEN_PRINCIPAL else None
@@ -65,8 +66,9 @@ def add_quarantine(body: QuarantineRequest, request: Request) -> QuarantineItem:
 
 
 @router.delete("/quarantine", status_code=204)
-def remove_quarantine(cycle: str, test: str) -> Response:
+def remove_quarantine(cycle: str, test: str, request: Request) -> Response:
     """Release a test: its failures fail runs again."""
+    require_cycle_role(request, cycle)
     if not QuarantineStore().remove(cycle=cycle, test=test):
         raise HTTPException(status_code=404, detail="That test isn't quarantined in this cycle.")
     return Response(status_code=204)

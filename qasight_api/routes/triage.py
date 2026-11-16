@@ -9,8 +9,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from qasight.services.triage import Triage, TriageError, TriageStore
-from qasight_api.models import TriageItem, TriageListResponse, TriageRequest
-from qasight_api.security import TOKEN_PRINCIPAL, current_principal
+from qasight_api.models import ApiModel, TriageItem, TriageListResponse, TriageRequest
+from qasight_api.security import TOKEN_PRINCIPAL, current_principal, require_cycle_role
 
 router = APIRouter(prefix="/api/v1", tags=["triage"])
 
@@ -35,9 +35,47 @@ def list_triage(cycle: str | None = None) -> TriageListResponse:
     return TriageListResponse(causes=[triage_item(t) for t in TriageStore().list(cycle)])
 
 
+class CauseAccuracyItem(ApiModel):
+    cause: str
+    suggested: int
+    correct: int
+
+
+class TriageAccuracyResponse(ApiModel):
+    # Marked causes replayed, one at a time, against all the others.
+    examples: int
+    suggested: int
+    correct: int
+    # correct / suggested; None with no suggestion made.
+    precision: float | None
+    # suggested / examples; None with no marked cause.
+    coverage: float | None
+    by_cause: list[CauseAccuracyItem]
+
+
+@router.get("/triage/accuracy", response_model=TriageAccuracyResponse)
+def triage_accuracy(cycle: str | None = None) -> TriageAccuracyResponse:
+    """How often a cause suggested from similar marked failures would have been right."""
+    from qasight.services.similar_causes import evaluate, examples_from_store
+
+    result = evaluate(examples_from_store(cycle))
+    return TriageAccuracyResponse(
+        examples=result.examples,
+        suggested=result.suggested,
+        correct=result.correct,
+        precision=result.precision,
+        coverage=result.coverage,
+        by_cause=[
+            CauseAccuracyItem(cause=k, suggested=v[0], correct=v[1])
+            for k, v in result.by_cause.items()
+        ],
+    )
+
+
 @router.put("/triage", response_model=TriageItem)
 def mark_triage(body: TriageRequest, request: Request) -> TriageItem:
     """Set the cause of a failure message in a cycle; replaces an earlier one for the same message."""
+    require_cycle_role(request, body.cycle)
     principal = current_principal(request)
     # The shared API token names no one; an account does.
     marked_by = principal.username if principal and principal != TOKEN_PRINCIPAL else None
@@ -57,8 +95,9 @@ def mark_triage(body: TriageRequest, request: Request) -> TriageItem:
 
 
 @router.delete("/triage", status_code=204)
-def clear_triage(cycle: str, signature: str) -> Response:
+def clear_triage(cycle: str, signature: str, request: Request) -> Response:
     """Forget a cause; failures with that message show no cause again."""
+    require_cycle_role(request, cycle)
     if not TriageStore().clear(cycle=cycle, signature=signature):
         raise HTTPException(status_code=404, detail="No cause is marked for that message.")
     return Response(status_code=204)

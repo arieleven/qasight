@@ -60,8 +60,14 @@ class FailingTest:
     new: bool
     # The cause someone marked for this message in this cycle (services/triage.py).
     triage: Triage | None = None
-    # With no cause marked: what a well-known message points to (services/cause_hints.py).
+    # With no cause marked: what the causes marked on similar failures point to
+    # (services/similar_causes.py, ``suggested_from`` "similar"), else what a well-known
+    # message points to (services/cause_hints.py, "rule").
     suggested_cause: str | None = None
+    suggested_from: str | None = None
+    suggested_confidence: float | None = None
+    # The marked failure message the suggestion is most like ("similar" only).
+    suggested_example: str | None = None
     # "stack_overflow" | "crash" when its message or trace shows one (engine/crash_signatures.py).
     crash_kind: str | None = None
     # What the test is about ({name, value}: feature, severity, tag...) and its issue links.
@@ -154,16 +160,43 @@ def _with_triage(cycle: str | None, tests: list[FailingTest]) -> list[FailingTes
     return [replace(t, triage=causes[t.message]) if t.message in causes else t for t in tests]
 
 
-def _with_suggestions(tests: list[FailingTest]) -> list[FailingTest]:
-    """``tests`` with a suggested cause on each failure nobody has marked yet."""
+def _with_suggestions(cycle: str | None, tests: list[FailingTest]) -> list[FailingTest]:
+    """``tests`` with a suggested cause on each failure nobody has marked yet.
+
+    The team's own marked causes on similar failures come first; the built-in
+    rules for well-known messages answer the rest.
+    """
     from qasight.services.cause_hints import suggest_cause
 
-    return [
-        replace(t, suggested_cause=hint)
-        if t.triage is None and (hint := suggest_cause(t.message))
-        else t
-        for t in tests
-    ]
+    unmarked = [t for t in tests if t.triage is None and t.message]
+    learned: dict[str, Any] = {}
+    if cycle and unmarked:
+        from qasight.services.similar_causes import suggest_many
+
+        try:
+            learned = suggest_many(cycle, (t.message for t in unmarked))
+        except Exception:
+            # Broad on purpose: a suggestion is a convenience; the failures must still show.
+            logger.warning("could not suggest causes from similar failures", exc_info=True)
+    out: list[FailingTest] = []
+    for t in tests:
+        if t.triage is not None:
+            out.append(t)
+        elif (found := learned.get(t.message)) is not None:
+            out.append(
+                replace(
+                    t,
+                    suggested_cause=found.cause,
+                    suggested_from="similar",
+                    suggested_confidence=found.confidence,
+                    suggested_example=found.example_message,
+                )
+            )
+        elif hint := suggest_cause(t.message):
+            out.append(replace(t, suggested_cause=hint, suggested_from="rule"))
+        else:
+            out.append(t)
+    return out
 
 
 def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailures | None:
@@ -234,7 +267,7 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
                 links=tuple(case.get("links") or ()),
             )
         )
-    tests = _with_suggestions(_with_triage(run.cycle, tests))
+    tests = _with_suggestions(run.cycle, _with_triage(run.cycle, tests))
     case_frameworks = {k[:200]: str(c.get("framework") or "") for k, c in failing.items()}
     # New breakages first, then the longest-standing ones; ties by stage and name.
     tests.sort(key=lambda t: (not t.new, -t.failing_runs, t.stage, t.name))

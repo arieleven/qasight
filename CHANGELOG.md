@@ -9,6 +9,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- ReportPortal agents (pytest, Playwright, JUnit 5, TestNG, Cypress, WebdriverIO, .NET) can report to a QASight server: `/api/v1/{project}/…` and `/api/v2/{project}/…` answer their calls, each launch shows under Running now and becomes a run with steps, logs, attachments, labels and retries; guide: Moving from ReportPortal
+- `qasight import reportportal` brings a ReportPortal project's launches in as dated runs and its defect types in as marked causes, with issue links
+- Cause suggestions learn from the failures your team marked: the run page shows how sure a suggestion is and the marked failure it looks like; `qasight triage accuracy` and `GET /api/v1/triage/accuracy` measure how often they are right
+- `TESTO_WORKERS` runs the API with several worker processes; live sessions are kept in the database, and SQLite waits for locks and uses write-ahead mode with several workers
+- `scripts/benchmark.py` stores a million results and times agents and pages; results in the Benchmark guide
+- Roles per cycle: `qasight users grant NAME ROLE PATTERN`, `revoke` and `grants`
+- File a failing test in Jira Cloud or Data Center from the run page (`TESTO_JIRA_*`, `POST /api/v1/jira/issues`); its cause is marked as a product bug with the issue link, and links in cause notes are clickable
+- `qasight case-study` prints before and after numbers for a team that switched, with a Beta Case Study Kit guide
 - `qasight export -o report.pdf` takes the format from the file's extension
 - CI runs the CLI end to end the way a coding agent calls it (`scripts/cli_e2e.py`): `qasight doctor` with no config, `try`, `ingest`, `qasight mcp` over stdio, `diff` and `export` in every format
 - Closed networks: `scripts/offline/bundle.sh` packs the wheels, Docker images and GitLab template into one file for a network with no internet, and `install.sh` installs it there (and pushes the images to your registry); guide: Closed Network Install

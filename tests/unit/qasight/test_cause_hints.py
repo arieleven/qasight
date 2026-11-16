@@ -41,6 +41,6 @@ def test_a_marked_cause_wins_over_a_suggestion() -> None:
         new=True,
     )
     plain, marked = FailingTest(**base), FailingTest(**base, triage=object())  # type: ignore[arg-type]
-    out = _with_suggestions([plain, marked])
+    out = _with_suggestions(None, [plain, marked])
     assert out[0].suggested_cause == "environment"
     assert out[1].suggested_cause is None

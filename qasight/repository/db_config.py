@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Final
+from typing import Any, Final
 from urllib.parse import urlparse
 
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlmodel import create_engine
 
@@ -106,8 +107,35 @@ def engine_kwargs(url: str) -> dict[str, object]:
     """``create_engine`` keyword arguments for ``url``'s dialect (shared by probes)."""
     dialect = urlparse(url).scheme.lower().split("+", 1)[0]
     if dialect == "sqlite":
-        return {"connect_args": {"check_same_thread": False}}
+        # Wait for a lock instead of failing at once: several API workers (TESTO_WORKERS)
+        # or a CLI run next to the server write to one file.
+        return {"connect_args": {"check_same_thread": False, "timeout": 30}}
     return {"pool_pre_ping": True}
+
+
+def _wants_wal(url: str) -> bool:
+    """WAL lets readers and one writer share a SQLite file; on for a server with several workers.
+
+    ``TESTO_SQLITE_WAL=1`` turns it on, ``0`` off; by default it follows ``TESTO_WORKERS``
+    above 1. Not for a database on a network file system, which WAL doesn't support.
+    """
+    if ":memory:" in url:
+        return False
+    flag = os.environ.get("TESTO_SQLITE_WAL", "").strip().lower()
+    if flag:
+        return flag in ("1", "true", "yes")
+    try:
+        return int(os.environ.get("TESTO_WORKERS", "1") or "1") > 1
+    except ValueError:
+        return False
+
+
+def _sqlite_wal(dbapi_connection: Any, _record: Any) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA journal_mode=WAL")
+    finally:
+        cursor.close()
 
 
 def _build_engine(url: str) -> Engine:
@@ -116,6 +144,8 @@ def _build_engine(url: str) -> Engine:
         if engine is None:
             validate_database_url(url)
             engine = create_engine(url, echo=False, **engine_kwargs(url))
+            if engine.dialect.name == "sqlite" and _wants_wal(url):
+                event.listen(engine, "connect", _sqlite_wal)
             _ENGINES[url] = engine
         return engine
 

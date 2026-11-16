@@ -147,4 +147,61 @@ def remove(username: str = typer.Argument(...)) -> None:
         _store().remove(username)
     except AccountError as exc:
         raise _fail(str(exc)) from exc
+    from qasight.project_roles import ProjectRoleStore
+
+    ProjectRoleStore().remove_user(username.strip())
     default_console().print(f"[pass]removed[/] {username}")
+
+
+@app.command("grant")
+def grant(
+    username: str = typer.Argument(...),
+    role: str = typer.Argument(..., help=_ROLE_HELP),
+    pattern: str = typer.Argument(..., help="Cycle name or glob: payments, 'shop-*'."),
+) -> None:
+    """Give an account a role on the cycles matching a pattern (above or below its own role)."""
+    from qasight.cli.ui.console import default_console
+    from qasight.project_roles import ProjectRoleError, ProjectRoleStore
+
+    if _store().get(username.strip()) is None:
+        raise _fail(f"no user {username.strip()!r}")
+    try:
+        ProjectRoleStore().grant(
+            username=username.strip(), pattern=pattern, role=role, granted_by="cli"
+        )
+    except ProjectRoleError as exc:
+        raise _fail(str(exc)) from exc
+    default_console().print(f"[pass]{username}[/] is {role} on cycles matching {pattern!r}")
+
+
+@app.command("revoke")
+def revoke(
+    username: str = typer.Argument(...),
+    pattern: str = typer.Argument(..., help="The pattern given to `qasight users grant`."),
+) -> None:
+    """Take back a per-cycle role; the account's own role applies there again."""
+    from qasight.cli.ui.console import default_console
+    from qasight.project_roles import ProjectRoleStore
+
+    if not ProjectRoleStore().revoke(username=username.strip(), pattern=pattern):
+        raise _fail(f"{username} has no role on {pattern!r}")
+    default_console().print(f"[pass]revoked[/] {username} on {pattern!r}")
+
+
+@app.command("grants")
+def grants(username: str | None = typer.Argument(None)) -> None:
+    """List per-cycle roles (one account's, or everyone's)."""
+    from rich.table import Table
+
+    from qasight.cli.ui.console import default_console
+    from qasight.project_roles import ProjectRoleStore
+
+    rows = ProjectRoleStore().list(username.strip() if username else None)
+    console = default_console()
+    if not rows:
+        console.print("No per-cycle roles; every account has its own role on every cycle.")
+        return
+    table = Table("user", "cycles", "role")
+    for row in rows:
+        table.add_row(row.username, row.pattern, row.role)
+    console.print(table)

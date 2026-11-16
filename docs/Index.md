@@ -2,7 +2,7 @@
 type: index
 status: current
 created: 2026-06-25
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # QASight docs
@@ -32,6 +32,9 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 - [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md): copy-paste CI setup for each runner (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit) on GitHub Actions, GitLab CI, Jenkins and CircleCI, no config file needed
 - [CI-CD Pipeline Setup](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md): GitHub Action, GitLab template, runner image, test tiers
 - [Team Server](Processes%20&%20Guides/Team%20Server.md): one shared history for every CI job, with `qasight ingest --server`, the UI and Postgres in Docker
+- [Moving from ReportPortal](Processes%20&%20Guides/Moving%20from%20ReportPortal.md): point ReportPortal agents at a team server, import launches and defect decisions, and what replaces auto-analysis
+- [Benchmark](Processes%20&%20Guides/Benchmark.md): a million stored results, agents reporting at once, and how fast the pages open, reproducible with `scripts/benchmark.py`
+- [Beta Case Study Kit](Processes%20&%20Guides/Beta%20Case%20Study%20Kit.md): running a month with a design-partner team, interview questions, and before and after numbers from `qasight case-study`
 - [Stability and Deprecation Policy](Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md): what stays stable in 1.x, and how much warning a change gets
 - [Closed Network Install](Processes%20&%20Guides/Closed%20Network%20Install.md): run QASight with no internet, with a self-hosted GitLab and an AI model inside the network: one bundle to carry in, your registry and PyPI mirror
 - [Shared Resource Pools](Processes%20&%20Guides/Shared%20Resource%20Pools.md): give each parallel worker its own VM, device or test account with `qasight lease`, safely across laptops
