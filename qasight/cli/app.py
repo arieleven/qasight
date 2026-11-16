@@ -53,6 +53,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import ai as ai_mod
     from qasight.cli.commands import backup as backup_mod
     from qasight.cli.commands import badge as badge_mod
+    from qasight.cli.commands import case_study_cmd as case_study_mod
     from qasight.cli.commands import ci_cmd as ci_mod
     from qasight.cli.commands import clean as clean_mod
     from qasight.cli.commands import config as config_cmd
@@ -162,6 +163,11 @@ def _register_commands() -> None:
         help="Open a GitHub issue per flaky test and close it once the test is stable.",
         rich_help_panel="Run and report",
     )
+    app.command(
+        name="case-study",
+        help="Before/after numbers for a team that switched to QASight, as Markdown.",
+        rich_help_panel="Run and report",
+    )(case_study_mod.case_study)
     app.command(
         name="otel",
         help="Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",
