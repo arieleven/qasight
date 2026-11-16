@@ -113,7 +113,7 @@ class JiraClient:
         self, *, summary: str, cycle: str, test: str, message: str, run_url: str | None
     ) -> JiraIssue:
         cfg = self.config
-        body = {
+        body: dict[str, Any] = {
             "fields": {
                 "project": {"key": cfg.project},
                 "issuetype": {"name": cfg.issue_type},
