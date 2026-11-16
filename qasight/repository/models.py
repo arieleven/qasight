@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import JSON, Column, Index, LargeBinary
+from sqlalchemy import JSON, BigInteger, Column, Index, LargeBinary, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -441,3 +441,127 @@ class ScorecardToolSetting(SQLModel, table=True):
     tool: str = Field(primary_key=True, max_length=64)
     enabled: bool = Field(default=True)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
+class LiveSessionRow(SQLModel, table=True):
+    """A test session still running, reported test by test (``pytest --qasight-server``, ReportPortal agents).
+
+    Kept in the database, not in one process's memory, so a server with several
+    workers (or several replicas) shows the same "Running now" list whichever one
+    a request reaches. See :mod:`qasight_api.live_runs`.
+    """
+
+    __tablename__ = "live_session"
+    __table_args__ = {"extend_existing": True}
+
+    id: str = Field(primary_key=True, max_length=32)
+    cycle: str = Field(max_length=512)
+    source: str = Field(default="pytest", max_length=32)
+    started_at: float = Field(default=0.0)
+    updated_at: float = Field(default=0.0, index=True)
+    finished_at: float | None = Field(default=None)
+    total: int | None = Field(default=None)
+    branch: str | None = Field(default=None, max_length=200)
+    commit: str | None = Field(default=None, max_length=64)
+    current: str | None = Field(default=None, max_length=1000)
+    # {"passed": n, "failed": n, "skipped": n, "error": n}
+    counts: dict[str, int] = Field(
+        default_factory=dict, sa_column=Column("counts", _METADATA_JSON_COL, nullable=False)
+    )
+    # [{"test": ..., "message": ...}], the first MAX_FAILURES.
+    failures: list[dict[str, str]] = Field(
+        default_factory=list, sa_column=Column("failures", _METADATA_JSON_COL, nullable=False)
+    )
+
+
+class RpLaunch(SQLModel, table=True):
+    """A launch reported by a ReportPortal agent to QASight's compatible endpoint.
+
+    Recorded as a normal run when the agent finishes it. See
+    :mod:`qasight.services.rp_compat`.
+    """
+
+    __tablename__ = "rp_launch"
+    __table_args__ = {"extend_existing": True}
+
+    uuid: str = Field(primary_key=True, max_length=64)
+    project: str = Field(index=True, max_length=255)
+    name: str = Field(max_length=512)
+    cycle: str = Field(max_length=128)
+    number: int = Field(default=1)
+    description: str = Field(default="", max_length=4000)
+    mode: str = Field(default="DEFAULT", max_length=16)
+    attributes: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column("attributes", _METADATA_JSON_COL, nullable=False)
+    )
+    start_ms: int = Field(default=0, sa_type=BigInteger)
+    end_ms: int | None = Field(default=None, sa_type=BigInteger)
+    status: str = Field(default="IN_PROGRESS", max_length=16)
+    live_session_id: str | None = Field(default=None, max_length=32)
+    run_id: str | None = Field(default=None, max_length=64)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC), index=True)
+
+
+class RpItem(SQLModel, table=True):
+    """A suite, test or step of a ReportPortal launch (``hasStats`` false for nested steps)."""
+
+    __tablename__ = "rp_item"
+    __table_args__ = {"extend_existing": True}
+
+    uuid: str = Field(primary_key=True, max_length=64)
+    launch_uuid: str = Field(index=True, max_length=64)
+    parent_uuid: str | None = Field(default=None, index=True, max_length=64)
+    name: str = Field(max_length=1024)
+    type: str = Field(default="TEST", max_length=32)
+    has_stats: bool = Field(default=True)
+    code_ref: str = Field(default="", max_length=1024)
+    test_case_id: str = Field(default="", max_length=1024)
+    description: str = Field(default="", max_length=4000)
+    attributes: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column("attributes", _METADATA_JSON_COL, nullable=False)
+    )
+    parameters: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column("parameters", _METADATA_JSON_COL, nullable=False)
+    )
+    start_ms: int = Field(default=0, sa_type=BigInteger)
+    end_ms: int | None = Field(default=None, sa_type=BigInteger)
+    status: str | None = Field(default=None, max_length=16)
+    retry: bool = Field(default=False)
+    issue_type: str | None = Field(default=None, max_length=32)
+    seq: int = Field(default=0, sa_type=BigInteger)
+
+
+class RpLog(SQLModel, table=True):
+    """A log line of a ReportPortal launch or item, with the attachment it carried."""
+
+    __tablename__ = "rp_log"
+    __table_args__ = {"extend_existing": True}
+
+    uuid: str = Field(primary_key=True, max_length=64)
+    launch_uuid: str = Field(index=True, max_length=64)
+    item_uuid: str | None = Field(default=None, index=True, max_length=64)
+    time_ms: int = Field(default=0, sa_type=BigInteger)
+    level: str = Field(default="INFO", max_length=16)
+    message: str = Field(default="", sa_type=Text)
+    attachment_name: str | None = Field(default=None, max_length=255)
+    attachment_type: str | None = Field(default=None, max_length=128)
+    attachment: bytes | None = Field(default=None, sa_column=Column("attachment", LargeBinary))
+
+
+class ProjectRole(SQLModel, table=True):
+    """An account's role on the cycles matching one pattern (``TESTO_AUTH=accounts``).
+
+    Without a row an account has its server-wide role everywhere; with rows it has,
+    on each cycle, the role of the most specific matching pattern. See
+    :mod:`qasight.project_roles`.
+    """
+
+    __tablename__ = "project_role"
+    __table_args__ = {"extend_existing": True}
+
+    username: str = Field(primary_key=True, max_length=64)
+    # An ``fnmatch`` pattern on cycle names: ``shop-*``, ``payments``.
+    pattern: str = Field(primary_key=True, max_length=255)
+    role: str = Field(max_length=16)
+    granted_by: str | None = Field(default=None, max_length=64)
+    granted_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))

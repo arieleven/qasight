@@ -34,6 +34,8 @@ from qasight_api.routes.project_health import router as project_health_router
 from qasight_api.routes.quarantine import router as quarantine_router
 from qasight_api.routes.report import router as report_router
 from qasight_api.routes.resources import router as resources_router
+from qasight_api.routes.rp_compat import info_router as rp_info_router
+from qasight_api.routes.rp_compat import router as rp_compat_router
 from qasight_api.routes.scorecard import router as scorecard_router
 from qasight_api.routes.storage import router as storage_router
 from qasight_api.routes.triage import router as triage_router
@@ -255,6 +257,9 @@ def create_app() -> FastAPI:
     app.include_router(scorecard_router)
     app.include_router(storage_router)
     app.include_router(version_router)
+    # Last: ReportPortal agents' /api/v1/{project}/... paths never shadow QASight's own.
+    app.include_router(rp_info_router)
+    app.include_router(rp_compat_router)
 
     STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
     # Stage logs (<stage>/run.log) open in the browser instead of downloading.

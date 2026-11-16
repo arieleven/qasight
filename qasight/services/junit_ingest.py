@@ -17,7 +17,7 @@ import json
 import re
 import tempfile
 import threading
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -95,12 +95,6 @@ def ingest_uploaded_reports(
     Raises :class:`ConfigValidationError` for an empty or oversized upload, or
     an unsafe cycle or stage name.
     """
-    from qasight.services.cycle_run import (
-        CycleRunOptions,
-        CycleRunService,
-        junit_ingest_plan,
-    )
-
     if not reports:
         raise ConfigValidationError("no test result files in the upload.")
     if len(reports) > MAX_FILES:
@@ -117,10 +111,7 @@ def ingest_uploaded_reports(
             f"upload is larger than {MAX_TOTAL_BYTES // (1024 * 1024)} MB in total."
         )
 
-    with _INGEST_LOCK, tempfile.TemporaryDirectory(prefix="testo-ingest-") as scratch:
-        root = Path(scratch)
-        reports_dir = root / "reports"
-        reports_dir.mkdir()
+    def write(reports_dir: Path) -> None:
         used: set[str] = set()
         for index, (name, content) in enumerate(reports):
             # Client file names are only a label; what a file is comes from its content
@@ -129,6 +120,39 @@ def ingest_uploaded_reports(
             filename = _stored_name(name, index, used)
             used.add(filename)
             (reports_dir / filename).write_bytes(content)
+
+    return ingest_report_files(
+        cfg=cfg, cycle=cycle, write=write, stage=stage, tier=tier, run_metadata=run_metadata
+    )
+
+
+def ingest_report_files(
+    *,
+    cfg: QASightConfig,
+    cycle: str,
+    write: Callable[[Path], None],
+    stage: str = "junit",
+    tier: str = "unit",
+    run_metadata: Mapping[str, str] | None = None,
+) -> IngestOutcome:
+    """Record the result files ``write`` puts in the folder it is given as one run of *cycle*.
+
+    The server-side builders (an upload, a ReportPortal launch) write their files with
+    it, so every one of them is recorded the same way: one ``junit`` stage, the same
+    engine, run record and reporters. Raises :class:`ConfigValidationError` for an
+    unsafe cycle or stage name.
+    """
+    from qasight.services.cycle_run import (
+        CycleRunOptions,
+        CycleRunService,
+        junit_ingest_plan,
+    )
+
+    with _INGEST_LOCK, tempfile.TemporaryDirectory(prefix="testo-ingest-") as scratch:
+        root = Path(scratch)
+        reports_dir = root / "reports"
+        reports_dir.mkdir()
+        write(reports_dir)
 
         plan = junit_ingest_plan(
             cycle=cycle,
