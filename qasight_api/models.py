@@ -367,10 +367,16 @@ class FailingTestItem(ApiModel):
     new: bool
     # The cause marked for this message in this cycle, on this failure or an earlier one like it.
     triage: TriageItem | None = None
-    # With no cause marked: what a well-known message points to ("environment", "test_bug").
+    # With no cause marked: what the causes marked on similar failures point to
+    # (suggested_from "similar"), else what a well-known message points to ("rule").
     suggested_cause: Literal["product_bug", "test_bug", "environment", "flaky", "other"] | None = (
         None
     )
+    suggested_from: Literal["similar", "rule"] | None = None
+    # 0-1, "similar" only: the winning cause's share of the votes times the best similarity.
+    suggested_confidence: float | None = None
+    # The marked failure message the suggestion is most like ("similar" only).
+    suggested_example: str | None = None
     # "stack_overflow" | "crash" when the failure's message or trace shows one.
     crash_kind: str | None = None
     labels: list[TestLabelItem] = Field(default_factory=list)

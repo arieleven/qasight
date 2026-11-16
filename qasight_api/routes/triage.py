@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from qasight.services.triage import Triage, TriageError, TriageStore
-from qasight_api.models import TriageItem, TriageListResponse, TriageRequest
+from qasight_api.models import ApiModel, TriageItem, TriageListResponse, TriageRequest
 from qasight_api.security import TOKEN_PRINCIPAL, current_principal
 
 router = APIRouter(prefix="/api/v1", tags=["triage"])
@@ -33,6 +33,43 @@ def triage_item(triage: Triage) -> TriageItem:
 def list_triage(cycle: str | None = None) -> TriageListResponse:
     """Every marked cause, newest first, optionally only one cycle's."""
     return TriageListResponse(causes=[triage_item(t) for t in TriageStore().list(cycle)])
+
+
+class CauseAccuracyItem(ApiModel):
+    cause: str
+    suggested: int
+    correct: int
+
+
+class TriageAccuracyResponse(ApiModel):
+    # Marked causes replayed, one at a time, against all the others.
+    examples: int
+    suggested: int
+    correct: int
+    # correct / suggested; None with no suggestion made.
+    precision: float | None
+    # suggested / examples; None with no marked cause.
+    coverage: float | None
+    by_cause: list[CauseAccuracyItem]
+
+
+@router.get("/triage/accuracy", response_model=TriageAccuracyResponse)
+def triage_accuracy(cycle: str | None = None) -> TriageAccuracyResponse:
+    """How often a cause suggested from similar marked failures would have been right."""
+    from qasight.services.similar_causes import evaluate, examples_from_store
+
+    result = evaluate(examples_from_store(cycle))
+    return TriageAccuracyResponse(
+        examples=result.examples,
+        suggested=result.suggested,
+        correct=result.correct,
+        precision=result.precision,
+        coverage=result.coverage,
+        by_cause=[
+            CauseAccuracyItem(cause=k, suggested=v[0], correct=v[1])
+            for k, v in result.by_cause.items()
+        ],
+    )
 
 
 @router.put("/triage", response_model=TriageItem)

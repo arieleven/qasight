@@ -80,6 +80,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import scorecard as scorecard_mod
     from qasight.cli.commands import server_cmd as server_mod
     from qasight.cli.commands import split as split_mod
+    from qasight.cli.commands import triage_cmd as triage_mod
     from qasight.cli.commands import try_cmd, ui_cmd
     from qasight.cli.commands import users as users_cmd
     from qasight.cli.commands import version as version_cmd
@@ -147,6 +148,12 @@ def _register_commands() -> None:
         import_mod.app,
         name="import",
         help="Import a ReportPortal project's launches and failure decisions as run history.",
+        rich_help_panel="Run and report",
+    )
+    app.add_typer(
+        triage_mod.app,
+        name="triage",
+        help="How often a cause suggested from similar marked failures would have been right.",
         rich_help_panel="Run and report",
     )
     app.add_typer(
