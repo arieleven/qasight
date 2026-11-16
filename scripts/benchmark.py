@@ -61,7 +61,9 @@ def _junit(run: int, tests: int, rng: random.Random) -> bytes:
         body = ""
         if failing:
             body = f'<failure message="AssertionError: value {rng.randint(1, 99)} != 0">trace</failure>'
-        cases.append(f'<testcase classname="{classname}" name="{name}" time="0.01">{body}</testcase>')
+        cases.append(
+            f'<testcase classname="{classname}" name="{name}" time="0.01">{body}</testcase>'
+        )
     xml = (
         f'<?xml version="1.0"?><testsuite name="bench" tests="{tests}">'
         + "".join(cases)
@@ -147,7 +149,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--launches", type=int, default=8, help="ReportPortal launches at once")
     parser.add_argument("--launch-tests", type=int, default=250, help="tests per launch")
     parser.add_argument("--samples", type=int, default=20, help="timed requests per page")
-    parser.add_argument("--database-url", default=None, help="use this database (default: new SQLite)")
+    parser.add_argument(
+        "--database-url", default=None, help="use this database (default: new SQLite)"
+    )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", default="benchmark-results.json")
     args = parser.parse_args(argv)
@@ -185,7 +189,9 @@ def main(argv: list[str] | None = None) -> int:
                 print("server did not start", file=sys.stderr)
                 return 1
 
-            print(f"fill: {tests_per_run * args.runs:,} results in {args.runs} runs ...", flush=True)
+            print(
+                f"fill: {tests_per_run * args.runs:,} results in {args.runs} runs ...", flush=True
+            )
             started = time.perf_counter()
             with futures.ThreadPoolExecutor(args.clients) as pool:
                 upload_times = list(
@@ -197,13 +203,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"agents: {args.launches} launches x {args.launch_tests} tests ...", flush=True)
             started = time.perf_counter()
             with futures.ThreadPoolExecutor(args.launches) as pool:
-                launches = list(pool.map(lambda i: _launch(base, i, args.launch_tests), range(args.launches)))
+                launches = list(
+                    pool.map(lambda i: _launch(base, i, args.launch_tests), range(args.launches))
+                )
             agents_s = time.perf_counter() - started
             calls = sum(c for c, _ in launches)
 
             session = requests.Session()
             session.headers["Authorization"] = f"Bearer {TOKEN}"
-            runs = session.get(f"{base}/api/v1/runs?cycle={CYCLE}&limit=1", timeout=120).json()["items"]
+            runs = session.get(f"{base}/api/v1/runs?cycle={CYCLE}&limit=1", timeout=120).json()[
+                "items"
+            ]
             run_id = runs[0]["run_id"]
             pages = {
                 "runs list": "/api/v1/runs?limit=50",
@@ -252,7 +262,9 @@ def main(argv: list[str] | None = None) -> int:
     Path(args.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
     print()
     print("| Step | Result |\n| --- | --- |")
-    print(f"| Store {stored:,} results ({args.runs} runs) | {fill_s:,.0f} s, {result['fill']['results_per_second']:,} results/s |")
+    print(
+        f"| Store {stored:,} results ({args.runs} runs) | {fill_s:,.0f} s, {result['fill']['results_per_second']:,} results/s |"
+    )
     print(
         f"| {args.launches} agents at once, {calls:,} calls | {agents_s:,.0f} s, "
         f"{result['agents']['calls_per_second']:,} calls/s |"

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # Team Server
@@ -68,6 +68,9 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_REPORTS_ORIGIN` | unset | e.g. `https://reports.qasight.example.com`: serve report pages from that second hostname instead of the API's ([Reports on their own origin](#reports-on-their-own-origin)) |
 | `TESTO_RUNNER` | `host` | `container`: each stage of a run started on the server runs in a fresh container through the runner service ([Runs in throwaway containers](#runs-in-throwaway-containers)) |
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
+| `TESTO_WORKERS` | `1` | API worker processes (1 to 64). Several workers share the uploads, reads and [ReportPortal agents](#reportportal-agents); set `TESTO_RUN_QUEUE=db` with it so queued runs are shared too. A run started from the UI still runs in the worker that took the request. Not with `--reload` |
+| `TESTO_SQLITE_WAL` | on with several workers | `1` puts a SQLite database in write-ahead mode, so reads don't wait for writes. Postgres ignores it |
+| `TESTO_JIRA_URL`, `TESTO_JIRA_EMAIL`, `TESTO_JIRA_TOKEN`, `TESTO_JIRA_PROJECT`, `TESTO_JIRA_ISSUE_TYPE` | unset | File failing tests in Jira from the run page ([Jira](#jira)) |
 | `TESTO_ALLOWED_HOSTS` | unset | Only matters without a token: extra `Host` names a token-less API answers (it otherwise answers only `localhost`, `127.0.0.1` and `::1`, so a DNS-rebinding page can't read it). With a token, or `TESTO_ALLOW_UNAUTHENTICATED=1`, any name is answered |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
 | `TESTO_ADMIN_USER`, `TESTO_ADMIN_PASSWORD` | unset | With `TESTO_AUTH=accounts` and no account yet: the server creates this admin when it starts. Once any account exists they are ignored, so changing them never resets a password |
@@ -110,6 +113,19 @@ People then sign in at `/login` with their username and password. Admins can als
 After five wrong passwords for one name within 15 minutes (`TESTO_LOGIN_MAX_FAILURES`), that name has to wait before trying again, even with the right password; the wait is in the audit log as `429`.
 
 Set `TESTO_AUTH=token` (or unset it) to go back; the accounts stay in the database for next time.
+
+### Roles per cycle
+
+A server shared by several teams can let each team change only its own cycles. Grant a role on the cycles that match a name or a pattern:
+
+```bash
+docker compose exec server qasight users grant alice runner 'shop-*'   # runner on every shop- cycle
+docker compose exec server qasight users grant bob viewer payments     # bob is a runner elsewhere, a viewer here
+docker compose exec server qasight users grants                         # list them
+docker compose exec server qasight users revoke alice 'shop-*'
+```
+
+On a cycle, a person's role is the one from their most specific matching pattern (an exact name beats a pattern, a longer pattern beats a shorter one); with none, it's their server-wide role. It is checked on every write that names a cycle: starting a run, uploads and live results, marking a cause, filing in Jira and quarantine. Reads stay server-wide, so everyone signed in still sees every cycle. Server settings stay with server-wide admins, and the token is an admin everywhere.
 
 ### Single sign-on
 
@@ -221,9 +237,19 @@ The upload carries the job's CI provenance (provider, pipeline, job, commit, bra
 
 `pytest --qasight-server URL` (or `TESTO_SERVER_URL`) sends each test's result to the server as it finishes, so the dashboard shows the session under **Running now** while it runs: how many of the collected tests are done, the counts, the last test and the first failures with their last lines. When the session ends the report is uploaded as usual and becomes a run; the live entry stays two minutes, then goes. Under pytest-xdist the total isn't known, so only the count shows.
 
-It's best effort: results go in batches (every 2 seconds or 50 tests), and the first error (server unreachable, an older server, a refused token) turns live results off for that session with one line in pytest's summary; it never changes the outcome. `--qasight-no-live` or `TESTO_LIVE=0` turns it off. Starting a live session is a write (the token or a `runner` account); `GET /api/v1/live-runs` is a read. Live sessions are kept in the server's memory only, and one that sends nothing for 15 minutes is dropped.
+It's best effort: results go in batches (every 2 seconds or 50 tests), and the first error (server unreachable, an older server, a refused token) turns live results off for that session with one line in pytest's summary; it never changes the outcome. `--qasight-no-live` or `TESTO_LIVE=0` turns it off. Starting a live session is a write (the token or a `runner` account); `GET /api/v1/live-runs` is a read. Live sessions are rows in the database (`live_session`), so every worker of a server with `TESTO_WORKERS` above 1 sees them and a restart keeps them; one that sends nothing for 15 minutes is dropped.
 
 ![The dashboard's Running now card: a session at 153 of 240 tests with two failures](../assets/adoption-blockers-2026-11-12/live-runs-desktop.png)
+
+## ReportPortal agents
+
+Teams that report with a ReportPortal agent (`pytest-reportportal`, `@reportportal/agent-js-playwright`, and the JUnit 5, TestNG, Cypress, WebdriverIO and .NET agents) can point it at QASight instead, with no change to the tests: the endpoint is the server's address, the API key is `TESTO_API_TOKEN`, and the project can be any name. Each launch shows under **Running now** while it runs, and becomes one run of the cycle named after the launch when it finishes, with steps, logs, attachments, attributes as labels and retries as flaky. [Moving from ReportPortal](Moving%20from%20ReportPortal.md) has the settings for each agent and how to import the history you already have.
+
+## Jira
+
+Set `TESTO_JIRA_URL` (`https://your-team.atlassian.net`), `TESTO_JIRA_EMAIL` and `TESTO_JIRA_TOKEN` (an account and its [API token](https://id.atlassian.com/manage-profile/security/api-tokens)), and `TESTO_JIRA_PROJECT` (the project key, `SHOP`). For Jira Data Center, leave the email empty and set a personal access token. `TESTO_JIRA_ISSUE_TYPE` defaults to `Bug`.
+
+Each failing test on a run page then has **File in Jira (SHOP)**. It creates an issue with the test, the cycle, the failure message and a link back to the run, labelled `qasight`, and, when the failure has no cause yet, marks it as a product bug with the issue's key and link as the note. Later failures with the same message show the same cause, with the link. Nothing is sent to Jira unless someone presses the button (`POST /api/v1/jira/issues`). Issues are filed and linked only; their status isn't read back.
 
 ## How it works
 
@@ -269,8 +295,8 @@ They hold password hashes when [accounts](#accounts) are on; keep them as privat
 ## Limits today
 
 - Cycles that exist only as uploads aren't in the server's `qasight.yaml`, so they can't be started from the UI. They still get a cycle page, and show on the Cycles page, Dashboard, Runs and Compare.
-- One server process: the run manager, queued runs and live run streams live in its memory, so the server (and the Helm chart) runs one replica. Uploads and reads are quick, so one replica serves a large team; starting many runs from the UI is what it limits.
-- No projects: everyone who can read sees every cycle. [Accounts](#accounts) give per-person roles, not per-project ones.
+- One machine: `TESTO_WORKERS` runs several worker processes, but the run manager lives in the worker that started a run, so the server (and the Helm chart) runs one replica. [Benchmark](Benchmark.md) has what one machine handles.
+- [Roles per cycle](#roles-per-cycle) cover writes only: everyone who can read sees every cycle. Accounts sign in through the browser; CI and agents use the token.
 - Starting runs from the server's UI only makes sense for cycles defined in the server's config. Without [throwaway containers](#runs-in-throwaway-containers) they run inside the server container. The team server is mainly meant for uploads.
 
 CI checks all of this end to end: the `team_server` job in `ci.yml` builds the image, starts the compose file and uploads with `qasight ingest --server` (`scripts/team_server_smoke.sh`).

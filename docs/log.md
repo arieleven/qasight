@@ -280,3 +280,7 @@ New guide [Closed Network Install](Processes%20&%20Guides/Closed%20Network%20Ins
 ## 2026-11-15: added CLI-Only Bug Hunt
 
 New note [CLI-Only Bug Hunt - 2026-11-15](Specs%20&%20ADRs/CLI-Only%20Bug%20Hunt%20-%202026-11-15.md): bugs a UI review can't see, eight fixed, and a CLI end-to-end CI job. Linked from the Specs README and the docs site menu.
+
+## 2026-11-16: added Surpass ReportPortal
+
+New ADR [Surpass ReportPortal - 2026-11-16](Specs%20&%20ADRs/Surpass%20ReportPortal%20-%202026-11-16.md) and guides [Moving from ReportPortal](Processes%20&%20Guides/Moving%20from%20ReportPortal.md), [Benchmark](Processes%20&%20Guides/Benchmark.md) and [Beta Case Study Kit](Processes%20&%20Guides/Beta%20Case%20Study%20Kit.md). Linked from Index, the Specs README, the Agent Context Guide and the docs site menu.

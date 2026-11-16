@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # Command Reference
@@ -574,6 +574,64 @@ Exit `0` when the pass ran, `2` with no repository or (without `--dry-run`) no t
 
 ---
 
+## `qasight import reportportal`
+
+Bring a ReportPortal project's history into QASight: each launch becomes a run of the cycle named after it, dated when it ran, and each defect type someone set becomes a [marked cause](#qasight-triage-accuracy) (product bug, automation bug as a bug in the test, system issue as environment, no defect as other; "to investigate" is left unmarked). Issue links from ReportPortal's bug tracker go in the cause's note.
+
+```bash
+export TESTO_RP_TOKEN=...       # a ReportPortal API key, from its profile page
+qasight import reportportal --url https://rp.example.com --project shop --limit 500
+qasight import reportportal --url https://rp.example.com --project shop --launch "Nightly API"
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--url` | required | The ReportPortal server |
+| `--project` | required | The ReportPortal project |
+| `--token` | `$TESTO_RP_TOKEN` | API key; prefer the variable, so it stays out of shell history |
+| `--limit` | `100` | Latest launches to import (1 to 10000) |
+| `--launch` | all | Only launches with this name |
+
+It writes to this machine's history, or to the team server's database when `DATABASE_URL` points at it (`docker compose exec server qasight import reportportal …`). Launches imported before are skipped, so running it again only adds new ones. Exit `0` when it ran, `2` with no key or when ReportPortal can't be read or refuses the key, `3` when every launch failed to import. [Moving from ReportPortal](../Processes%20&%20Guides/Moving%20from%20ReportPortal.md) covers pointing the agents at QASight too.
+
+---
+
+## `qasight triage accuracy`
+
+A failing test with no marked cause gets a suggested one: first from failures your team marked whose messages are alike (words, word pairs and word pieces, compared across the cycle and, with less weight, other cycles), then from built-in rules (connection refused looks like the environment). The run page shows how sure the suggestion is and the marked failure it came from. This command replays every marked cause as if it were new, suggests one from the others, and prints how often the suggestion was right (precision) and for what share of marked failures there was one (coverage), per cause.
+
+```bash
+qasight triage accuracy --cycle shop-api
+qasight triage accuracy --json          # the same numbers as GET /api/v1/triage/accuracy
+```
+
+| Flag | Meaning |
+|------|---------|
+| `--cycle` | Only this cycle's marked causes |
+| `--json` | Print JSON |
+
+---
+
+## `qasight case-study`
+
+Before and after numbers for a team that started using QASight on `--since`: runs and results recorded, the share of runs that failed, the median time to fix a broken test, how much of the time the default branch was red, causes marked since the switch, how long a cause took to be marked, how often suggested causes were right, and runs imported from ReportPortal. Prints Markdown to paste into a case study ([Beta Case Study Kit](../Processes%20&%20Guides/Beta%20Case%20Study%20Kit.md)).
+
+```bash
+qasight case-study --cycle shop-api --cycle shop-web --since 2026-11-01
+qasight case-study --cycle shop-api --since 2026-11-01 --days 30 --json
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` | required | A cycle the team runs; repeat for several |
+| `--since` | required | The day the team switched, `YYYY-MM-DD` |
+| `--days` | since the switch | Length of each period; "before" is the same number of days before `--since` |
+| `--json` | off | Print JSON |
+
+Exit `2` for a bad date. With no runs before the switch it says so: import them first (`qasight import reportportal`, `qasight ingest --from-github`).
+
+---
+
 ## `qasight quarantine`
 
 Quarantine a test without a config change: it still runs and is reported, but its failure no longer fails the run. The list lives in the run-history database (table `quarantined_test`), the same one the UI's **Quarantine** button and `/api/v1/quarantine` change, and every run of the cycle adds it to the `quarantine:` rules of `qasight.yaml`.
@@ -897,7 +955,10 @@ Accounts for a team server that runs with `TESTO_AUTH=accounts` ([Team Server §
 | `qasight users set-role NAME ROLE` | Change the role |
 | `qasight users reset-password NAME [--password-stdin]` | Set a new password |
 | `qasight users sign-out NAME` | Sign the account out of every browser |
-| `qasight users remove NAME` | Delete the account (its audit log lines stay) |
+| `qasight users remove NAME` | Delete the account and its per-cycle roles (its audit log lines stay) |
+| `qasight users grant NAME ROLE PATTERN` | Give the account `ROLE` on the cycles matching `PATTERN` (a name, or a glob such as `'shop-*'`), above or below its own role ([Team Server § Roles per cycle](../Processes%20&%20Guides/Team%20Server.md#roles-per-cycle)). Granting the same pattern again replaces it |
+| `qasight users revoke NAME PATTERN` | Remove that grant; the account's own role applies there again. Exit `2` when there is none |
+| `qasight users grants [NAME]` | List per-cycle roles, one account's or everyone's |
 
 `set-role`, `reset-password` and `sign-out` all end the account's existing sessions. Exit code `2` for a bad name, password or role, or an unknown account.
 
@@ -1112,6 +1173,8 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_UI_URL` | Base URL of the web UI, for the test page link in issues |
 | `GITHUB_API_URL` | GitHub API for issues (default `https://api.github.com`; GitHub Enterprise Server: `https://<host>/api/v3`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME` | Where `qasight otel` and the `otel` reporter send traces (the standard OpenTelemetry variables, `*_TRACES_*` forms too) |
+| `TESTO_RP_TOKEN` | ReportPortal API key for [`qasight import reportportal`](#qasight-import-reportportal) |
+| `TESTO_WORKERS`, `TESTO_SQLITE_WAL`, `TESTO_RUN_QUEUE`, `TESTO_JIRA_*` | Team server settings: worker processes, SQLite write-ahead mode, where queued runs wait, the Jira link ([Team Server](../Processes%20&%20Guides/Team%20Server.md#start-it)) |
 | `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `qasight lease`, `qasight quarantine --server` (and `pytest --qasight-server`) |
 | `TESTO_LEASE_DB_URL` | Database for local leases when it isn't the run-history one |
 | `TESTO_SHARD` | `I/N`: run only that shard of a pytest session ([`--qasight-shard`](#pytest---qasight)) |
