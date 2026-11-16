@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Team Server
@@ -29,6 +29,8 @@ export TESTO_API_TOKEN="$(openssl rand -hex 32)"   # keep it: CI needs it to upl
 cd deploy/server
 docker compose up -d          # pulls ghcr.io/arieleven/qasight-server; add --build to build from the checkout
 ```
+
+No internet on the machine? [Closed Network Install](Closed%20Network%20Install.md) packs the images and the CLI into one file to carry in.
 
 ### One-click hosting
 
@@ -72,6 +74,10 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
 | `TESTO_SERVER_PORT` | `8000` | Port on the host |
 | `TESTO_SERVER_TAG` | `1` | Image tag to pull |
+| `TESTO_REGISTRY` | `ghcr.io/arieleven` | Where the `qasight-server` (and `qasight-runner-service`) images are pulled from, e.g. your own registry on a network with no internet ([Closed Network Install](Closed%20Network%20Install.md)) |
+| `TESTO_POSTGRES_IMAGE` | `postgres:16-alpine` | The Postgres image, for the same reason |
+| `TESTO_NO_UPDATE_CHECK` | unset | `1` stops the server asking PyPI once a day whether a newer qasight is out |
+| `TESTO_AI_PROVIDER`, `TESTO_AI_BASE_URL`, `TESTO_AI_MODEL`, `TESTO_AI_TIMEOUT_S`, `OPENAI_COMPATIBLE_API_KEY` | unset | AI failure summaries set from the environment, winning over the Settings page ([Command Reference § qasight ai](../CLI%20Commands/Command%20Reference.md#qasight-ai)); `openai_compatible` with a `/v1` URL reaches a model inside your network |
 
 Run history lives in Postgres (`postgres_data` volume); per-run artifacts and reports in `testo_data` (`/data` in the container). Put the server behind HTTPS (any reverse proxy) before exposing it beyond your network.
 

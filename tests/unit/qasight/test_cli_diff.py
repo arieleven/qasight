@@ -108,7 +108,7 @@ def test_diff_rejects_invalid_archive_uuid(runner: CliRunner) -> None:
     result = runner.invoke(app, ["diff", "not-a-uuid", "also-not-a-uuid"])
 
     assert result.exit_code == int(EngineExitCode.INVALID_INPUT)
-    assert "valid report archive UUID" in result.stdout
+    assert "must be a run id" in result.stdout
 
 
 def test_summary_cycle_filters_to_two_most_recent_for_cycle(
@@ -161,3 +161,53 @@ def test_summary_cycle_filters_to_two_most_recent_for_cycle(
     assert str(newer.id) in result.stdout
     assert str(unrelated.id) not in result.stdout
     assert "regression" in result.stdout.lower()
+
+
+def test_diff_takes_run_ids_from_the_ui_and_mcp(
+    runner: CliRunner,
+    tmp_path: Path,
+    sqlite_report_repo: SQLReportArchiveRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An archive made before archives took their run's id is found by cycle and time."""
+    import uuid
+    from datetime import UTC, datetime
+
+    from qasight.repository.db import get_repository
+    from qasight.repository.models import RunStatus
+
+    monkeypatch.chdir(tmp_path)
+    run = get_repository().create_run(
+        status=RunStatus.COMPLETED,
+        metadata={"plan": "checkout"},
+        end_time=datetime.now(UTC),
+    )
+    older = sqlite_report_repo.insert(
+        cycle_name="checkout",
+        exit_code=0,
+        summary_json={"plan": "checkout"},
+        artifact_bytes=b"x",
+        total_tests=3,
+        passed=3,
+    )
+    newer_id = uuid.uuid4()
+    newer = sqlite_report_repo.insert(
+        cycle_name="checkout",
+        exit_code=1,
+        summary_json={"plan": "checkout"},
+        artifact_bytes=b"y",
+        total_tests=3,
+        passed=2,
+        failed=1,
+        report_id=newer_id,
+    )
+    assert newer.id == newer_id  # new archives take their run's id
+    assert older.id != run.id
+
+    result = runner.invoke(app, ["diff", "--metrics-only", str(run.id), str(newer_id)])
+    assert result.exit_code == 0, result.stdout + result.stderr
+    assert "Run metrics" in result.stdout
+
+    missing = runner.invoke(app, ["diff", "--metrics-only", str(run.id), str(uuid.uuid4())])
+    assert missing.exit_code == int(EngineExitCode.INVALID_INPUT)
+    assert "No recorded run with id" in missing.stdout

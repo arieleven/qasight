@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # Specs & ADRs
@@ -24,10 +24,12 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
 | Adoption blockers: single sign-on, one-click hosting (Render, Helm), the stability promise | [Adoption Blockers - 2026-11-12](Adoption%20Blockers%20-%202026-11-12.md) |
 | Release scorecard: the repo review tools on any repository or version, a 0-100 score per version, compared with the last one, and a release gate | [Release Scorecard - 2026-11-12](Release%20Scorecard%20-%202026-11-12.md) |
+| Closed network install: one bundle with wheels and images, registry and AI from the environment, GitLab template with your own image | [Closed Network Install - 2026-11-15](Closed%20Network%20Install%20-%202026-11-15.md) |
 | Plug and play: attach to existing CI workflows, `qasight run -- <command>`, setup from GitHub, day-one history, no-Python install, per-package monorepo cycles, Cypress | [Plug and Play - 2026-11-12](Plug%20and%20Play%20-%202026-11-12.md) |
 | Scorecard on MegaLinter: MegaLinter runs the linters for any language, scores follow SonarQube (worst security finding) and Codacy (issue density per 1,000 lines), new findings per version | [Scorecard on MegaLinter - 2026-11-12](Scorecard%20on%20MegaLinter%20-%202026-11-12.md) |
 | Test labels and issue links, then environments, chosen-test runs and releases (gaps found next to Allure TestOps) | [Test Labels, Environments and Releases - 2026-11-02](Test%20Labels,%20Environments%20and%20Releases%20-%202026-11-02.md) |
 | Better flaky signal: retries, same-commit results, flips per branch, broken kept apart | [Better Flaky Signal - 2026-11-01](Better%20Flaky%20Signal%20-%202026-11-01.md) |
+| CLI-only bug hunt: what a UI review misses, eight fixes and a CLI end-to-end CI job | [CLI-Only Bug Hunt - 2026-11-15](CLI-Only%20Bug%20Hunt%20-%202026-11-15.md) |
 | Importer and integration bug hunt: ranked findings, fixes and proposals | [Importer and Integration Bug Hunt - 2026-10-31](Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) |
 | Engine fixes from the bug hunt: one run of a cycle at a time, and the other proposals | [Engine Fixes - 2026-11-01](Engine%20Fixes%20-%202026-11-01.md) |
 | Interview-readiness batch (pull requests 67 to 91, v1.1.0) | [Interview Readiness Fixes - 2026-10-07](Interview%20Readiness%20Fixes%20-%202026-10-07.md) |

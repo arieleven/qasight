@@ -152,8 +152,18 @@ def from_findings(
     extra: dict[str, float | int | str] | None = None,
 ) -> ToolResult:
     """Score a list of findings on the curve; ``what`` names one finding ("issue")."""
+    from qasight.services.scorecard.paths import relative_to_scan_root
+
     base_extra = extra
-    every = sorted(findings, key=lambda f: SEVERITIES.index(f.severity))
+    every = sorted(
+        (
+            f
+            if (rel := relative_to_scan_root(f.location)) == f.location
+            else Finding(f.severity, f.title, f.detail, rel)
+            for f in findings
+        ),
+        key=lambda f: SEVERITIES.index(f.severity),
+    )
     # Findings in tests, vendored or generated code and docs are shown apart and not counted.
     items = [f for f in every if _counts_as_source(f.location)]
     elsewhere = len(every) - len(items)
@@ -169,6 +179,9 @@ def from_findings(
     else:
         parts = ", ".join(f"{n} {s}" for s, n in shown.items())
         summary = f"{plural(len(items), what)} ({parts})"
+    if elsewhere:
+        # Say so: "No lint issues" while tests hold three reads as a clean repository.
+        summary += f"; {elsewhere} more in tests, vendored, generated code or docs, not counted"
     metrics: dict[str, float | int | str] = {"findings": len(items), **shown, **(extra or {})}
     return ToolResult(
         score=curve(points),

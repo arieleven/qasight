@@ -317,3 +317,51 @@ def test_xml_reports_with_entities_are_refused(tmp_path: Path) -> None:
     )
     with pytest.raises(ReportError):
         TOOLS_BY_ID["schemathesis"].parse(path)
+
+
+@pytest.mark.parametrize("parent", ["build", "test", "out", "docs/site", "vendor"])
+def test_absolute_paths_are_read_from_the_scanned_repo_not_its_parents(
+    tmp_path: Path, parent: str
+) -> None:
+    """Ruff reports absolute paths: a checkout under /build/ or ~/test/ still counts as source."""
+    from qasight.services.scorecard.paths import scan_root
+
+    repo = tmp_path / parent / "proj"
+    report = _json(
+        tmp_path,
+        [
+            {
+                "code": "F401",
+                "message": "unused",
+                "filename": str(repo / "app" / "main.py"),
+                "location": {"row": 1},
+            },
+            {
+                "code": "F401",
+                "message": "unused",
+                "filename": str(repo / "tests" / "t.py"),
+                "location": {"row": 1},
+            },
+        ],
+    )
+
+    with scan_root(repo):
+        result = parsers.parse_ruff(report)
+
+    assert result.metrics["findings"] == 1
+    assert result.metrics["not_counted"] == 1
+    assert [f.location for f in result.findings] == ["app/main.py:1"]
+    # Re-scoring (accepted findings) after the scan keeps the same verdict.
+    assert result.rescore is not None
+    assert result.rescore(list(result.all_findings)).metrics["findings"] == 1
+
+
+def test_summary_says_when_findings_were_not_counted(tmp_path: Path) -> None:
+    report = _json(
+        tmp_path,
+        [{"code": "F401", "message": "unused", "filename": "tests/t.py", "location": {"row": 1}}],
+    )
+    result = parsers.parse_ruff(report)
+    assert result.score == 100
+    assert result.summary.startswith("No lint issues; 1 more in tests")
+    assert "not counted" in result.summary

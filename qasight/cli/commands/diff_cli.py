@@ -42,16 +42,32 @@ def _render_diff(
     )
 
 
+def _archive_for(repo, run_or_archive_id):  # noqa: ANN001, ANN202
+    """The archive with this id, else the one written for the run with this id."""
+    row = repo.get(run_or_archive_id)
+    if row is not None:
+        return row
+    from qasight.repository.db import get_repository
+
+    try:
+        run = get_repository().get_run(run_or_archive_id)
+    except Exception:  # noqa: BLE001 - no run history: the id simply isn't found
+        return None
+    if run is None or not run.cycle or run.end_time is None:
+        return None
+    return repo.find_for_run(cycle_name=run.cycle, finished_at=run.end_time)
+
+
 def diff_reports(
     baseline_id: str = typer.Argument(
         ...,
         metavar="BASELINE_ID",
-        help="Older archived run UUID (qasight report list id column).",
+        help="Older run: an id from `qasight report list`, the UI, MCP or `qasight run`.",
     ),
     current_id: str = typer.Argument(
         ...,
         metavar="CURRENT_ID",
-        help="Newer archived run UUID.",
+        help="Newer run (same kinds of id).",
     ),
     metrics_only: bool = typer.Option(
         False,
@@ -59,7 +75,7 @@ def diff_reports(
         help="Show only denormalized DB columns (no per-test Allure diff).",
     ),
 ) -> None:
-    """Compare two ``ReportArchive`` rows (regressions, fixes, duration deltas)."""
+    """Compare two runs (regressions, fixes, duration deltas)."""
     from qasight.cli.ui.console import default_console
     from qasight.repository.db import get_report_archive_repository
     from qasight.services.report_archive_diff import parse_archive_uuid
@@ -68,14 +84,19 @@ def diff_reports(
     bid = parse_archive_uuid(baseline_id)
     cid = parse_archive_uuid(current_id)
     if bid is None or cid is None:
-        console.print("[fail]Each argument must be a valid report archive UUID.[/]")
+        console.print("[fail]Each argument must be a run id (a UUID).[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     repo = get_report_archive_repository()
-    base = repo.get(bid)
-    cur = repo.get(cid)
-    if base is None or cur is None:
-        console.print("[fail]One or both archive ids were not found in the database.[/]")
+    base = _archive_for(repo, bid)
+    cur = _archive_for(repo, cid)
+    missing = [i for i, row in ((baseline_id, base), (current_id, cur)) if row is None]
+    if missing:
+        console.print(
+            "[fail]No recorded run with id "
+            + ", ".join(missing)
+            + " (see `qasight report list`).[/]"
+        )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     _render_diff(console=console, baseline=base, current=cur, metrics_only=metrics_only)

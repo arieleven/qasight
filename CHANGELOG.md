@@ -10,12 +10,25 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - CI: `no-bot-authors` check fails a pull request whose commits are authored by, or co-authored by, Claude, Cursor or Dependabot, so they stay off the Contributors list
+- `qasight export -o report.pdf` takes the format from the file's extension
+- CI runs the CLI end to end the way a coding agent calls it (`scripts/cli_e2e.py`): `qasight doctor` with no config, `try`, `ingest`, `qasight mcp` over stdio, `diff` and `export` in every format
+- Closed networks: `scripts/offline/bundle.sh` packs the wheels, Docker images and GitLab template into one file for a network with no internet, and `install.sh` installs it there (and pushes the images to your registry); guide: Closed Network Install
+- The team server compose files read `TESTO_REGISTRY` and `TESTO_POSTGRES_IMAGE`, and pass `TESTO_NO_UPDATE_CHECK` and the `TESTO_AI_*` settings to the server, so an AI model inside your network can be set from `.env`
+- The GitLab template takes `TESTO_IMAGE` and `TESTO_INSTALL` (`auto`: install only when the image has no `qasight`)
 - Code quality: CodeQL as a scorecard tool (Python, or JavaScript/TypeScript), opt-in
 
 ### Fixed
+- `qasight diff` takes the run ids the UI, MCP and `qasight run` / `qasight ingest` show. A run's report archive now takes the run's id, so one id names a run everywhere; for older runs `qasight diff` finds the archive by cycle and time
+- `qasight try` and `qasight ingest` with no files leave out older JUnit files of the same tests (`run-1.xml` ... next to `run-8.xml`, or a results folder nobody cleans) instead of recording them all as one run with every test counted once per file, and say which they left out
+- `qasight doctor` with no `qasight.yaml` reports it as INFO and exits 0, since `ingest`, `ui` and `run -- <command>` need none; a config named with `-c` that is missing, or one that doesn't load, still fails
+- Code quality: a tool's summary says how many findings were in tests, vendored, generated code or docs and not counted, instead of "No lint issues" alone
+- Code quality: a repository checked out under a folder named `build`, `out`, `test`, `docs` or `vendor` (`/build/app` in Docker, `~/test/proj`) no longer has its Ruff findings dropped as generated or test code, which scored it 100. Findings are read relative to the scanned repository, so their fingerprints also stay the same between checkouts and `--no-new` stops flagging old findings as new
+- `qasight run` and `qasight ingest` print the run id the web UI, the API, MCP and `qasight ai summary --run-id` know, instead of the report archive's id, which none of them found
+- `qasight doctor` checks the database from `DATABASE_URL` when there is no `qasight.yaml` (zero-config use) instead of skipping it
 - Code quality: Bandit skips folders git ignores, so a clone of another project inside the repository (the Pages demo keeps fake-api in `.demo/`) no longer counts against it
 
 ### Changed
+- `qasight init` CI jobs skip installing uv and qasight when the image already has `qasight`
 - Code quality: Semgrep, gitleaks and Trivy are opt-in like CodeQL; Bandit stays the default security scanner. While one is off, MegaLinter leaves its linter out too. Switch them on with `qasight scorecard tools --on <tool>` or in the UI
 - Code quality: numbered versions sort by number whatever order they were scored in, and names such as `main` sit above them, so releases scored after `main` still line up on the Versions strip
 - The Pages demo's Code quality page shows every release since 1.0.0, and fake-api now has real findings to show

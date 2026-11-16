@@ -13,7 +13,7 @@
 # Guide: docs/Processes & Guides/Team Server.md
 services:
   server:
-    image: ghcr.io/arieleven/qasight-server:${TESTO_SERVER_TAG:-1}
+    image: ${TESTO_REGISTRY:-ghcr.io/arieleven}/qasight-server:${TESTO_SERVER_TAG:-1}
     build:
       context: ../..
       dockerfile: Dockerfile.qasight-server
@@ -46,6 +46,16 @@ services:
       TESTO_HISTORY_MAX_FILE_MB: ${TESTO_HISTORY_MAX_FILE_MB:-}
       # db: runs waiting for a worker are kept in Postgres and survive a restart.
       TESTO_RUN_QUEUE: ${TESTO_RUN_QUEUE:-memory}
+      # 1 on a network with no internet: stops the daily "is a newer qasight out?" PyPI check.
+      TESTO_NO_UPDATE_CHECK: ${TESTO_NO_UPDATE_CHECK:-}
+      # AI failure summaries from the environment instead of the Settings page, e.g. a model
+      # inside your network: TESTO_AI_PROVIDER=openai_compatible, TESTO_AI_BASE_URL=http://llm:8000/v1.
+      TESTO_AI_PROVIDER: ${TESTO_AI_PROVIDER:-}
+      TESTO_AI_BASE_URL: ${TESTO_AI_BASE_URL:-}
+      TESTO_AI_MODEL: ${TESTO_AI_MODEL:-}
+      TESTO_AI_TIMEOUT_S: ${TESTO_AI_TIMEOUT_S:-}
+      # The key, if the model needs one (TESTO_AI_KEY_ENV names another variable instead).
+      OPENAI_COMPATIBLE_API_KEY: ${OPENAI_COMPATIBLE_API_KEY:-}
       DATABASE_URL: postgresql+psycopg://testo:${POSTGRES_PASSWORD:-testo}@postgres:5432/testo
     ports:
       - "${TESTO_SERVER_PORT:-8000}:8000"
@@ -63,7 +73,7 @@ services:
   #   docker compose cp backup:/backups ./testo-backups
   # Restore: docs/Processes & Guides/Team Server.md#backups
   backup:
-    image: ghcr.io/arieleven/qasight-server:${TESTO_SERVER_TAG:-1}
+    image: ${TESTO_REGISTRY:-ghcr.io/arieleven}/qasight-server:${TESTO_SERVER_TAG:-1}
     build:
       context: ../..
       dockerfile: Dockerfile.qasight-server
@@ -103,7 +113,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    image: ${TESTO_POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_USER: testo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testo}

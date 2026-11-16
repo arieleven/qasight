@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # CI Integrations
@@ -129,7 +129,7 @@ variables:
   TESTO_CYCLE: "smoke"
 ```
 
-Variables: `TESTO_CONFIG_PATH` (empty = discovery), `TESTO_CYCLE` (empty = the only cycle), `TESTO_PERSIST` (`true` default). Artifacts: `testo-output.ndjson` and `testo-summary.json` (the `plan_finished` line).
+Variables: `TESTO_CONFIG_PATH` (empty = discovery), `TESTO_CYCLE` (empty = the only cycle), `TESTO_PERSIST` (`true` default), `TESTO_IMAGE` (the job's image, default `python:3.11-slim`), `TESTO_PACKAGE` (what `pip install` installs, default `qasight`) and `TESTO_INSTALL` (`auto` installs only when the image has no `qasight`, `always`, `never`). pip reads `PIP_INDEX_URL`, so on a self-hosted GitLab with no internet set `TESTO_IMAGE` to an image from your registry and either bake `qasight` into it or point `PIP_INDEX_URL` at your PyPI mirror; the template can also be committed into your own project (`include: local:`) instead of included from this one ([Closed Network Install](Closed%20Network%20Install.md)). Artifacts: `testo-output.ndjson` and `testo-summary.json` (the `plan_finished` line).
 
 ## Runner image
 
@@ -158,7 +158,7 @@ What runs on QASight itself, as opposed to the wrappers above that run it in oth
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `qasight` and `qasight_api`, zizmor on the workflows and both `action.yml` files (accepted findings in `.github/zizmor.yml`); secrets, code and dependency checks (gitleaks over the whole history with `.gitleaks.toml`, Bandit at medium severity, pip-audit on every extra, `npm audit` on the production frontend dependencies); the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
+| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `qasight` and `qasight_api`, zizmor on the workflows and both `action.yml` files (accepted findings in `.github/zizmor.yml`); secrets, code and dependency checks (gitleaks over the whole history with `.gitleaks.toml`, Bandit at medium severity, pip-audit on every extra, `npm audit` on the production frontend dependencies); the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`); runs the CLI as real processes on `qasight demo` history, the way a coding agent calls it (`qasight doctor` with no config, `try`, the run id `ingest` prints, `qasight mcp` over stdio, `diff`, `export` in every format incl. PDF and PNG; `scripts/cli_e2e.py`). Builds the wheel on a release |
 | `commitlint.yml` | pull request | Conventional commit messages; `no-bot-authors` fails a PR whose commits are authored by, or carry a `Co-authored-by` trailer for, Claude, Cursor or Dependabot ([why](../Specs%20&%20ADRs/Contributors%20Cleanup%20-%202026-11-15.md)) |
 | `changelog-on-main.yml` | push to `main` | Drafts a `CHANGELOG.md` [Unreleased] entry from the pushed commits with Claude and commits it to `main`; skips when its bot secrets are missing |
 | `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles, scores every QASight release since 1.0.0, `main` and fake-api for the Code quality page, and publishes the read-only UI and the docs site to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |

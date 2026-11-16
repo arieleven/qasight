@@ -10,7 +10,10 @@ from qasight.engine.exit_codes import EngineExitCode
 
 
 def export(
-    fmt: str = typer.Argument(..., help="pdf, png, html, pptx, xlsx, csv or json."),
+    fmt: str | None = typer.Argument(
+        None,
+        help="pdf, png, html, pptx, xlsx, csv or json (default: from --out's extension).",
+    ),
     out: Path | None = typer.Option(
         None,
         "--out",
@@ -35,7 +38,16 @@ def export(
     from qasight.services.report_export import FORMAT_NAMES, ExportUnavailable, file_name
     from qasight.services.report_export import export as render
 
-    fmt = fmt.strip().lower()
+    fmt = (fmt or "").strip().lower()
+    if not fmt and out is not None and str(out) != "-":
+        fmt = out.suffix.lstrip(".").lower()
+        fmt = {"htm": "html", "ppt": "pptx", "xls": "xlsx"}.get(fmt, fmt)
+    if not fmt:
+        typer.echo(
+            f"name a format ({' / '.join(FORMAT_NAMES)}) or an --out file with one as its extension",
+            err=True,
+        )
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     if fmt not in FORMAT_NAMES or period not in PERIOD_DAYS:
         typer.echo(
             f"format takes {' / '.join(FORMAT_NAMES)} and --period takes {' / '.join(PERIOD_DAYS)}",
@@ -60,6 +72,7 @@ def export(
     target.write_bytes(data)
     k = report.kpis
     typer.echo(
-        f"{target}: {report.title}, {k.runs} runs across {k.cycles} cycles "
+        f"{target}: {report.title}, {k.runs} run{'' if k.runs == 1 else 's'} across "
+        f"{k.cycles} cycle{'' if k.cycles == 1 else 's'} "
         f"({len(data) / 1024:.0f} KB)"
     )

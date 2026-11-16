@@ -6,13 +6,22 @@ variables:
   TESTO_CYCLE: ""
   TESTO_PERSIST: "true"
   TESTO_PACKAGE: "qasight"  # e.g. "qasight[bdd]" for Behave stages, "qasight==1.2.0"
+  # The job's image. On a network with no internet: an image from your registry, ideally
+  # one with qasight already installed (then nothing is downloaded).
+  TESTO_IMAGE: "python:3.11-slim"
+  # auto: pip install TESTO_PACKAGE only when the image has no qasight; always; never.
+  # pip reads PIP_INDEX_URL (and PIP_TRUSTED_HOST), so a CI/CD variable pointing at your
+  # PyPI mirror (Nexus, Artifactory, devpi) is all a closed network needs here.
+  TESTO_INSTALL: "auto"
 
 testo_run:
   stage: quality
-  image: python:3.11-slim
+  image: $TESTO_IMAGE
   script:
-    - python -m pip install --upgrade pip
-    - python -m pip install "$TESTO_PACKAGE"
+    - |
+      if [ "$TESTO_INSTALL" = "always" ] || { [ "$TESTO_INSTALL" != "never" ] && ! command -v qasight >/dev/null; }; then
+        python -m pip install "$TESTO_PACKAGE"
+      fi
     - |
       TESTO_ARGS=(run --ci)
       if [ -n "$TESTO_CONFIG_PATH" ]; then

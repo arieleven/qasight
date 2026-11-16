@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import delete as sa_delete
@@ -34,8 +34,13 @@ class SQLReportArchiveRepository:
         unknown: int | None = None,
         allure_duration_ms: int | None = None,
         plan_duration_ms: int | None = None,
+        report_id: uuid.UUID | None = None,
     ) -> ReportArchive:
+        # The run's id when there is one, so `qasight report list`, `qasight diff`, the UI
+        # and MCP all name a run the same way.
+        extra: dict[str, Any] = {"id": report_id} if report_id is not None else {}
         row = ReportArchive(
+            **extra,
             cycle_name=cycle_name,
             exit_code=int(exit_code),
             summary_json=dict(summary_json or {}),
@@ -67,6 +72,32 @@ class SQLReportArchiveRepository:
                 return None
             session.expunge(r)
             return r
+
+    def find_for_run(
+        self, *, cycle_name: str, finished_at: datetime, within_s: float = 300.0
+    ) -> ReportArchive | None:
+        """The archive written right after a run of ``cycle_name`` that ended at ``finished_at``.
+
+        Archives made before they took their run's id carry an id of their own; this finds
+        one by its cycle and time instead.
+        """
+        if finished_at.tzinfo is None:  # run times are stored in UTC
+            finished_at = finished_at.replace(tzinfo=UTC)
+        start = finished_at - timedelta(seconds=5)
+        end = finished_at + timedelta(seconds=within_s)
+        stmt = (
+            select(ReportArchive)
+            .where(ReportArchive.cycle_name == cycle_name)
+            .where(col(ReportArchive.created_at) >= start)
+            .where(col(ReportArchive.created_at) <= end)
+            .order_by(col(ReportArchive.created_at).asc())
+            .limit(1)
+        )
+        with Session(self._engine) as session:
+            row = session.exec(stmt).first()
+            if row is not None:
+                session.expunge(row)
+            return row
 
     def list_recent(self, *, limit: int = 30) -> list[ReportArchive]:
         stmt = (

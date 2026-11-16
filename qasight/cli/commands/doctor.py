@@ -59,7 +59,7 @@ def doctor(
     from rich.table import Table
 
     from qasight.cli.ui.console import default_console
-    from qasight.config.errors import ConfigError
+    from qasight.config.errors import ConfigDiscoveryError, ConfigError
     from qasight.config.loader import discover_and_load
 
     console = default_console()
@@ -75,6 +75,19 @@ def doctor(
     try:
         cfg = discover_and_load(config_path=config)
         table.add_row("Config load", "[ok]PASS[/]", f"cycles={len(cfg.cycles)}")
+    except ConfigDiscoveryError as exc:
+        if config is not None:
+            hard_fail = True
+            table.add_row("Config load", "[fail]FAIL[/]", str(exc))
+        else:
+            # Zero-config use is supported: `qasight ingest`, `qasight ui`, `pytest --qasight`
+            # and `qasight run -- <command>` need no file; only cycles do.
+            table.add_row(
+                "Config load",
+                "[dim]INFO[/]",
+                f"{exc}. Fine for `qasight ingest`, `qasight ui` and `qasight run -- <command>`; "
+                "`qasight init` writes one for cycles.",
+            )
     except ConfigError as exc:
         hard_fail = True
         table.add_row("Config load", "[fail]FAIL[/]", str(exc))
@@ -135,6 +148,11 @@ def doctor(
             os.environ.get("DATABASE_URL") or ""
         ).strip() or database_url_from_discovered_config(cwd=anchor)
         db_url = db_url or None
+    else:
+        # No config (zero-config `qasight ingest` / `qasight ui`): DATABASE_URL still applies.
+        import os
+
+        db_url = (os.environ.get("DATABASE_URL") or "").strip() or None
 
     if db_url:
         try:

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-11-01
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Setup Snippets
@@ -19,7 +19,7 @@ How each CI keeps the history between runs:
 - **GitLab CI** and **CircleCI**: the snippet caches `.testo-history/` per branch, falling back to the default branch's.
 - **Jenkins**: the history stays in the agent's workspace. For one history across agents and CI systems, run a [team server](Team%20Server.md) and replace `qasight ingest ...` with `qasight ingest --server https://your-server --token "$TESTO_API_TOKEN" ...`.
 
-Outside GitHub, the snippets install `qasight` with [uv](https://docs.astral.sh/uv/) (one binary that brings its own Python, so the image needs only `curl`). An image that has Python can run `pip install qasight` instead. Each run's summary is saved as `testo-summary.md` next to the build.
+Outside GitHub, the snippets install `qasight` with [uv](https://docs.astral.sh/uv/) (one binary that brings its own Python, so the image needs only `curl`). An image that has Python can run `pip install qasight` instead, and an image that already has `qasight` downloads nothing, which is how they run on a network with no internet ([Closed Network Install](Closed%20Network%20Install.md)). Each run's summary is saved as `testo-summary.md` next to the build.
 
 ## Python (pytest)
 
@@ -76,9 +76,9 @@ pytest:
     - pip install -r requirements.txt
     - mkdir -p test-results && pytest -q tests --junitxml=test-results/pytest.xml
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -109,9 +109,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -147,9 +147,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -222,9 +222,9 @@ jest:
     - npm ci
     - mkdir -p test-results && npx jest --ci --json --outputFile=test-results/jest.json
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -255,9 +255,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -293,9 +293,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -368,9 +368,9 @@ vitest:
     - npm ci
     - mkdir -p test-results && npx vitest run --reporter=default --reporter=json --outputFile.json=test-results/vitest.json
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -401,9 +401,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -439,9 +439,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -516,9 +516,9 @@ playwright:
     - npx playwright install --with-deps
     - mkdir -p test-results && PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/playwright.json npx playwright test --reporter=list,json
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -550,9 +550,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -589,9 +589,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -661,9 +661,9 @@ go:
   script:
     - mkdir -p test-results && go test -json ./... > test-results/go-test.json
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -693,9 +693,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -730,9 +730,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -802,9 +802,9 @@ dotnet:
   script:
     - dotnet test --logger trx --results-directory test-results/dotnet
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -834,9 +834,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -871,9 +871,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -945,9 +945,9 @@ maven:
   script:
     - mvn -B test
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -977,9 +977,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -1014,9 +1014,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -1088,9 +1088,9 @@ gradle:
   script:
     - ./gradlew test
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -1120,9 +1120,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -1157,9 +1157,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -1230,9 +1230,9 @@ rspec:
     - bundle install
     - mkdir -p test-results && bundle exec rspec --format progress --format json --out test-results/rspec.json
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -1263,9 +1263,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -1301,9 +1301,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
@@ -1375,9 +1375,9 @@ phpunit:
     - composer install --no-interaction --prefer-dist
     - mkdir -p test-results && vendor/bin/phpunit --log-junit test-results/phpunit.xml
   after_script:
-    - command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
-    - uv tool install --quiet qasight
+    - command -v qasight >/dev/null || uv tool install --quiet qasight
     - mkdir -p "$CI_PROJECT_DIR/.testo-history"
     - export DATABASE_URL="sqlite:///$CI_PROJECT_DIR/.testo-history/testo_history.db"
     - qasight ingest --cycle my-app
@@ -1408,9 +1408,9 @@ pipeline {
   post {
     always {
       sh '''
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+          command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv tool install --quiet qasight
+          command -v qasight >/dev/null || uv tool install --quiet qasight
           mkdir -p "$WORKSPACE/.testo-history"
           export DATABASE_URL="sqlite:///$WORKSPACE/.testo-history/testo_history.db"
           qasight ingest --cycle my-app
@@ -1446,9 +1446,9 @@ jobs:
           name: Record the results with QASight
           when: always
           command: |
-            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+            command -v qasight >/dev/null || command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
             export PATH="$HOME/.local/bin:$PATH"
-            uv tool install --quiet qasight
+            command -v qasight >/dev/null || uv tool install --quiet qasight
             mkdir -p "$HOME/.testo-history"
             export DATABASE_URL="sqlite:///$HOME/.testo-history/testo_history.db"
             qasight ingest --cycle my-app
