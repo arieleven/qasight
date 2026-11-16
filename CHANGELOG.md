@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- CI: `no-bot-authors` check fails a pull request whose commits are authored by, or co-authored by, Claude, Cursor or Dependabot, so they stay off the Contributors list
 - `qasight export -o report.pdf` takes the format from the file's extension
 - CI runs the CLI end to end the way a coding agent calls it (`scripts/cli_e2e.py`): `qasight doctor` with no config, `try`, `ingest`, `qasight mcp` over stdio, `diff` and `export` in every format
 - Closed networks: `scripts/offline/bundle.sh` packs the wheels, Docker images and GitLab template into one file for a network with no internet, and `install.sh` installs it there (and pushes the images to your registry); guide: Closed Network Install

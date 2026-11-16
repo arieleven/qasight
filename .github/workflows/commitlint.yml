@@ -19,3 +19,31 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6.2.1
+
+  # Commits by Claude, Cursor or Dependabot put those accounts in the
+  # repository's Contributors list. Author commits as yourself and drop their
+  # Co-authored-by trailers. Dependabot PRs fail here on purpose: land the
+  # update as your own commit instead of merging the PR (see
+  # docs/Specs & ADRs/Contributors Cleanup - 2026-11-15.md).
+  no-bot-authors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Reject bot authors and co-author trailers
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pattern='noreply@anthropic\.com|cursoragent@cursor\.com|cursor\[bot\]|dependabot\[bot\]'
+          bad=$(git log --format='%h %an <%ae> / %cn <%ce>' "$BASE_SHA..$HEAD_SHA" | grep -iE "$pattern" || true)
+          trailers=$(git log --format='%h %(trailers:key=Co-authored-by,valueonly,separator=%x2C )' "$BASE_SHA..$HEAD_SHA" | grep -iE 'claude|cursor|anthropic|dependabot' || true)
+          if [ -n "$bad$trailers" ]; then
+            echo "::error::Commits by Claude, Cursor or Dependabot would add them to the Contributors list."
+            [ -n "$bad" ] && printf 'Authored or committed by a bot:\n%s\n' "$bad"
+            [ -n "$trailers" ] && printf 'Co-authored-by trailers to remove:\n%s\n' "$trailers"
+            exit 1
+          fi
