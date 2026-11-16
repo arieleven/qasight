@@ -29,6 +29,7 @@ from qasight_api.routes.dashboard import router as dashboard_router
 from qasight_api.routes.health import router as health_router
 from qasight_api.routes.history import router as history_router
 from qasight_api.routes.ingest import router as ingest_router
+from qasight_api.routes.jira import router as jira_router
 from qasight_api.routes.live import router as live_router
 from qasight_api.routes.project_health import router as project_health_router
 from qasight_api.routes.quarantine import router as quarantine_router
@@ -248,6 +249,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(health_router)
     app.include_router(ingest_router)
+    app.include_router(jira_router)
     app.include_router(live_router)
     app.include_router(project_health_router)
     app.include_router(triage_router)

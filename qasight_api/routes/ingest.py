@@ -12,6 +12,7 @@ from qasight.services.junit_ingest import (
     ingest_uploaded_reports,
 )
 from qasight_api.models import IngestResponse
+from qasight_api.security import require_cycle_role
 from qasight_api.ui import ui_dir
 
 router = APIRouter(prefix="/api/v1", tags=["ingest"])
@@ -44,6 +45,7 @@ def ingest_reports(
     1 when one failed. Needs ``Authorization: Bearer <TESTO_API_TOKEN>`` when the
     server has a token set, like every other write.
     """
+    require_cycle_role(request, cycle.strip())
     try:
         cfg = load_config_or_defaults()
     except ConfigError as exc:

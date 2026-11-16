@@ -26,7 +26,7 @@ from qasight_api.models import (
     CycleTriggerSummary,
     StageSummary,
 )
-from qasight_api.security import read_config_path
+from qasight_api.security import read_config_path, require_cycle_role
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +192,7 @@ def create_cycle_execution(
     manager: CycleExecutionManager = Depends(get_cycle_execution_manager),
 ) -> CycleExecutionAcceptedResponse:
     """Start a run of ``cycle``; with ``tests`` or ``rerun_failed``, only those tests."""
+    require_cycle_role(request, str(cycle))
     if payload.rerun_failed:
         from qasight.services.test_selection import SelectionError, from_run_failures
 

@@ -43,7 +43,7 @@ import time
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlencode, urlsplit
 
 from fastapi import HTTPException, Request
@@ -332,12 +332,72 @@ def guard_mutating_request(request: Request) -> None:
         from qasight.accounts import role_at_least
 
         needed = required_role(request)
-        if not role_at_least(principal.role, needed):
+        if not role_at_least(principal.role, needed) and not (
+            # A per-cycle role can allow what the account's own role doesn't; the route
+            # checks the cycle it names (require_cycle_role).
+            _names_a_cycle(request)
+            and _best_grant(principal) is not None
+            and role_at_least(_best_grant(principal) or "", needed)
+        ):
             raise HTTPException(
                 status_code=403,
                 detail=f"This needs the {needed} role; {principal.username} is a "
                 f"{principal.role}. Ask an admin (`qasight users set-role`).",
             )
+
+
+# Writes whose route names the cycle it changes and checks it with require_cycle_role.
+_CYCLE_WRITE_PREFIXES = ("/api/v1/cycles/", "/api/v1/triage", "/api/v1/quarantine")
+_CYCLE_WRITE_PATHS = frozenset({"/api/v1/ingest", "/api/v1/live-runs", "/api/v1/jira/issues"})
+
+
+def _names_a_cycle(request: Request) -> bool:
+    path = request.url.path
+    return path in _CYCLE_WRITE_PATHS or path.startswith(_CYCLE_WRITE_PREFIXES)
+
+
+def _grants(principal: Principal) -> list[Any]:
+    if principal == TOKEN_PRINCIPAL:
+        return []
+    from qasight.project_roles import ProjectRoleStore
+
+    try:
+        return ProjectRoleStore().list(principal.username)
+    except Exception:
+        # Broad on purpose: without the grants table the account's own role still applies.
+        logger.warning("could not read per-cycle roles", exc_info=True)
+        return []
+
+
+def _best_grant(principal: Principal) -> str | None:
+    from qasight.accounts import ROLES
+
+    roles = [g.role for g in _grants(principal) if g.role in ROLES]
+    return max(roles, key=ROLES.index) if roles else None
+
+
+def require_cycle_role(request: Request, cycle: str, needed: str = "runner") -> None:
+    """Refuse a write to *cycle* unless the caller's role there is at least *needed*.
+
+    Only in accounts mode; the API token is an admin everywhere. The role on a cycle
+    is the account's most specific per-cycle role (:mod:`qasight.project_roles`),
+    else its own role.
+    """
+    if not accounts_enabled():
+        return
+    principal = current_principal(request)
+    if principal is None or principal == TOKEN_PRINCIPAL:
+        return
+    from qasight.accounts import role_at_least
+    from qasight.project_roles import role_on
+
+    role = role_on(_grants(principal), cycle, principal.role)
+    if not role_at_least(role, needed):
+        raise HTTPException(
+            status_code=403,
+            detail=f"This needs the {needed} role on {cycle}; {principal.username} is a "
+            f"{role} there. Ask an admin (`qasight users grant`).",
+        )
 
 
 def unauthenticated_allowed() -> bool:

@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 
 from qasight.services.triage import Triage, TriageError, TriageStore
 from qasight_api.models import ApiModel, TriageItem, TriageListResponse, TriageRequest
-from qasight_api.security import TOKEN_PRINCIPAL, current_principal
+from qasight_api.security import TOKEN_PRINCIPAL, current_principal, require_cycle_role
 
 router = APIRouter(prefix="/api/v1", tags=["triage"])
 
@@ -75,6 +75,7 @@ def triage_accuracy(cycle: str | None = None) -> TriageAccuracyResponse:
 @router.put("/triage", response_model=TriageItem)
 def mark_triage(body: TriageRequest, request: Request) -> TriageItem:
     """Set the cause of a failure message in a cycle; replaces an earlier one for the same message."""
+    require_cycle_role(request, body.cycle)
     principal = current_principal(request)
     # The shared API token names no one; an account does.
     marked_by = principal.username if principal and principal != TOKEN_PRINCIPAL else None
@@ -94,8 +95,9 @@ def mark_triage(body: TriageRequest, request: Request) -> TriageItem:
 
 
 @router.delete("/triage", status_code=204)
-def clear_triage(cycle: str, signature: str) -> Response:
+def clear_triage(cycle: str, signature: str, request: Request) -> Response:
     """Forget a cause; failures with that message show no cause again."""
+    require_cycle_role(request, cycle)
     if not TriageStore().clear(cycle=cycle, signature=signature):
         raise HTTPException(status_code=404, detail="No cause is marked for that message.")
     return Response(status_code=204)
