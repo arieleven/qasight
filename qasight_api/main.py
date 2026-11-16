@@ -426,5 +426,38 @@ def run(argv: list[str] | None = None) -> int:
         )
     # A factory, so the app reads the environment as it is now: ``qasight ui`` sets
     # TESTO_CORS_ORIGINS after ``qasight_api`` (and its module-level ``app``) was imported.
-    uvicorn.run("qasight_api.main:create_app", factory=True, host=host, port=port, reload=reload)
+    workers = api_workers()
+    if workers is None:
+        sys.stderr.write("TESTO_WORKERS must be a whole number from 1 to 64.\n")
+        return 2
+    if workers > 1 and reload:
+        sys.stderr.write("TESTO_WORKERS above 1 can't be used with TESTO_API_RELOAD.\n")
+        return 2
+    if workers > 1 and os.environ.get("TESTO_RUN_QUEUE", "memory").strip().lower() != "db":
+        logger.warning(
+            "TESTO_WORKERS=%d with the in-memory run queue: runs started from the UI or API "
+            "wait in the worker that took the request. Set TESTO_RUN_QUEUE=db so a restart "
+            "keeps them; results sent by CI and agents are shared by every worker either way.",
+            workers,
+        )
+    uvicorn.run(
+        "qasight_api.main:create_app",
+        factory=True,
+        host=host,
+        port=port,
+        reload=reload,
+        workers=workers,
+    )
     return 0
+
+
+def api_workers() -> int | None:
+    """``TESTO_WORKERS``: API worker processes (default 1); None when it isn't 1-64."""
+    import os
+
+    raw = os.environ.get("TESTO_WORKERS", "1").strip() or "1"
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if 1 <= value <= 64 else None
