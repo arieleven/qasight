@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-11-12
+updated: 2026-11-19
 ---
 
 # Architecture Overview
@@ -122,6 +122,29 @@ Optional per-cycle **selective execution**: Git diff or filesystem snapshot agai
 Until v1.1 a second, Docker-based execution stack (`HeadlessEngineService` → `runners.py`) and a Streamlit UI shipped beside these; see [Deep Dive - Execution Logic § Removed: the UQO headless / Docker path](Deep%20Dive%20-%20Execution%20Logic.md#removed-the-uqo-headless--docker-path).
 
 **`qasight run`** does not require Docker. `docker-compose.yml` only provides Postgres for local development. For a shared history, `deploy/server/docker-compose.yml` runs the [Team Server](../Processes%20&%20Guides/Team%20Server.md) (API + UI image and Postgres) that CI jobs upload to with `qasight ingest --server`.
+
+### `qasight/services/scorecard/` (Code quality)
+
+The release scorecard scores a repository or version with outside review tools, separately from test runs. `qasight scorecard scan` and `POST /api/v1/scorecard/scans` both call `scan.run_scan()`; results go to the `scorecard_result` / `scorecard_tool` tables through `store.py`.
+
+```mermaid
+flowchart LR
+    CLI["qasight scorecard scan"] --> RS["scan.run_scan()"]
+    API["POST /api/v1/scorecard/scans"] --> RS
+    RS --> PT["plan_tools(): switched on, fits the languages, installed, --url given"]
+    PT --> ML["MegaLinter in Docker (engine)"]
+    PT --> REPO["repo tools: Bandit, Semgrep, CodeQL, gitleaks, TruffleHog, Claude security review, ..."]
+    PT --> APP["app tools (--url): ZAP, Nuclei, Lighthouse, axe, k6, Schemathesis"]
+    ML --> P["parsers.py: report to 0-100 score and findings"]
+    REPO --> P
+    APP --> P
+    IMP["qasight scorecard import"] --> P
+    P --> ST["store.py: scorecard_result, scorecard_tool"]
+```
+
+- **`tools.py`** is the one list of tools: id, category, kind (`engine`, `repo`, `app`, `import`), `default_on`, binary, and the `Command` that runs it (argv, `before` steps, `empty_ok` for JSON-lines tools that print nothing when clean). The UI's tool list and toggles come from it through the API, so a new tool needs no UI change beyond an optional brand mark in `frontend/src/features/scorecard/brandMarks.ts`.
+- **Defaults.** Bandit, pip-audit, npm audit, zizmor, Ruff and the app tools run by default; Semgrep, CodeQL, gitleaks, Trivy, TruffleHog, Nuclei and Claude security review are opt-in (`qasight scorecard tools --on <id>` or the UI switch). Why: [Release Scorecard](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md).
+- **Parsers** (`parsers.py`) are pure: a report file in, a `ToolResult` out, so every tool's report can also be imported from CI.
 
 ### Official documentation
 

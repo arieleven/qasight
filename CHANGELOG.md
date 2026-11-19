@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The team server compose files read `TESTO_REGISTRY` and `TESTO_POSTGRES_IMAGE`, and pass `TESTO_NO_UPDATE_CHECK` and the `TESTO_AI_*` settings to the server, so an AI model inside your network can be set from `.env`
 - The GitLab template takes `TESTO_IMAGE` and `TESTO_INSTALL` (`auto`: install only when the image has no `qasight`)
 - Code quality: CodeQL as a scorecard tool (Python, or JavaScript/TypeScript), opt-in
+- Code quality: three more opt-in scanners. Nuclei scans the running app at `--url` with the community templates (no DoS, fuzzing or intrusive ones); TruffleHog finds secrets and checks which are live; Claude security review has Claude Code read the code for exploitable bugs, or only a pull request's changes with the new `qasight scorecard scan --diff-base REF`
 
 ### Fixed
 - `qasight diff` takes the run ids the UI, MCP and `qasight run` / `qasight ingest` show. A run's report archive now takes the run's id, so one id names a run everywhere; for older runs `qasight diff` finds the archive by cycle and time

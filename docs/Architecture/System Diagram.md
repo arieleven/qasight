@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-10-08
-updated: 2026-11-04
+updated: 2026-11-19
 ---
 
 # System Diagram
@@ -28,6 +28,7 @@ The first, six-box version from 2026-10-06. It predates `CycleRunService` and th
 | Component flowchart (Mermaid) | Entry points, `CycleRunService`, engine, persistence, history read side | [Architecture Overview § High-level shape](Architecture%20Overview.md#high-level-shape) |
 | Run sequence (Mermaid) | One `qasight run` call from CLI to executor and back | [Deep Dive - Execution Logic](Deep%20Dive%20-%20Execution%20Logic.md) |
 | Cycle flow (Mermaid) | Load, trigger gate, stages, reporters, archive | [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) |
+| Scorecard flow (Mermaid) | `qasight scorecard scan` and the API through `run_scan()`, the engine, repo and app tools, parsers and store | [Architecture Overview § Code quality](Architecture%20Overview.md#qasightservicesscorecard-code-quality) |
 | Demo pipeline (text) | Pages demo: run on itself and fake-api, export to JSON, build, publish | [GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md) |
 
 Mermaid blocks render on GitHub, in the GitHub wiki and in Obsidian without plugins.
@@ -64,6 +65,7 @@ Both interfaces start runs the same way: through `CycleRunService` (`qasight/ser
 | Insight services | `services/` | Dashboard KPIs, run-to-run delta, AI failure summaries; called by the REST API |
 | Run history | `history/` | The read side: typed views, queries, report links and snapshot files over stored runs |
 | Repository | `repository/` | The only code that opens a database session (SQLite, Postgres or MySQL) |
+| Scorecard | `services/scorecard/` | Code quality: runs MegaLinter and the review tools (security, supply chain, app scans, AI review) on a repository or running app, scores each 0-100 and stores it per version ([Architecture Overview § Code quality](Architecture%20Overview.md#qasightservicesscorecard-code-quality)) |
 
 ### Outside world
 
@@ -73,7 +75,8 @@ Both interfaces start runs the same way: through `CycleRunService` (`qasight/ser
 | `artifacts/` | Per cycle and stage: `run.log`, Allure results, `events.ndjson`, `plan_result.json` |
 | SQL database | Run history that feeds the dashboard and Compare |
 | Report outputs | HTML reports under `static/history/<run_id>/`, or results pushed to ReportPortal / TestBeats |
-| LLM provider | OpenAI or Anthropic with the user's own key, only when AI summaries are on |
+| LLM provider | OpenAI or Anthropic with the user's own key, only when AI summaries are on, or Claude Code when the Claude security review is switched on |
+| Review tools | Scanners on `PATH` or in Docker that the scorecard runs; QASight installs none |
 
 ## Design choices the picture encodes
 

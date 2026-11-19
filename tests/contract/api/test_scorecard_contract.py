@@ -132,6 +132,11 @@ def test_scan_of_a_folder_runs_in_the_background(client: TestClient, tmp_path: P
         "/api/v1/scorecard/scans", json={"target": "x", "tools": ["nope"]}, headers=_AUTH
     )
     assert bad.status_code == 422
+    for ref in ("--output=x", "main..HEAD"):
+        bad = client.post(
+            "/api/v1/scorecard/scans", json={"target": "x", "diff_base": ref}, headers=_AUTH
+        )
+        assert bad.status_code == 422, ref
 
 
 def test_badge_sarif_and_html_from_the_same_scorecard(client: TestClient) -> None:

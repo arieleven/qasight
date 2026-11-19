@@ -297,7 +297,8 @@ def run_tool(
     (ctx.out.parent / f"{tool.id}.log").write_text(
         f"$ {' '.join(cmd.argv)}\nexit {proc.returncode}\n\n{proc.stderr}", encoding="utf-8"
     )
-    if not ctx.out.is_file() or ctx.out.stat().st_size == 0:
+    clean_run = cmd.empty_ok and proc.returncode == 0 and ctx.out.is_file()
+    if not ctx.out.is_file() or (ctx.out.stat().st_size == 0 and not clean_run):
         raise ReportError(_failure(tool, proc.returncode, proc.stderr or proc.stdout or ""))
     from qasight.services.scorecard.paths import scan_root
 
@@ -359,12 +360,15 @@ def run_scan(
     ignore_file: Path | None = None,
     record_coverage: Callable[[ScanOutcome], None] | None = None,
     engine_image: str | None = None,
+    diff_base: str | None = None,
 ) -> ScanOutcome:
     """Scan ``target`` with every tool that fits; ``record`` stores each result as it comes.
 
     Findings accepted in ``ignore_file`` (default: the repository's
     ``scorecard-ignore.yml``) are left out before a result is recorded, and
     ``record_coverage`` gets the outcome at the end, to keep which tools ran.
+    ``diff_base`` (a git ref) limits the tools that can review a change to what
+    changed since it (Claude's security review).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     ignore_path = ignore_file or find_ignore_file(target.repo)
@@ -435,6 +439,7 @@ def run_scan(
             openapi=openapi,
             github_repo=target.github_repo,
             languages=frozenset(languages),
+            diff_base=diff_base,
         )
         emit({"type": "tool", "tool": tool.id, "status": "running"})
         started = time.monotonic()
@@ -550,6 +555,21 @@ def finish(target: ScanTarget) -> None:
     """Delete the temporary clone, if the scan made one."""
     if target.cleanup is not None:
         shutil.rmtree(target.cleanup, ignore_errors=True)
+
+
+# A git ref as --diff-base takes it: a branch, tag, sha or origin/main~3, never an option.
+DIFF_BASE_PATTERN = r"^[A-Za-z0-9_.@^~][A-Za-z0-9_./@^~-]*$"
+
+
+def checked_diff_base(raw: str | None) -> str | None:
+    """``--diff-base`` as given, or :class:`ScanError` when it isn't a plain git ref."""
+    if not raw:
+        return None
+    if len(raw) > 255 or not re.match(DIFF_BASE_PATTERN, raw) or ".." in raw:
+        raise ScanError(
+            f"--diff-base {raw!r} is not a git ref (a branch, tag or commit such as origin/main)"
+        )
+    return raw
 
 
 def known_tool_ids(raw: str | None) -> list[str] | None:

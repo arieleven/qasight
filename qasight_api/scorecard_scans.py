@@ -62,9 +62,10 @@ class ScorecardScanManager:
             return self._scans.get(scan_id)
 
     def start(self, request: Any) -> ScanState:
-        from qasight.services.scorecard.scan import known_tool_ids
+        from qasight.services.scorecard.scan import checked_diff_base, known_tool_ids
 
         only = known_tool_ids(",".join(request.tools)) if request.tools else None
+        checked_diff_base(request.diff_base)
         with self._lock:
             if any(s.state == "running" for s in self._scans.values()):
                 raise ScanBusyError("A scan is already running. Wait for it to finish.")
@@ -142,6 +143,7 @@ class ScorecardScanManager:
                 only=only,
                 url=request.url or None,
                 openapi=request.openapi or None,
+                diff_base=request.diff_base or None,
                 on_event=lambda e: self._event(state, e),
                 record_coverage=lambda o: store.record_coverage(
                     project=target.project,

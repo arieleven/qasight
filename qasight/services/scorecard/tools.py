@@ -1,8 +1,8 @@
 """The tools a release scorecard knows: what each checks, how ``qasight scorecard scan`` runs it, and its parser.
 
 A tool is either a **repo** tool (reads the files: Bandit, Semgrep, gitleaks,
-Trivy, ...) or an **app** tool (talks to a running copy: ZAP, Lighthouse, axe,
-k6, Schemathesis), which the scan runs only when it is given ``--url``. Some
+Trivy, ...) or an **app** tool (talks to a running copy: ZAP, Nuclei, Lighthouse,
+axe, k6, Schemathesis), which the scan runs only when it is given ``--url``. Some
 tools are **import only**: their run is too specific to the project (mutation
 testing, coverage, a Locust file), so their report comes in through
 ``qasight scorecard import``.
@@ -49,6 +49,8 @@ class ScanContext:
     github_repo: str | None = None
     # What detect_languages found: python, node, c, github-actions.
     languages: frozenset[str] = frozenset()
+    # Review only what changed since this git ref (--diff-base): Claude's security review.
+    diff_base: str | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,9 @@ class Command:
     files: dict[Path, str] = field(default_factory=dict)
     # Commands that run first, in order (CodeQL builds its database before analyzing it).
     before: tuple[list[str], ...] = ()
+    # An empty report means nothing was found (Nuclei and TruffleHog print one JSON line
+    # per finding, so a clean run prints nothing).
+    empty_ok: bool = False
 
 
 @dataclass(frozen=True)
@@ -248,6 +253,106 @@ def _trivy(ctx: ScanContext) -> Command:
         ],
         ctx.repo,
     )
+
+
+# Folders TruffleHog skips: other projects' code and build output, not this repository's.
+_TRUFFLEHOG_EXCLUDE = (
+    r"(^|/)\.git/",
+    r"(^|/)node_modules/",
+    r"(^|/)\.?venv/",
+    r"(^|/)(dist|build|\.tox|\.mypy_cache|\.pytest_cache|__pycache__)/",
+)
+
+
+def _trufflehog(ctx: ScanContext) -> Command:
+    exclude = ctx.out.parent / "trufflehog-exclude.txt"
+    return Command(
+        [
+            "trufflehog",
+            "filesystem",
+            ".",
+            "--json",
+            "--no-update",
+            "--exclude-paths",
+            str(exclude),
+        ],
+        ctx.repo,
+        stdout_is_report=True,
+        files={exclude: "\n".join(_TRUFFLEHOG_EXCLUDE) + "\n"},
+        empty_ok=True,
+    )
+
+
+def _nuclei(ctx: ScanContext) -> Command | None:
+    if not ctx.url:
+        return None
+    return Command(
+        [
+            "nuclei",
+            "-target",
+            ctx.url,
+            "-jsonl",
+            "-silent",
+            "-no-color",
+            "-disable-update-check",
+            # A release check, not an attack: no denial of service, fuzzing or intrusive templates.
+            "-exclude-tags",
+            "dos,fuzz,intrusive",
+            "-rate-limit",
+            "50",
+        ],
+        ctx.repo,
+        stdout_is_report=True,
+        empty_ok=True,
+    )
+
+
+# What Claude's security review looks for, after anthropics/claude-code-security-review:
+# real, exploitable problems with high confidence, as JSON the parser reads.
+_CLAUDE_REVIEW_PROMPT = """You are a senior application security engineer doing a security review.
+
+{scope}
+
+Find security vulnerabilities an attacker could actually exploit: injection (SQL, command,
+template, path traversal), broken authentication or authorization, secrets in code, unsafe
+deserialization, server-side request forgery, cross-site scripting, weak or misused
+cryptography, and data exposure. Read the code you need with the Read, Grep and Glob tools.
+
+Report only findings you are at least 80% sure of. Leave out denial of service, rate limiting,
+missing hardening with no concrete attack, outdated dependencies, and anything in tests,
+fixtures, examples or docs.
+
+Answer with JSON only, no other text:
+{{"findings": [{{"file": "path/from/repo/root.py", "line": 42, "severity": "HIGH",
+"category": "sql_injection", "description": "what is wrong",
+"exploit_scenario": "how an attacker uses it", "recommendation": "how to fix it",
+"confidence": 0.9}}]}}
+severity is HIGH, MEDIUM or LOW. With nothing to report, answer {{"findings": []}}."""
+
+_CLAUDE_REVIEW_TOOLS = "Read,Glob,Grep,Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+
+
+def _claude_review(ctx: ScanContext) -> Command:
+    if ctx.diff_base:
+        scope = (
+            f"Review only the changes since {ctx.diff_base}: run `git diff {ctx.diff_base}...HEAD`"
+            " and read the surrounding code where you need it. Report problems the changes add."
+        )
+    else:
+        scope = "Review the code in this repository (the current folder)."
+    argv = [
+        "claude",
+        "-p",
+        _CLAUDE_REVIEW_PROMPT.format(scope=scope),
+        "--output-format",
+        "json",
+        "--allowedTools",
+        _CLAUDE_REVIEW_TOOLS,
+    ]
+    model = os.environ.get("QASIGHT_CLAUDE_MODEL")
+    if model:
+        argv += ["--model", model]
+    return Command(argv, ctx.repo, stdout_is_report=True)
 
 
 def _flawfinder(ctx: ScanContext) -> Command:
@@ -447,6 +552,22 @@ TOOLS: tuple[Tool, ...] = (
         failure_hint="CodeQL downloads its query packs on first use, so it needs network once.",
     ),
     Tool(
+        id="claude-security-review",
+        name="Claude security review",
+        category="security",
+        tagline="Claude Code reads the code (or a pull request's changes, with --diff-base) for exploitable security bugs. Sends the code it reads to Anthropic.",
+        how=_FINDINGS_HOW + " Claude's HIGH, MEDIUM and LOW map to high, medium and low.",
+        homepage="https://github.com/anthropics/claude-code-security-review",
+        kind="repo",
+        default_on=False,
+        report="Claude Code JSON (claude -p --output-format json) or the claude-code-security-review action's findings JSON",
+        parser="claude-security-review",
+        binary="claude",
+        install="npm install -g @anthropic-ai/claude-code, then set ANTHROPIC_API_KEY (or sign in with `claude`)",
+        command=_claude_review,
+        failure_hint="Claude Code needs ANTHROPIC_API_KEY or a signed-in `claude`, and network to reach Anthropic.",
+    ),
+    Tool(
         id="gitleaks",
         name="gitleaks",
         category="security",
@@ -462,6 +583,22 @@ TOOLS: tuple[Tool, ...] = (
         binary="gitleaks",
         install="brew install gitleaks, or a release from github.com/gitleaks/gitleaks",
         command=_gitleaks,
+    ),
+    Tool(
+        id="trufflehog",
+        name="TruffleHog",
+        category="security",
+        tagline="Secrets in the files, each checked against its provider to tell live keys from dead ones. Checking sends a found secret to its provider.",
+        how=_FINDINGS_HOW
+        + " A secret the provider accepted (live) is critical, one it couldn't check high, an unverified match medium; each secret counts once.",
+        homepage="https://trufflesecurity.com/trufflehog",
+        kind="repo",
+        default_on=False,
+        report="TruffleHog JSON lines (trufflehog filesystem . --json)",
+        parser="trufflehog",
+        binary="trufflehog",
+        install="brew install trufflehog, or a release from github.com/trufflesecurity/trufflehog",
+        command=_trufflehog,
     ),
     Tool(
         id="flawfinder",
@@ -493,6 +630,22 @@ TOOLS: tuple[Tool, ...] = (
         binary="docker",
         install="Docker (the scan runs ghcr.io/zaproxy/zaproxy:stable)",
         command=_zap,
+    ),
+    Tool(
+        id="nuclei",
+        name="Nuclei",
+        category="security",
+        tagline="Known vulnerabilities, exposures and misconfigurations on the running app, from the community templates (no DoS, fuzzing or intrusive ones).",
+        how=_FINDINGS_HOW + " Each template's own severity counts; info findings cost nothing.",
+        homepage="https://github.com/projectdiscovery/nuclei",
+        kind="app",
+        default_on=False,
+        report="Nuclei JSON lines (-jsonl) or JSON export (-json-export)",
+        parser="nuclei",
+        binary="nuclei",
+        install="brew install nuclei, or a release from github.com/projectdiscovery/nuclei",
+        command=_nuclei,
+        failure_hint="Nuclei downloads its templates on first use, so it needs network once (or run `nuclei -update-templates`).",
     ),
     # --- Supply chain ---------------------------------------------------------
     Tool(

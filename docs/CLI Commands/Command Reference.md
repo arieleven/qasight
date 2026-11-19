@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-15
+updated: 2026-11-19
 ---
 
 # Command Reference
@@ -605,12 +605,13 @@ An entry whose test is an exact name is released on its own once the test passed
 
 ## `qasight scorecard`
 
-Score a release with the repo review tools: security (Bandit, Semgrep, CodeQL, gitleaks, Flawfinder, OWASP ZAP), supply chain (pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor), code quality (Ruff, any SARIF tool), API (Schemathesis), web (Lighthouse), accessibility (axe), performance (k6, Locust) and tests (coverage, mutation testing, JUnit). Each tool gets a 0-100 score for a project's version, the categories and the version get the mean, and the version is compared with the one before. Results live in the run-history database (tables `scorecard_result`, `scorecard_tool`); the UI's **Scorecard** page shows them. How scores are made: [Release Scorecard - 2026-11-12](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md).
+Score a release with the repo review tools: security (Bandit, Semgrep, CodeQL, Claude security review, gitleaks, TruffleHog, Flawfinder, OWASP ZAP, Nuclei), supply chain (pip-audit, npm audit, Trivy, OpenSSF Scorecard, zizmor), code quality (Ruff, any SARIF tool), API (Schemathesis), web (Lighthouse), accessibility (axe), performance (k6, Locust) and tests (coverage, mutation testing, JUnit). Each tool gets a 0-100 score for a project's version, the categories and the version get the mean, and the version is compared with the one before. Results live in the run-history database (tables `scorecard_result`, `scorecard_tool`); the UI's **Scorecard** page shows them. How scores are made: [Release Scorecard - 2026-11-12](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md).
 
 ```bash
 qasight scorecard scan .                                      # this repository, version from git describe
 qasight scorecard scan https://github.com/torvalds/linux      # any repository, cloned shallow
 qasight scorecard scan . --url http://localhost:8000 --openapi http://localhost:8000/openapi.json
+qasight scorecard scan . --tools claude-security-review --diff-base origin/main   # AI review of a pull request's changes
 qasight scorecard import coverage coverage.json --version 1.6.0
 qasight scorecard show --min-score 70 --no-drop               # the release gate: exit 1 when it fails
 qasight scorecard show --format markdown -o scorecard.md
@@ -618,17 +619,25 @@ qasight scorecard show --format sarif -o scorecard.sarif      # for GitHub code 
 qasight scorecard show --format html -o scorecard.html        # one page, no server
 qasight scorecard show --format svg -o badge.svg              # README badge: quality | B 87
 qasight scorecard tools --on semgrep --on codeql --off locust
+qasight scorecard tools --on nuclei --on trufflehog --on claude-security-review
 ```
 
 Semgrep, CodeQL, gitleaks and Trivy are **opt-in** (off until `--on`, or the switch in the UI): Bandit is the default security scanner and pip-audit / npm audit the default dependency checks, so the extra scanners only add findings and run time where a team asks for them. While one is off, MegaLinter leaves its linter out as well (`REPOSITORY_SEMGREP`, `REPOSITORY_GITLEAKS`, `REPOSITORY_TRIVY`). CodeQL builds a database for the repository's Python, else its JavaScript/TypeScript (`--build-mode=none`), then runs the code-scanning queries; it is free for open source, while private code needs GitHub Advanced Security.
+
+Nuclei, TruffleHog and Claude security review are opt-in too, as choices next to the defaults rather than replacements:
+
+- **Nuclei** (`nuclei`) runs the community templates against the app at `--url` (DAST: exposed files, known CVEs, misconfigurations), leaving out DoS, fuzzing and intrusive templates, at 50 requests a second. Each match is a finding with the template's severity and the URL it matched.
+- **TruffleHog** (`trufflehog filesystem`) finds secrets like gitleaks, then checks each with its provider: a live key is critical, one it couldn't check high, an unverified match medium. Checking sends the found secret to its provider, which is why it is off. MegaLinter keeps its own TruffleHog linter off; switching the tool on runs it on its own.
+- **Claude security review** (`claude` from Claude Code) asks Claude to read the code for exploitable bugs (injection, auth, secrets, SSRF, XSS, unsafe deserialization), after [anthropics/claude-code-security-review](https://github.com/anthropics/claude-code-security-review). It can only read files and run `git diff`, `git log` and `git show`. With `--diff-base REF` it reviews only the changes since `REF`, as on a pull request; without it, the whole repository. It needs `ANTHROPIC_API_KEY` or a signed-in `claude`, sends the code it reads to Anthropic, and costs API usage (the result's `cost_usd`). `QASIGHT_CLAUDE_MODEL` picks the model. `import claude-security-review` also takes the review action's findings JSON.
 
 | Command / flag | Meaning |
 |------|---------|
 | `scan [TARGET]` | Run the switched-on tools that fit the repository's languages and are installed on this machine (QASight installs none; missing ones are listed with their install command). `TARGET` is a folder (default `.`) or a git URL (`https://`, `git@`, `github.com/owner/repo`), cloned with `--depth 1` into a temp folder and deleted after. Writes each tool's report, `scorecard.md` and `scorecard.json` under `--out` (default `scorecard-reports/`) and appends the Markdown to `$GITHUB_STEP_SUMMARY` when set |
 | `--project`, `--version` | Default: `owner/name` of the URL or the `origin` remote, else the folder name; `git describe --tags --always` |
 | `--ref` | Branch or tag to clone (git URLs) |
-| `--url`, `--openapi` | A running copy of the app: adds ZAP (through Docker), Lighthouse, axe and a 20-second k6 run; the schema adds Schemathesis |
+| `--url`, `--openapi` | A running copy of the app: adds ZAP (through Docker), Lighthouse, axe and a 20-second k6 run, and Nuclei when switched on; the schema adds Schemathesis |
 | `--tools a,b` | Run only these tools, switched on or not |
+| `--diff-base REF` | On `scan`: a git ref (`origin/main`, a tag, a commit). Claude security review reads only the changes since it. Exit `2` when it isn't a plain ref |
 | `--timeout` | Seconds each tool may run (default `900`) |
 | `--no-new` | On `scan` and `show`: fail the gate when the version has a high or critical finding the previous version didn't (same rule and file) |
 | `--megalinter-image IMAGE` | On `scan`: the MegaLinter image to run (default: the flavor for the main language, `ghcr.io/oxsecurity/megalinter-<flavor>:v9`; env `QASIGHT_MEGALINTER_IMAGE`) |
