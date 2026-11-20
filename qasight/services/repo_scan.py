@@ -38,6 +38,8 @@ _MARKERS = frozenset(
         "pytest.ini",
         "tox.ini",
         "conftest.py",
+        "behave.ini",
+        ".behaverc",
         "requirements.txt",
         "requirements-dev.txt",
         "requirements-test.txt",

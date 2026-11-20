@@ -1,0 +1,60 @@
+# QASight for a whole monorepo, in one include.
+#
+# Every job that writes test results (JUnit XML from pytest --junitxml, behave --junit,
+# BehaveX's output/behave/, or any other format `qasight ingest` reads) records them on
+# your QASight team server, one cycle per job name. Jobs that write no results do nothing.
+#
+#   include:
+#     - local: .gitlab/qasight-every-job.gitlab-ci.yml
+#
+# CI/CD variables (Settings > CI/CD > Variables, masked):
+#   TESTO_SERVER_URL   https://qasight.example.local
+#   TESTO_API_TOKEN    the server's TESTO_API_TOKEN (in the .env `qasight server init` wrote)
+#
+# The job's image needs `qasight` (Python 3.11+): bake it in from the offline bundle's
+# wheels, or let QASIGHT_INSTALL install it from your PyPI mirror (PIP_INDEX_URL).
+# On images without Python 3.11, set QASIGHT_UPLOAD to the path of the qasight-upload
+# binary (for example mounted read-only into every job by the runner) instead.
+#
+# A job with its own after_script replaces this one; add the line back there:
+#   after_script:
+#     - !reference [.qasight-record, after_script]
+#     - ...the job's own lines
+
+variables:
+  # Cycle name; the default is the job's name. Set it on a job to group jobs together.
+  QASIGHT_CYCLE: ""
+  # "auto": pip install qasight when the image has Python 3.11+ but no qasight; "never".
+  QASIGHT_INSTALL: "never"
+  QASIGHT_PACKAGE: "qasight"
+  # Path of the qasight-upload binary, used when the image has no qasight.
+  QASIGHT_UPLOAD: ""
+  # Globs qasight-upload sends (qasight itself finds the files on its own).
+  QASIGHT_RESULTS: "**/TESTS-*.xml **/junit*.xml **/test-results/**/*.xml **/output/behave/*.xml"
+  TESTO_NO_UPDATE_CHECK: "1"
+
+.qasight-record:
+  after_script: &qasight_record
+    - |
+      # Never changes the job's outcome: GitLab ignores after_script's exit code.
+      [ -n "$TESTO_SERVER_URL" ] || { echo "QASight: TESTO_SERVER_URL is not set, nothing recorded"; exit 0; }
+      QASIGHT_CYCLE="${QASIGHT_CYCLE:-${CI_JOB_NAME_SLUG:-$(printf '%s' "$CI_JOB_NAME" | tr -cs 'A-Za-z0-9_.-' '-' | sed 's/^-*//;s/-*$//')}}"
+      if ! command -v qasight >/dev/null 2>&1 && [ "$QASIGHT_INSTALL" = "auto" ] \
+         && python3 -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then
+        python3 -m pip install --quiet "$QASIGHT_PACKAGE" || true
+      fi
+      if command -v qasight >/dev/null 2>&1; then
+        # Finds the files itself and leaves out artifacts of earlier jobs.
+        qasight ingest --cycle "$QASIGHT_CYCLE" --repo "$CI_PROJECT_DIR" 2>&1 | grep -v '^error: no result files found' || true
+      elif [ -n "$QASIGHT_UPLOAD" ] && [ -x "$QASIGHT_UPLOAD" ]; then
+        # The shell splits the list but must not expand the globs: qasight-upload does (with **).
+        set -f
+        # shellcheck disable=SC2086
+        "$QASIGHT_UPLOAD" --cycle "$QASIGHT_CYCLE" $QASIGHT_RESULTS || true
+        set +f
+      else
+        echo "QASight: no qasight or qasight-upload in this image, nothing recorded"
+      fi
+
+default:
+  after_script: *qasight_record

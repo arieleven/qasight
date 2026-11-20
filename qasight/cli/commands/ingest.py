@@ -165,6 +165,7 @@ def ingest(
         find_result_files,
         latest_result_set,
         result_patterns,
+        written_in_this_job,
     )
 
     repo_dir = repo.expanduser().resolve()
@@ -199,7 +200,13 @@ def ingest(
             )
         )
     if not reports:
-        found = find_result_files(repo_dir)
+        found, earlier = written_in_this_job(find_result_files(repo_dir), os.environ)
+        if earlier and not ci:
+            console.print(
+                f"Left out {len(earlier)} result file(s) written before this CI job started "
+                "(artifacts of earlier jobs). Pass the files to record them anyway.",
+                markup=False,
+            )
         if not found:
             message = (
                 f"no result files found under {repo_dir} (JUnit XML, Jest/Vitest/Playwright/"
@@ -211,7 +218,9 @@ def ingest(
         found, older = latest_result_set(found)
         reports = result_patterns(found, repo=repo_dir)
         if not ci:
-            console.print(f"Found {len(reports)} result file(s): {', '.join(reports)}")
+            shown = ", ".join(reports[:10])
+            more = f" and {len(reports) - 10} more" if len(reports) > 10 else ""
+            console.print(f"Found {len(reports)} result file(s): {shown}{more}", markup=False)
         if older and not ci:
             skipped = ", ".join(str(o.relative_to(repo_dir)) for o in older[:5])
             more = f" and {len(older) - 5} more" if len(older) > 5 else ""

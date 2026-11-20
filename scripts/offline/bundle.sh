@@ -99,6 +99,7 @@ if [ "$IMAGES" = "1" ]; then
 fi
 
 cp "$REPO/ci/gitlab/testo.gitlab-ci.yml" "$STAGE/gitlab/qasight.gitlab-ci.yml"
+cp "$REPO/ci/gitlab/qasight-every-job.gitlab-ci.yml" "$STAGE/gitlab/qasight-every-job.gitlab-ci.yml"
 cp "$HERE/install.sh" "$STAGE/install.sh"
 chmod +x "$STAGE/install.sh"
 {

@@ -292,3 +292,7 @@ New guide [Upload Without Python](Processes%20&%20Guides/Upload%20Without%20Pyth
 ## 2026-11-20: added Merge and Automate
 
 New note [Merge and Automate - 2026-11-20](Specs%20&%20ADRs/Merge%20and%20Automate%20-%202026-11-20.md): 13 merges and automatic defaults (what's new after each run, no `--cycle` or ids needed, JSON for agents, one export, settings in `qasight.yaml`, one Settings page). Linked from the Specs README and the docs site menu.
+
+## 2026-11-20: added Closed-Network Monorepo Rollout
+
+New note [Closed-Network Monorepo Rollout - 2026-11-20](Specs%20&%20ADRs/Closed-Network%20Monorepo%20Rollout%20-%202026-11-20.md): one GitLab include that records every job of a monorepo, Behave and BehaveX in `qasight init --scan`, and the fixes a monorepo trial showed. Linked from the Specs README and the docs site menu.

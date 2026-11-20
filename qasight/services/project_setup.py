@@ -23,8 +23,9 @@ import os
 import re
 import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 import tomllib
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -213,7 +214,9 @@ def _uses_pytest(repo: Path, pyproject: dict[str, Any]) -> bool:
     return tests.is_dir() and any(tests.rglob("test_*.py"))
 
 
-def _python_install(repo: Path, pyproject: dict[str, Any]) -> tuple[str, ...]:
+def _python_install(
+    repo: Path, pyproject: dict[str, Any], runner: str = "pytest"
+) -> tuple[str, ...]:
     steps: list[str] = []
     for name in ("requirements-dev.txt", "requirements-test.txt", "requirements.txt"):
         if (repo / name).is_file():
@@ -223,9 +226,50 @@ def _python_install(repo: Path, pyproject: dict[str, Any]) -> tuple[str, ...]:
         extras = (pyproject.get("project") or {}).get("optional-dependencies") or {}
         extra = next((e for e in ("test", "tests", "dev") if e in extras), "")
         steps.append(f'pip install -e ".[{extra}]"' if extra else "pip install -e .")
-    if not any("pytest" in _read_text(repo / s.split()[-1]) for s in steps if " -r " in s):
-        steps.append("pip install pytest")
+    if not any(runner in _read_text(repo / s.split()[-1]) for s in steps if " -r " in s):
+        steps.append(f"pip install {runner}")
     return tuple(steps)
+
+
+# Where a Behave project keeps its ``.feature`` files, most usual first.
+_FEATURE_DIRS = ("features", "tests/features", "test/features", "bdd/features", "bdd")
+
+
+def _features_dir(repo: Path) -> str:
+    """The folder of *repo* with ``.feature`` files and a ``steps/`` folder, or ``""``."""
+    for name in _FEATURE_DIRS:
+        folder = repo / name
+        if folder.is_dir() and any(folder.glob("*.feature")) and (folder / "steps").is_dir():
+            return name
+    return ""
+
+
+def _behave_runner(repo: Path, features: str) -> str:
+    """``behavex`` or ``behave``: what *repo* names in its dependencies or step code, or ``""``."""
+    blobs = [_read_text(repo / n) for n in ("pyproject.toml", "setup.py", "setup.cfg", "tox.ini")]
+    blobs += [_read_text(p) for p in sorted(repo.glob("requirements*.txt"))]
+    text = "\n".join(blobs)
+    if re.search(r"(?im)^\s*[\"']?behavex\b|[\"']behavex", text):
+        return "behavex"
+    if re.search(r"(?im)^\s*[\"']?behave\b|[\"']behave\b", text):
+        return "behave"
+    if (repo / "behave.ini").is_file() or (repo / ".behaverc").is_file():
+        return "behave"
+    steps = (repo / features / "steps") if features else None
+    if steps and any("from behave" in _read_text(p) for p in sorted(steps.glob("*.py"))[:20]):
+        return "behave"
+    return ""
+
+
+def _behave_stack(repo: Path, pyproject: dict[str, Any], runner: str, features: str) -> Stack:
+    # The features folder is always named: Behave must never rely on finding it from the cwd.
+    return Stack(
+        key=runner,
+        label="BehaveX" if runner == "behavex" else "Behave",
+        language="python",
+        stage={"name": runner, "equipment": runner, "args": [features]},
+        install=_python_install(repo, pyproject, runner),
+    )
 
 
 def _pytest_stack(repo: Path, pyproject: dict[str, Any]) -> Stack:
@@ -274,6 +318,11 @@ def detect_project(repo: Path, *, only: Iterable[str] = ()) -> ProjectFacts:
 
     if want("pytest", _uses_pytest(repo, pyproject)):
         stacks.append(_pytest_stack(repo, pyproject))
+    features = _features_dir(repo)
+    found_bdd = _behave_runner(repo, features) if features else ""
+    for runner in ("behave", "behavex"):
+        if want(runner, found_bdd == runner):
+            stacks.append(_behave_stack(repo, pyproject, runner, features or "features"))
 
     manager = _node_package_manager(repo, pkg)
     node_install = (node_install_command(manager, repo),)
@@ -548,11 +597,10 @@ def find_result_files(repo: Path, *, include_tracked: bool = False) -> list[Path
     found: list[Path] = []
     seen = 0
     for dirpath, dirnames, filenames in os.walk(repo):
+        if seen > _MAX_WALK_FILES:
+            break
         dirnames[:] = sorted(d for d in dirnames if d not in _SKIP_DIRS and not d.startswith("."))
         for name in sorted(filenames):
-            seen += 1
-            if seen > _MAX_WALK_FILES:
-                break
             path = Path(dirpath) / name
             if path.suffix.lower() not in _RESULT_SUFFIXES or name in {
                 "package.json",
@@ -561,12 +609,52 @@ def find_result_files(repo: Path, *, include_tracked: bool = False) -> list[Path
                 "composer.json",
             }:
                 continue
+            # Only files that could be results count toward the limit, so a large monorepo's
+            # source files don't stop the walk before it reaches the result folders.
+            seen += 1
+            if seen > _MAX_WALK_FILES:
+                break
             if tracked is not None and path.resolve() in tracked:
                 continue
             if looks_like_results(path):
                 found.append(path.resolve())
     found.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return found
+
+
+# A little slack for a runner clock that is a few seconds behind GitLab's.
+_JOB_START_SLACK_S = 30
+
+
+def job_started_at(environ: Mapping[str, str]) -> datetime | None:
+    """When this CI job started (GitLab's ``CI_JOB_STARTED_AT``), or ``None`` outside one."""
+    raw = (environ.get("CI_JOB_STARTED_AT") or "").strip()
+    if not raw:
+        return None
+    try:
+        started = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return started if started.tzinfo else started.replace(tzinfo=UTC)
+
+
+def written_in_this_job(
+    files: Iterable[Path], environ: Mapping[str, str]
+) -> tuple[list[Path], list[Path]]:
+    """``(kept, older)``: leave out result files written before this CI job started.
+
+    GitLab hands a job the artifacts of the jobs in earlier stages, result files
+    included, so a job that records whatever it finds would record those tests a
+    second time under its own name. Outside GitLab (no ``CI_JOB_STARTED_AT``)
+    every file is kept.
+    """
+    files = list(files)
+    started = job_started_at(environ)
+    if started is None:
+        return files, []
+    cutoff = started.timestamp() - _JOB_START_SLACK_S
+    kept = [f for f in files if f.stat().st_mtime >= cutoff]
+    return kept, [f for f in files if f not in kept]
 
 
 def _junit_case_keys(path: Path) -> frozenset[str] | None:
