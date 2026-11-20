@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # Vault log
@@ -280,3 +280,7 @@ New guide [Closed Network Install](Processes%20&%20Guides/Closed%20Network%20Ins
 ## 2026-11-15: added CLI-Only Bug Hunt
 
 New note [CLI-Only Bug Hunt - 2026-11-15](Specs%20&%20ADRs/CLI-Only%20Bug%20Hunt%20-%202026-11-15.md): bugs a UI review can't see, eight fixed, and a CLI end-to-end CI job. Linked from the Specs README and the docs site menu.
+
+## 2026-11-20: added Stress Test
+
+New note [Stress Test - 2026-11-20](Specs%20&%20ADRs/Stress%20Test%20-%202026-11-20.md): where QASight slows down or fails under load, two fixes and six proposals. Linked from the Specs README and the docs site menu.
