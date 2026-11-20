@@ -34,9 +34,20 @@ def _error(exc: RpError) -> JSONResponse:
 
 
 async def _json(request: Request) -> Any:
-    raw = await request.body()
-    if len(raw) > _MAX_JSON_BYTES:
-        raise HTTPException(status_code=413, detail="request body is too large")
+    too_large = HTTPException(status_code=413, detail="request body is too large")
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > _MAX_JSON_BYTES:
+        raise too_large
+    # Read with a running cap, so a body without (or lying about) its length is
+    # refused once it passes the limit instead of being held in memory whole.
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > _MAX_JSON_BYTES:
+            raise too_large
+        chunks.append(chunk)
+    raw = b"".join(chunks)
     try:
         return json.loads(raw or b"{}")
     except ValueError as exc:

@@ -474,6 +474,28 @@ class LiveSessionRow(SQLModel, table=True):
     )
 
 
+class ScorecardScanRow(SQLModel, table=True):
+    """A scorecard scan started from the UI, so every API worker can report its progress.
+
+    The worker that started the scan runs it in a thread and writes each step here;
+    any worker answers ``GET /api/v1/scorecard/scans/{id}``. See
+    :mod:`qasight_api.scorecard_scans`.
+    """
+
+    __tablename__ = "scorecard_scan"
+    __table_args__ = {"extend_existing": True}
+
+    id: str = Field(primary_key=True, max_length=32)
+    state: str = Field(default="running", max_length=16, index=True)
+    started_at: float = Field(default=0.0)
+    updated_at: float = Field(default=0.0)
+    finished_at: float | None = Field(default=None)
+    # target, project, version, languages, message, tools, skipped
+    data: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column("data", _METADATA_JSON_COL, nullable=False)
+    )
+
+
 class RpLaunch(SQLModel, table=True):
     """A launch reported by a ReportPortal agent to QASight's compatible endpoint.
 

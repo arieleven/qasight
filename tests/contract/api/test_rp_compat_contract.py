@@ -302,3 +302,19 @@ def test_helpers() -> None:
         == "java.lang.AssertionError: no"
     )
     assert failure_message("Traceback\n  File x\nValueError: boom") == "ValueError: boom"
+
+
+def test_an_oversized_body_is_refused_before_it_is_read(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("qasight_api.routes.rp_compat._MAX_JSON_BYTES", 1000)
+    big = b'{"name": "' + b"x" * 5000 + b'"}'
+    resp = client.post("/api/v2/shop/launch", content=big)
+    assert resp.status_code == 413
+
+    def chunks():  # no Content-Length: the running cap refuses it
+        for _ in range(10):
+            yield b"x" * 500
+
+    resp = client.post("/api/v2/shop/launch", content=chunks())
+    assert resp.status_code == 413

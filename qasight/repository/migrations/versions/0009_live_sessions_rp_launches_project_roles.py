@@ -4,6 +4,7 @@
 - ``rp_launch``, ``rp_item``, ``rp_log``: what ReportPortal agents report to
   ``/api/v1/{project}/...`` until the launch finishes and becomes a run.
 - ``project_role``: an account's role on the cycles matching a pattern.
+- ``scorecard_scan``: scorecard scans started from the UI, so every worker reports them.
 
 Revision ID: 0009
 Revises: 0008
@@ -51,6 +52,18 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         _index("live_session", "updated_at")
+    if "scorecard_scan" not in tables:
+        op.create_table(
+            "scorecard_scan",
+            sa.Column("id", AutoString(length=32), nullable=False),
+            sa.Column("state", AutoString(length=16), nullable=False),
+            sa.Column("started_at", sa.Float(), nullable=False),
+            sa.Column("updated_at", sa.Float(), nullable=False),
+            sa.Column("finished_at", sa.Float(), nullable=True),
+            sa.Column("data", _JSON, nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        _index("scorecard_scan", "state")
     if "rp_launch" not in tables:
         op.create_table(
             "rp_launch",
@@ -131,6 +144,7 @@ def downgrade() -> None:
         ("rp_item", ("parent_uuid", "launch_uuid")),
         ("rp_launch", ("updated_at", "project")),
         ("live_session", ("updated_at",)),
+        ("scorecard_scan", ("state",)),
     ):
         with op.batch_alter_table(table, schema=None) as batch_op:
             for column in columns:
