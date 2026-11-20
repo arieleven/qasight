@@ -19,7 +19,11 @@ app = typer.Typer(
 
 @app.command("sync")
 def sync(
-    cycle: str = typer.Option(..., "--cycle", help="Cycle whose flaky tests to sync."),
+    cycle: str | None = typer.Option(
+        None,
+        "--cycle",
+        help="Cycle whose flaky tests to sync (default: the only cycle in qasight.yaml, else the newest recorded run's).",
+    ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Print what would be opened or closed; change nothing on GitHub."
     ),
@@ -35,10 +39,11 @@ def sync(
     """Open an issue for each flaky test that has none; close issues of tests that are stable."""
     from dataclasses import replace
 
+    from qasight.cli.cycle_pick import require_cycle
     from qasight.services import flaky_issues
     from qasight.services.github_issues import GitHubClient
 
-    name = cycle.strip()
+    name = require_cycle(cycle)
     config = flaky_issues.config_from_env()
     if repo:
         config = replace(config, repository=repo.strip())

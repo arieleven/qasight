@@ -119,12 +119,17 @@ def add_cmd(
     test: str = typer.Argument(
         ..., help="The test's name or full name as runs record it, or an fnmatch glob."
     ),
-    cycle: str = typer.Option(..., "--cycle", help="Cycle whose runs the test stops failing."),
+    cycle: str | None = typer.Option(
+        None,
+        "--cycle",
+        help="Cycle whose runs the test stops failing (default: the only cycle in qasight.yaml, else the newest recorded run's).",
+    ),
     reason: str | None = typer.Option(None, "--reason", help="Why, e.g. an issue link."),
     owner: str | None = typer.Option(None, "--owner", help="Who is fixing it."),
     server: str | None = typer.Option(None, "--server", help=_SERVER_HELP),
 ) -> None:
     """Quarantine a test: it still runs and is reported, but its failure no longer fails the run."""
+    from qasight.cli.cycle_pick import require_cycle
     from qasight.services.quarantine_store import (
         QuarantineError,
         QuarantineStore,
@@ -133,6 +138,7 @@ def add_cmd(
         release_after,
     )
 
+    cycle = require_cycle(cycle)
     url = _server(server)
     if url:
         body = {"cycle": cycle.strip(), "test": test.strip(), "reason": reason, "owner": owner}
@@ -192,12 +198,18 @@ def ci_hint(*, cycle: str, test: str, reason: str | None) -> str | None:
 @app.command("remove")
 def remove_cmd(
     test: str = typer.Argument(..., help="The entry to remove, exactly as listed."),
-    cycle: str = typer.Option(..., "--cycle", help="Cycle the entry belongs to."),
+    cycle: str | None = typer.Option(
+        None,
+        "--cycle",
+        help="Cycle the entry belongs to (default: the only cycle in qasight.yaml, else the newest recorded run's).",
+    ),
     server: str | None = typer.Option(None, "--server", help=_SERVER_HELP),
 ) -> None:
     """Release a test: its failures fail runs again. Exit 1 when it wasn't quarantined."""
+    from qasight.cli.cycle_pick import require_cycle
     from qasight.services.quarantine_store import QuarantineStore, record_audit
 
+    cycle = require_cycle(cycle)
     url = _server(server)
     params = {"cycle": cycle.strip(), "test": test.strip()}
     if url:

@@ -18,7 +18,11 @@ _MARK = {"passed": "[ok]✓[/]", "failed": "[fail]✗[/]", "broken": "[fail]✗[
 
 
 def flaky(
-    cycle: str = typer.Option(..., "--cycle", help="Cycle whose run history to analyze."),
+    cycle: str | None = typer.Option(
+        None,
+        "--cycle",
+        help="Cycle whose run history to analyze (default: the only cycle in qasight.yaml, else the newest recorded run's).",
+    ),
     window: int = typer.Option(
         20, "--window", min=2, help="How many of the cycle's most recent runs to look at."
     ),
@@ -42,11 +46,12 @@ def flaky(
     from rich.markup import escape
     from rich.table import Table
 
+    from qasight.cli.cycle_pick import require_cycle
     from qasight.cli.ui.console import default_console
     from qasight.config.errors import ConfigError
     from qasight.services.flaky_service import find_flaky_tests, newly_flaky_tests
 
-    report = find_flaky_tests(cycle=cycle.strip(), window=window)
+    report = find_flaky_tests(cycle=require_cycle(cycle, config=config), window=window)
     if new:
         report = replace(report, flaky=newly_flaky_tests(cycle=report.cycle, window=window))
     try:

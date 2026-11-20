@@ -14,6 +14,7 @@ Three implementations are provided:
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from contextlib import AbstractContextManager, nullcontext
 from typing import Protocol
 
@@ -111,8 +112,21 @@ class CIRenderer:
 
     wants_streaming: bool = False
 
-    def __init__(self) -> None:
+    def __init__(self, *, defer_finish: bool = False) -> None:
         self._stages: list[dict[str, object]] = []
+        # With defer_finish, ``plan_finished`` waits for :meth:`finish`, so the caller
+        # can add the run's ``news`` once it is recorded and ``plan_finished`` stays last.
+        self._defer_finish = defer_finish
+        self._pending_finish: dict[str, object] | None = None
+
+    def finish(self, *, news: Mapping[str, object] | None = None) -> None:
+        """Emit the held ``plan_finished`` line (with ``news`` when given); no-op otherwise."""
+        payload, self._pending_finish = self._pending_finish, None
+        if payload is None:
+            return
+        if news is not None:
+            payload["news"] = dict(news)
+        emit_ndjson(payload)
 
     def handle(self, event: EngineEvent) -> None:
         if isinstance(event, PlanStarted):
@@ -148,17 +162,19 @@ class CIRenderer:
             self._stages.append(stage_payload)
             emit_ndjson({"event": "stage_finished", **stage_payload})
         elif isinstance(event, PlanFinished):
-            emit_ndjson(
-                {
-                    "event": "plan_finished",
-                    "plan": event.result.plan_name,
-                    "aggregate_returncode": int(event.result.aggregate_returncode),
-                    "exit_code": int(event.result.exit_code),
-                    "duration_s": float(event.result.duration_s),
-                    "stages": self._stages,
-                    "error": event.result.error,
-                }
-            )
+            payload: dict[str, object] = {
+                "event": "plan_finished",
+                "plan": event.result.plan_name,
+                "aggregate_returncode": int(event.result.aggregate_returncode),
+                "exit_code": int(event.result.exit_code),
+                "duration_s": float(event.result.duration_s),
+                "stages": self._stages,
+                "error": event.result.error,
+            }
+            if self._defer_finish:
+                self._pending_finish = payload
+            else:
+                emit_ndjson(payload)
 
 
 def _panel_from_result(result) -> StagePanelData:  # type: ignore[no-untyped-def]
