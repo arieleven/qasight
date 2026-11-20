@@ -7,7 +7,10 @@ of approximating health from stage subprocess return codes.
 
 from __future__ import annotations
 
+import copy
+import threading
 from pathlib import Path
+from typing import Any
 
 from qasight.engine.result import PlanResult
 from qasight.reporting.allure_results import parse_collected_results
@@ -18,7 +21,30 @@ def _pct(passed: int, total: int) -> float | None:
     return 100.0 * passed / total if total else None
 
 
+# The JSON and DB backends both ask for the same run's health; parsing every result
+# file twice cost seconds on a big run. One slot: the last run asked about.
+_last_lock = threading.Lock()
+_last: tuple[PlanResult, Path, tuple[list[dict], float | None]] | None = None
+
+
 def compute_stage_health(
+    result: PlanResult, artifacts_root: Path
+) -> tuple[list[dict], float | None]:
+    """See :func:`_compute_stage_health`; the same run's result is computed once."""
+    global _last
+    with _last_lock:
+        hit = _last
+    if hit is not None and hit[0] is result and hit[1] == artifacts_root:
+        value: Any = hit[2]
+    else:
+        value = _compute_stage_health(result, artifacts_root)
+        with _last_lock:
+            _last = (result, artifacts_root, value)
+    # Callers merge these rows into their own stage metadata; give each its own copy.
+    return copy.deepcopy(value[0]), value[1]
+
+
+def _compute_stage_health(
     result: PlanResult, artifacts_root: Path
 ) -> tuple[list[dict], float | None]:
     """Return (per-stage health dicts, overall weighted health_pct).

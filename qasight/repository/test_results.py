@@ -14,14 +14,14 @@ from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from sqlalchemy import String, delete, type_coerce
+from sqlalchemy import String, delete, insert, type_coerce
 from sqlalchemy import select as sa_select
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
 from qasight.repository.models import TestResult
 
-_WRITE_BATCH = 500
+_WRITE_BATCH = 2000
 
 # One SQLite read of a run's rows at a time per process. The sqlite3 module gives up the
 # GIL for every row it steps, so threads reading thousands of rows at once take turns on
@@ -129,9 +129,10 @@ def _pairs(value: Any) -> list[dict[str, str]] | None:
     return out or None
 
 
-def _row(run_id: str, key: str, case: Mapping[str, Any]) -> TestResult:
+def _values(run_id: str, key: str, case: Mapping[str, Any]) -> dict[str, Any]:
+    """One ``test_result`` row as column values."""
     duration = case.get("duration_ms")
-    return TestResult(
+    return dict(
         run_id=run_id[:64],
         key=key[:200],
         name=str(case.get("name") or "")[:120],
@@ -179,13 +180,15 @@ class TestResultStore:
 
     def replace(self, run_id: str, cases: Mapping[str, Mapping[str, Any]]) -> int:
         """Store ``cases`` as ``run_id``'s rows, replacing any it had; returns the row count."""
-        rows = [_row(run_id, key, case) for key, case in cases.items()]
+        # Plain dicts and one executemany per batch: building model objects took most of
+        # the time of recording a big run (10 s of 50 s for 50,000 tests).
+        rows = [_values(run_id, key, case) for key, case in cases.items()]
         _cache_drop([self._key(run_id)])
-        with Session(self._engine) as session:
-            session.exec(delete(TestResult).where(col(TestResult.run_id) == run_id[:64]))  # type: ignore[call-overload]
+        table = TestResult.__table__  # type: ignore[attr-defined]
+        with self._engine.begin() as conn:
+            conn.execute(delete(table).where(table.c.run_id == run_id[:64]))
             for start in range(0, len(rows), _WRITE_BATCH):
-                session.add_all(rows[start : start + _WRITE_BATCH])
-            session.commit()
+                conn.execute(insert(table), rows[start : start + _WRITE_BATCH])
         return len(rows)
 
     def _key(self, run_id: str) -> tuple[str, str]:

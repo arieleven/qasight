@@ -87,7 +87,9 @@ def build_cycle_zip_bytes(
     # history.max_file_mb: videos and traces bigger than this stay out of the archive.
     limit = max_history_file_bytes()
     buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    # Level 1: most of a run is small JSON files, where the default level costs about
+    # twice the time for a few percent of size.
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as zf:
         for path in sorted(plan_dir.rglob("*")):
             if path.is_file():
                 if path.parent == plan_dir and path.name == ".lock":

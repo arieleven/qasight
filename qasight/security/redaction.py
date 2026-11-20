@@ -126,6 +126,8 @@ MAX_FILE_BYTES = 50 * 1024 * 1024
 def _clean_json(text: str, patterns: tuple[re.Pattern[str], ...]) -> str:
     """``text`` redacted; for a JSON file whose text edit broke it, redact value by value."""
     clean = redact_text(text, patterns)
+    if clean == text:
+        return text  # nothing hidden, so nothing could have broken the JSON
     try:
         json.loads(clean)
         return clean
