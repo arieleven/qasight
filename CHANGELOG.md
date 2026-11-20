@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Closed networks, same day: the offline bundle has `quickstart.sh` and `site.env.example`. Fill `site.env` before you go in, then one command checks the GitLab token and test reports (`--check`), installs, starts the team server, records past pipelines with `ingest --from-gitlab` and schedules it every 15 minutes, with no change to any job
 - Monorepos on GitLab: `ci/gitlab/qasight-every-job.gitlab-ci.yml`, one include that records every job's test results on the team server (also in the offline bundle)
 - `qasight init --scan` finds Behave and BehaveX suites
 - `qasight ingest --from-gitlab` records GitLab pipelines' test reports through GitLab's API: each job a cycle, dated when it ran, child pipelines included, already-recorded pipelines skipped; no change to jobs that declare `artifacts: reports: junit:`
@@ -35,6 +36,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - UI: one Settings entry with Project, AI and Resources tabs; the Overview's Test health score opens in place with what drives it, what to fix and each cycle's score
 
 ### Fixed
+- The Closed Network Install guide and `install.sh` showed `qasight server init <folder>`; it is `--dir <folder>`
 - The team server reads the `TESTO_AI_*` settings from its environment (`.env`), as the closed network guide and the compose files already said; before, it ignored them and AI stayed off
 - `qasight init --ci gitlab|circleci`: two folders with the same runner no longer get the same job name, and the GitLab artifacts path includes the folder
 - `qasight ingest` with no files: finds results past a large checkout's first 20,000 files, and in a GitLab job leaves out earlier jobs' artifacts

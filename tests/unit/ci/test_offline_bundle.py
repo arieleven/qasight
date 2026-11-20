@@ -70,6 +70,8 @@ def test_bundle_packs_wheels_images_template_and_installer(tmp_path: Path) -> No
         }
     assert {
         "install.sh",
+        "quickstart.sh",
+        "site.env.example",
         "bundle.env",
         "SHA256SUMS",
         "gitlab/qasight.gitlab-ci.yml",
@@ -146,3 +148,91 @@ def test_compose_images_come_from_a_configurable_registry() -> None:
         "TESTO_AI_MODEL",
     ):
         assert name in env
+
+
+QUICKSTART = REPO / "scripts" / "offline" / "quickstart.sh"
+
+FAKE_CURL = """#!/usr/bin/env bash
+for a; do u="$a"; done
+case "$u" in
+  *"/pipelines?"*) echo '[{"id":11,"project_id":3},{"id":12,"project_id":3}]' ;;
+  */11/test_report_summary) echo "{\\"total\\":{\\"count\\":${REPORTS:-5}}}" ;;
+  */12/test_report_summary) echo '{"total":{"count":0}}' ;;
+esac
+"""
+
+FAKE_QS_DOCKER = """#!/usr/bin/env bash
+echo "docker $* token=$TESTO_GITLAB_TOKEN" >> "$LOG"
+"""
+
+FAKE_CRONTAB = """#!/usr/bin/env bash
+[ "$1" = -l ] && exit 1
+cat > "$CRON"
+"""
+
+
+def _quickstart_env(tmp_path: Path, reports: int = 5) -> tuple[Path, dict[str, str]]:
+    bundle = tmp_path / "bundle"
+    (bundle / "venv" / "bin").mkdir(parents=True)
+    shutil.copy(QUICKSTART, bundle / "quickstart.sh")
+    site = (REPO / "scripts" / "offline" / "site.env.example").read_text()
+    site = site.replace("SERVER_DIR=/opt/qasight-server", f"SERVER_DIR={tmp_path / 'srv'}")
+    site = site.replace("GITLAB_BRANCH=", "GITLAB_BRANCH=main")
+    site = site.replace("AI_BASE_URL=", "AI_BASE_URL=http://qwen.local:8000/v1")
+    (bundle / "site.env").write_text(site)
+    (bundle / "bundle.env").write_text('VERSION="9.9.9"\n')
+    (bundle / "install.sh").write_text('#!/usr/bin/env bash\necho "install $*" >> "$LOG"\n')
+    (bundle / "venv" / "bin" / "qasight").write_text(
+        '#!/usr/bin/env bash\nmkdir -p "$4"; echo TESTO_API_TOKEN=x > "$4/.env"\n'
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for name, body in (("curl", FAKE_CURL), ("docker", FAKE_QS_DOCKER), ("crontab", FAKE_CRONTAB)):
+        (bin_dir / name).write_text(body)
+    for tool in [*bin_dir.iterdir(), bundle / "install.sh", bundle / "venv" / "bin" / "qasight"]:
+        tool.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        "LOG": str(tmp_path / "calls.log"),
+        "CRON": str(tmp_path / "crontab"),
+        "TESTO_GITLAB_TOKEN": "glpat-test",
+        "REPORTS": str(reports),
+    }
+    return bundle, env
+
+
+def test_quickstart_installs_starts_backfills_and_schedules(tmp_path: Path) -> None:
+    bundle, env = _quickstart_env(tmp_path)
+    # The health check is the last curl call; the fake answers it with nothing and exit 0.
+    done = subprocess.run(
+        ["bash", str(bundle / "quickstart.sh")], env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    assert "1 of 2 recent pipelines have test reports" in done.stdout
+    calls = (tmp_path / "calls.log").read_text()
+    assert "docker compose up -d" in calls
+    assert (
+        "docker compose exec -T -e TESTO_GITLAB_TOKEN server qasight ingest --from-gitlab "
+        "--gitlab-url https://gitlab.example.local --project group/monorepo --runs 300 "
+        "--branch main token=glpat-test"
+    ) in calls
+    srv = tmp_path / "srv"
+    dotenv = (srv / ".env").read_text()
+    assert "TESTO_SERVER_TAG=9.9.9" in dotenv
+    assert "TESTO_NO_UPDATE_CHECK=1" in dotenv
+    assert "TESTO_AI_BASE_URL=http://qwen.local:8000/v1" in dotenv
+    assert (srv / "gitlab-token").read_text().strip() == "glpat-test"
+    assert oct((srv / "gitlab-token").stat().st_mode & 0o777) == "0o600"
+    assert "glpat" not in (srv / "gitlab-sync.sh").read_text()
+    assert f"*/15 * * * * {srv}/gitlab-sync.sh 50" in (tmp_path / "crontab").read_text()
+
+
+def test_quickstart_check_says_when_no_job_has_test_reports(tmp_path: Path) -> None:
+    bundle, env = _quickstart_env(tmp_path, reports=0)
+    done = subprocess.run(
+        ["bash", str(bundle / "quickstart.sh"), "--check"], env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 1
+    assert "qasight-every-job.gitlab-ci.yml" in done.stderr
+    assert not (tmp_path / "calls.log").exists()

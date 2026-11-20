@@ -106,7 +106,7 @@ if [ "$CLI" = "1" ] && [ "$USE_VENV" = "1" ]; then
 fi
 if [ -n "$SERVER_IMAGE" ]; then
   echo
-  echo "Team server: run '$VENV/bin/qasight server init <folder>' (or copy deploy/server/docker-compose.yml),"
+  echo "Team server: run '$VENV/bin/qasight server init --dir <folder>' (or copy deploy/server/docker-compose.yml),"
   echo "then add these lines to that folder's .env before 'docker compose up -d':"
   echo
   echo "  TESTO_REGISTRY=${SERVER_IMAGE%/qasight-server:*}"
@@ -115,6 +115,8 @@ if [ -n "$SERVER_IMAGE" ]; then
   [ -n "$RUNNER_IMAGE" ] && echo "  TESTO_RUNNER_IMAGE=$RUNNER_IMAGE  # with docker-compose.runner.yml"
   echo "  TESTO_NO_UPDATE_CHECK=1"
 fi
+echo
+echo "Same day: fill site.env (from site.env.example) and run ./quickstart.sh instead."
 echo
 echo "GitLab CI: gitlab/qasight.gitlab-ci.yml (set TESTO_IMAGE to an image that has qasight,"
 echo "or PIP_INDEX_URL to your PyPI mirror). See the guide for the AI settings."

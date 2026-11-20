@@ -39,9 +39,21 @@ It writes `dist-offline/qasight-offline-<version>-linux-<arch>.tar.gz` with:
 
 - `wheels/`: `qasight[<extras>]` and every dependency as wheels for the target's Python versions (`--python`, default `3.11,3.12,3.13`) and CPU (`--arch amd64|arm64`), not this machine's, so a Mac can pack for a Linux server.
 - `images/`: `qasight-server`, `qasight-runner` and `postgres:16-alpine` (`docker save`), plus `qasight-runner-service` with `--runner`.
-- `gitlab/qasight.gitlab-ci.yml`, `gitlab/qasight-every-job.gitlab-ci.yml` (a monorepo, below), `install.sh`, `bundle.env` (what was packed) and `SHA256SUMS`.
+- `gitlab/qasight.gitlab-ci.yml`, `gitlab/qasight-every-job.gitlab-ci.yml` (a monorepo, below), `install.sh`, `quickstart.sh` and `site.env.example` (the same-day path, below), `bundle.env` (what was packed) and `SHA256SUMS`.
 
 The published server image has no Chromium, so the Report page offers PowerPoint, Excel and HTML but not PDF or PNG. For those, build `Dockerfile.qasight-server` with `--build-arg TESTO_REPORT_PDF=1` on the machine with internet and `docker save` it next to the others.
+
+## The same-day path
+
+When the GitLab jobs already declare `artifacts: reports: junit:` (GitLab's own merge request test widget needs it, so many do), QASight needs no change to any job: a team server reads each pipeline's test report through GitLab's API. `quickstart.sh` in the bundle does all of it in one command, so the work inside is a couple of hours; the rest is waiting for the bundle to be let in, a machine with Docker, and a GitLab token.
+
+```bash
+cp site.env.example site.env && vi site.env   # GitLab URL, project, server folder, optional model
+./quickstart.sh --check     # asks for a read_api token; says how many recent pipelines have test reports
+./quickstart.sh             # install.sh, server init, compose up, backfill, cron
+```
+
+Fill `site.env` before you go in; nothing in it is secret. `--check` installs nothing, so run it first: when no recent pipeline has a test report, use [the one include](#a-monorepo-one-include-records-every-job) instead. The full run checks GitLab, runs `install.sh` (with `--registry` when `REGISTRY` is set), writes the server with `qasight server init --dir "$SERVER_DIR"` (an existing `.env` is kept), adds the version, port, `TESTO_NO_UPDATE_CHECK` and AI lines to it, starts it and waits for `/api/v1/health/live`, records up to `BACKFILL_RUNS` past pipelines, and adds a cron line that runs `gitlab-sync.sh` every `SYNC_EVERY_MIN` minutes. The token stays in `$SERVER_DIR/gitlab-token` (mode 600); `GITLAB_CA` is copied in for a GitLab whose certificate is signed in-house. Run it as a user that can use Docker and write `SERVER_DIR`. Sections 2 to 4 below are the same steps by hand.
 
 ## 2. Install it (inside)
 
@@ -56,7 +68,7 @@ tar -xzf qasight-offline-1.7.0-linux-amd64.tar.gz && cd qasight-offline-1.7.0-li
 ## 3. Team server
 
 ```bash
-venv/bin/qasight server init qasight-server     # compose file and .env with fresh secrets
+venv/bin/qasight server init --dir qasight-server     # compose file and .env with fresh secrets
 cd qasight-server
 cat >> .env <<'EOF'
 TESTO_REGISTRY=registry.example.local/qa

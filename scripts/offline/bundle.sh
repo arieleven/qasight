@@ -100,8 +100,8 @@ fi
 
 cp "$REPO/ci/gitlab/testo.gitlab-ci.yml" "$STAGE/gitlab/qasight.gitlab-ci.yml"
 cp "$REPO/ci/gitlab/qasight-every-job.gitlab-ci.yml" "$STAGE/gitlab/qasight-every-job.gitlab-ci.yml"
-cp "$HERE/install.sh" "$STAGE/install.sh"
-chmod +x "$STAGE/install.sh"
+cp "$HERE/install.sh" "$HERE/quickstart.sh" "$HERE/site.env.example" "$STAGE/"
+chmod +x "$STAGE/install.sh" "$STAGE/quickstart.sh"
 {
   echo "VERSION=\"$VERSION\""
   echo "EXTRAS=\"$EXTRAS\""
@@ -114,6 +114,12 @@ QASight $VERSION for a network with no internet (linux/$ARCH).
 
   ./install.sh                       # check files, install the CLI into ./venv, load the images
   ./install.sh --registry registry.example.local/qa   # and push the images to your registry
+
+Same day, no change to any GitLab job (fill site.env first, ideally before you go in):
+
+  cp site.env.example site.env && vi site.env
+  ./quickstart.sh --check            # GitLab token and test reports, nothing installed
+  ./quickstart.sh                    # install, team server, backfill, cron
 
 Guide: https://arieleven.github.io/qasight/docs/Processes%20%26%20Guides/Closed%20Network%20Install/
 (the same page is docs/Processes & Guides/Closed Network Install.md in the repository).
