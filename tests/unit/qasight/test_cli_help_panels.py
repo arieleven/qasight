@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from typer.testing import CliRunner
 
@@ -10,37 +11,45 @@ from qasight.cli.app import COMMANDS, CORE_PANELS, MORE_PANELS, TAGLINE, app
 
 runner = CliRunner()
 
+# CI forces colour (FORCE_COLOR), so help text arrives with ANSI escapes.
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _help(*argv: str) -> str:
+    result = runner.invoke(app, list(argv), env={"COLUMNS": "200"})
+    assert result.exit_code == 0, result.output
+    return _ANSI.sub("", result.output)
+
+
 CORE = ("init", "demo", "doctor", "run", "ingest", "summary", "flaky", "ui", "ci", "mcp")
 
 
 def test_help_leads_with_the_promise_and_the_core_panels() -> None:
-    result = runner.invoke(app, ["--help"], env={"COLUMNS": "200"})
-    assert result.exit_code == 0
-    assert TAGLINE in result.output
+    output = _help("--help")
+    assert TAGLINE in output
     for panel in CORE_PANELS:
-        assert f"─ {panel} ─" in result.output, f"missing panel: {panel}"
-    assert "More:" not in result.output
-    assert "qasight help --all" in result.output
+        assert f"─ {panel} ─" in output, f"missing panel: {panel}"
+    assert "More:" not in output
+    assert "qasight help --all" in output
 
 
 def test_help_lists_exactly_the_core_commands() -> None:
     assert tuple(spec.name for spec in COMMANDS if spec.core) == CORE
-    result = runner.invoke(app, ["--help"], env={"COLUMNS": "200"})
+    output = _help("--help")
     for name in CORE:
-        assert f"│ {name} " in result.output
+        assert f"│ {name} " in output
     for name in ("scorecard", "lease", "export", "version", "pool", "try"):
-        assert f"│ {name} " not in result.output
+        assert f"│ {name} " not in output
 
 
 def test_help_all_lists_every_command_but_not_aliases() -> None:
-    result = runner.invoke(app, ["help", "--all"], env={"COLUMNS": "200"})
-    assert result.exit_code == 0
+    output = _help("help", "--all")
     for panel in CORE_PANELS + MORE_PANELS:
-        assert f"─ {panel} ─" in result.output, f"missing panel: {panel}"
+        assert f"─ {panel} ─" in output, f"missing panel: {panel}"
     for spec in COMMANDS:
-        shown = f"│ {spec.name} " in result.output
+        shown = f"│ {spec.name} " in output
         assert shown == (spec.alias_of is None), spec.name
-    assert "Commands ─" not in result.output
+    assert "Commands ─" not in output
 
 
 def test_help_json_describes_every_command_for_agents() -> None:
