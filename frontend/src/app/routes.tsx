@@ -86,6 +86,10 @@ export const routes = [
         lazy: () => import("../features/try/TryPage").then((m) => ({ Component: m.TryPage }))
       },
       {
+        path: "settings",
+        lazy: () => import("../features/settings/ProjectSettingsPage").then((m) => ({ Component: m.ProjectSettingsPage }))
+      },
+      {
         path: "settings/ai",
         lazy: () => import("../features/settings/AIIntegrationSettingsPage").then((m) => ({ Component: m.AIIntegrationSettingsPage }))
       },

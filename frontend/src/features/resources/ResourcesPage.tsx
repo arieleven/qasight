@@ -10,6 +10,7 @@ import {
 } from "../../lib/api-client";
 import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { SettingsTabs } from "../settings/SettingsTabs";
 import { IS_STATIC_BUILD, loadManifest } from "../../lib/static-backend";
 
 const EXAMPLE = `resources:
@@ -208,9 +209,11 @@ export function ResourcesPage() {
   return (
     <section>
       <PageHeader
-        title="Resources"
-        subtitle="Keys that parallel workers share, like VMs, devices or test accounts. Each worker gets its own."
+        title="Settings"
+        documentTitle="Resources"
+        subtitle="Resources: keys that parallel workers share, like VMs, devices or test accounts. Each worker gets its own."
       />
+      <SettingsTabs />
       {IS_STATIC_BUILD && pools.length > 0 ? (
         <p className="mb-4 text-sm text-ink-300" data-testid="resources-snapshot-note">
           These pools and holders are made up (<code>qasight lease demo</code>), as they were

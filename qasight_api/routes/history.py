@@ -94,6 +94,9 @@ def run_settings() -> RunSettingsResponse:
         HistoryConfig,
         with_env_overrides,
     )
+    from qasight.project_root import find_project_root
+    from qasight.project_settings import effective_settings
+    from qasight_api.models import ProjectSetting
 
     cfg = None
     try:
@@ -113,6 +116,11 @@ def run_settings() -> RunSettingsResponse:
         ),
         cleanup_interval_hours=SERVER_PRUNE_INTERVAL_S / 3600 if retention.enabled else None,
         default_stage_timeout_s=cfg.defaults.timeout_s if cfg else None,
+        project_folder=str(find_project_root()),
+        settings=[
+            ProjectSetting(name=s.name, env=s.env, value=s.value, source=s.source)
+            for s in effective_settings()
+        ],
     )
 
 

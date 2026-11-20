@@ -185,6 +185,16 @@ class RetentionSettings(ApiModel):
     enabled: bool
 
 
+class ProjectSetting(ApiModel):
+    """One ``settings:`` value in effect (qasight/project_settings.py) and where it came from."""
+
+    name: str
+    env: str
+    value: str | None = None
+    # "qasight.yaml", "environment" or "default".
+    source: str
+
+
 class RunSettingsResponse(ApiModel):
     """How long runs are kept and how long a stage may take: read from ``qasight.yaml``."""
 
@@ -193,6 +203,9 @@ class RunSettingsResponse(ApiModel):
     # How often this server applies the retention rules, when they are on.
     cleanup_interval_hours: float | None = None
     default_stage_timeout_s: float | None = None
+    # The project folder the server found its files in, and every project setting.
+    project_folder: str | None = None
+    settings: list[ProjectSetting] = []
 
 
 class RunListResponse(ApiModel):

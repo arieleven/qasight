@@ -109,7 +109,7 @@ describe("HistoryPage deleting runs", () => {
       </QueryClientProvider>
     );
 
-    await waitFor(() => expect(screen.getByTestId("run-settings")).toHaveTextContent("Runs older than 30 days are deleted automatically every 6 hours."));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select runs" })).toBeInTheDocument());
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Select runs" }));
     expect(screen.getByLabelText("Select run a-1")).toBeDisabled();

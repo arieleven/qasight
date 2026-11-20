@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { AIIntegrationSettingsPage } from "./AIIntegrationSettingsPage";
@@ -51,12 +52,14 @@ describe("AIIntegrationSettingsPage", () => {
     );
 
     render(
+      <MemoryRouter>
       <QueryClientProvider client={new QueryClient()}>
         <AIIntegrationSettingsPage />
       </QueryClientProvider>
+      </MemoryRouter>
     );
 
-    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "AI settings" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("checkbox", { name: "Enable AI failure summaries" }));
     fireEvent.change(screen.getByPlaceholderText("Enter token (not persisted to disk)"), { target: { value: "sk-temp" } });
     fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
@@ -89,9 +92,11 @@ describe("AIIntegrationSettingsPage", () => {
     );
 
     render(
+      <MemoryRouter>
       <QueryClientProvider client={new QueryClient()}>
         <AIIntegrationSettingsPage />
       </QueryClientProvider>
+      </MemoryRouter>
     );
 
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("OPENAI_API_KEY is not set"));
@@ -143,9 +148,11 @@ describe("AIIntegrationSettingsPage", () => {
     );
 
     render(
+      <MemoryRouter>
       <QueryClientProvider client={new QueryClient()}>
         <AIIntegrationSettingsPage />
       </QueryClientProvider>
+      </MemoryRouter>
     );
 
     await waitFor(() => expect(screen.getByLabelText("Provider")).toBeInTheDocument());
@@ -185,9 +192,11 @@ describe("AIIntegrationSettingsPage", () => {
     );
 
     render(
+      <MemoryRouter>
       <QueryClientProvider client={new QueryClient()}>
         <AIIntegrationSettingsPage />
       </QueryClientProvider>
+      </MemoryRouter>
     );
 
     const share = await screen.findByRole("checkbox", { name: "Let the AI read the failing test's source" });

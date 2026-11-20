@@ -22,24 +22,25 @@ type NavLinkSpec = {
   also?: string[];
   when?: OptionalFeature;
 };
-type OptionalFeature = "ai" | "resources";
+type OptionalFeature = "ai";
 type NavGroup = { title?: string; links: NavLinkSpec[] };
 
 /**
  * The menu, grouped by the question each page answers: what needs me now,
- * how are my tests doing, how is each release doing, what do I hand to others,
+ * how are my tests doing (the Overview's Test health score opens in place; /test-health
+ * is its full page), how is each release doing, what do I hand to others,
  * and how QASight is set up. Compare, Quick run and Try a file are buttons on
  * the pages they belong to (Runs, Cycles, the welcome page), not menu items.
- * Ask appears once an AI provider is set up, Resources once a pool exists.
+ * Ask appears once an AI provider is set up. Settings is one entry: its tabs are the
+ * project (history, retention, settings in effect), AI and resource pools.
  */
 export const NAV_GROUPS: NavGroup[] = [
-  { links: [{ to: "/", label: "Overview", icon: Icons.HomeIcon, end: true }] },
+  { links: [{ to: "/", label: "Overview", icon: Icons.HomeIcon, end: true, also: ["/test-health"] }] },
   {
     title: "Tests",
     links: [
       { to: "/runs", label: "Runs", icon: Icons.RunsIcon, also: ["/compare"] },
-      { to: "/cycles", label: "Cycles", icon: Icons.CyclesIcon, also: ["/quick-run"] },
-      { to: "/test-health", label: "Test health", icon: Icons.HeartIcon }
+      { to: "/cycles", label: "Cycles", icon: Icons.CyclesIcon, also: ["/quick-run"] }
     ]
   },
   {
@@ -54,11 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
     ]
   },
   {
-    title: "Settings",
-    links: [
-      { to: "/resources", label: "Resources", icon: Icons.KeyIcon, when: "resources" },
-      { to: "/settings/ai", label: "AI settings", icon: Icons.SparkIcon }
-    ]
+    links: [{ to: "/settings", label: "Settings", icon: Icons.SparkIcon, also: ["/settings/ai", "/resources"] }]
   }
 ];
 
@@ -66,6 +63,9 @@ const NAV_LINKS = NAV_GROUPS.flatMap((g) => g.links);
 
 /** Pages without a menu entry of their own: the crumb they show under the entry they belong to. */
 const SUB_PAGES: Record<string, string> = {
+  "/test-health": "Test health",
+  "/settings/ai": "AI",
+  "/resources": "Resources",
   "/compare": "Compare",
   "/quick-run": "Quick run",
   "/code-quality": "Code quality",
@@ -254,16 +254,9 @@ function useOptionalFeatures(): Record<OptionalFeature, boolean> {
     staleTime: 5 * 60_000,
     retry: false
   });
-  const resources = useQuery({
-    queryKey: ["resources", "nav"],
-    queryFn: () => apiClient.listResources(),
-    staleTime: 5 * 60_000,
-    retry: false
-  });
   return {
     // The static demo shows Ask with its recorded examples, so it stays in that menu.
-    ai: IS_STATIC_BUILD || Boolean(ai.data?.enabled && ai.data?.configured),
-    resources: (resources.data?.pools?.length ?? 0) > 0
+    ai: IS_STATIC_BUILD || Boolean(ai.data?.enabled && ai.data?.configured)
   };
 }
 
@@ -277,7 +270,7 @@ function NavGroups({ size = "compact" }: { size?: "compact" | "touch" }) {
   return (
     <>
       {groups.map((group) => (
-        <div key={group.title ?? "home"} className="flex flex-col gap-1">
+        <div key={group.title ?? group.links[0]?.to} className="flex flex-col gap-1">
           {group.title ? (
             <p className={`mb-1 px-4 text-[11px] font-bold uppercase tracking-wider text-ink-400 ${size === "touch" ? "mt-3" : "mt-4"}`}>
               {group.title}

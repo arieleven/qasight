@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { retentionLine, timeoutLine } from "./RunSettingsNote";
 
-const base = { config_found: true, cleanup_interval_hours: 6, default_stage_timeout_s: 600 };
+const base = { config_found: true, cleanup_interval_hours: 6, default_stage_timeout_s: 600, project_folder: null, settings: [] };
 
 describe("run settings lines", () => {
   it("names both retention limits and how often they apply", () => {
