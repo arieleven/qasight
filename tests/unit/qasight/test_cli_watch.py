@@ -17,9 +17,16 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-def test_watch_requires_cycle_option(runner: CliRunner) -> None:
+def test_watch_asks_for_a_cycle_when_none_can_be_picked(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # No config, no recorded run and no TESTO_CYCLE: nothing to pick, so it asks.
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'empty.db'}")
+    for name in ("TESTO_CYCLE", "QASIGHT_CYCLE"):
+        monkeypatch.delenv(name, raising=False)
     result = runner.invoke(app, ["watch"])
-    assert result.exit_code != 0
+    assert result.exit_code == int(EngineExitCode.INVALID_INPUT)
     assert "cycle" in result.stdout.lower() or "cycle" in (result.stderr or "").lower()
 
 
