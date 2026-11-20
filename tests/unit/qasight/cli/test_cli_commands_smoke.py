@@ -19,7 +19,7 @@ _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 def test_help_lists_core_commands(cli_runner: CliRunner) -> None:
     result = cli_runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    for command in ("run", "cycles", "config", "report", "version"):
+    for command in ("init", "run", "ingest", "summary", "flaky", "ui", "ci", "mcp"):
         assert command in result.output
 
 

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-11-12
-updated: 2026-11-12
+updated: 2026-11-20
 ---
 
 # Stability and Deprecation Policy
@@ -37,6 +37,33 @@ Not covered: Python imports other than the plugin API (`qasight.plugins`), the w
 3. **Removed only in the next major release** (2.0), listed under *Removed* with the migration step.
 
 The 2026-11 rename shows the pattern: `testo`, `testosterone.yaml`, `testo_core` imports and `TESTO_*` variables all still work in 1.x ([Rename to QASight](../Specs%20&%20ADRs/Rename%20to%20QASight%20-%202026-11-04.md)).
+
+## Deprecated now
+
+| What | Since | Use instead | Removed in |
+|------|-------|-------------|------------|
+| Pushing run KPIs to InfluxDB (`INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET`, the `[metrics]` extra) or a Prometheus Pushgateway (`PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME`) after each run | 1.8 | OpenTelemetry: an `otel` reporter or [`qasight otel`](../CLI%20Commands/Command%20Reference.md#qasight-otel); a collector forwards to Prometheus, Grafana, InfluxDB or Datadog | 2.0 |
+
+Until then the push still works, best-effort, and logs one warning per process. Why: [Focus Review](../Specs%20&%20ADRs/Focus%20Review%20-%202026-11-20.md).
+
+Renamed commands are not deprecated: `qasight try`, `qasight pool` and `qasight config-db` are aliases of `qasight ci preview`, `qasight lease pools` and `qasight config db`, and stay in 1.x and 2.0 ([Command Reference](../CLI%20Commands/Command%20Reference.md)).
+
+## Migrating from v1.0
+
+v1.1 replaced the Streamlit UI with the React frontend and dropped the Docker-based headless runner (stages run as host subprocesses).
+
+| v1.0 | v1.1 and later |
+|------|------|
+| Streamlit UI (`testo-ui`, `streamlit run app.py`) | React frontend (`frontend/`), `qasight ui` |
+| `uqo` command, `UQO_*` env vars | `qasight`, `TESTO_*` |
+| `uqo run --config runs.yaml` (`runs:` list of `test_type`/`cli_args`) | a cycle in `qasight.yaml`, run with `qasight run --cycle <name>` |
+| `--ghost`, `--json`, `--stream-json` | `--ci` (NDJSON events, `plan_finished` last) |
+| `POST /api/v1/executions` + `/executions/{id}/events` | `POST /api/v1/adhoc-executions` (one framework) or `POST /api/v1/cycles/{cycle}/executions`; status and SSE under `/cycle-executions/{id}` |
+| "Legacy Execution" page | Quick Run (`/quick-run`) |
+| Tests run in one-off Docker containers (`UQO_RUNNER_IMAGE`, `UQO_RUNNER_PREBUILT`) | stages run as host subprocesses; use `Dockerfile.qasight-runner` as the CI job image if you want isolation |
+| Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB |
+| `locust` test type | `equipment: command` with `args: [locust, --headless, …]` |
+| Pluggy `plugins/*.py` runner hooks | a framework adapter or reporter in your own package, registered as a `qasight.frameworks` / `qasight.reporters` entry point (see `examples/plugin/`) |
 
 ## Releases and support
 

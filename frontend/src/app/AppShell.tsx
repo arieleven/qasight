@@ -6,10 +6,23 @@ import { apiClient } from "../lib/api-client";
 import { EYE_BRAND_GREEN, EyeLogo } from "../components/mascot";
 import { scoreTone } from "../features/health/score";
 import { DemoBadge } from "../components/StaticBuildBanner";
+import { IS_STATIC_BUILD } from "../lib/static-backend";
 import { Icons } from "../components/ui";
 
-/** A menu entry. `also` lists pages reached from it (a button on its page) that keep it highlighted. */
-type NavLinkSpec = { to: string; label: string; icon: ComponentType; end?: boolean; also?: string[] };
+/**
+ * A menu entry. `also` lists pages reached from it (a button on its page) that keep it highlighted.
+ * `when` names an optional feature: the entry shows only once that feature is set up (or while its
+ * page is open), so a new user sees the pages about their tests and nothing to configure first.
+ */
+type NavLinkSpec = {
+  to: string;
+  label: string;
+  icon: ComponentType;
+  end?: boolean;
+  also?: string[];
+  when?: OptionalFeature;
+};
+type OptionalFeature = "ai" | "resources";
 type NavGroup = { title?: string; links: NavLinkSpec[] };
 
 /**
@@ -17,6 +30,7 @@ type NavGroup = { title?: string; links: NavLinkSpec[] };
  * how are my tests doing, how is each release doing, what do I hand to others,
  * and how QASight is set up. Compare, Quick run and Try a file are buttons on
  * the pages they belong to (Runs, Cycles, the welcome page), not menu items.
+ * Ask appears once an AI provider is set up, Resources once a pool exists.
  */
 export const NAV_GROUPS: NavGroup[] = [
   { links: [{ to: "/", label: "Overview", icon: Icons.HomeIcon, end: true }] },
@@ -36,13 +50,13 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Share",
     links: [
       { to: "/report", label: "Report", icon: Icons.ReportIcon },
-      { to: "/ask", label: "Ask", icon: Icons.ChatIcon }
+      { to: "/ask", label: "Ask", icon: Icons.ChatIcon, when: "ai" }
     ]
   },
   {
     title: "Settings",
     links: [
-      { to: "/resources", label: "Resources", icon: Icons.KeyIcon },
+      { to: "/resources", label: "Resources", icon: Icons.KeyIcon, when: "resources" },
       { to: "/settings/ai", label: "AI settings", icon: Icons.SparkIcon }
     ]
   }
@@ -232,10 +246,37 @@ export function AppShell() {
   );
 }
 
+/** Which optional features are set up; unknown (loading, API down) counts as not set up. */
+function useOptionalFeatures(): Record<OptionalFeature, boolean> {
+  const ai = useQuery({
+    queryKey: ["ai-config-status"],
+    queryFn: () => apiClient.getAiConfigStatus(),
+    staleTime: 5 * 60_000,
+    retry: false
+  });
+  const resources = useQuery({
+    queryKey: ["resources", "nav"],
+    queryFn: () => apiClient.listResources(),
+    staleTime: 5 * 60_000,
+    retry: false
+  });
+  return {
+    // The static demo shows Ask with its recorded examples, so it stays in that menu.
+    ai: IS_STATIC_BUILD || Boolean(ai.data?.enabled && ai.data?.configured),
+    resources: (resources.data?.pools?.length ?? 0) > 0
+  };
+}
+
 function NavGroups({ size = "compact" }: { size?: "compact" | "touch" }) {
+  const features = useOptionalFeatures();
+  const { pathname } = useLocation();
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    links: group.links.filter((link) => !link.when || features[link.when] || under(pathname, link.to))
+  })).filter((group) => group.links.length > 0);
   return (
     <>
-      {NAV_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.title ?? "home"} className="flex flex-col gap-1">
           {group.title ? (
             <p className={`mb-1 px-4 text-[11px] font-bold uppercase tracking-wider text-ink-400 ${size === "touch" ? "mt-3" : "mt-4"}`}>

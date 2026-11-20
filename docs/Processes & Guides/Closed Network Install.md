@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # Closed Network Install
@@ -116,7 +116,7 @@ If internal services use certificates from your own CA, give it to both HTTP sta
 
 These need GitHub or the internet and are simply unused on a closed network; nothing else depends on them:
 
-- `qasight issues` (GitHub issues for flaky tests), `qasight try --from-github`, history backfill from GitHub, and the setup pull request (`gh`).
+- `qasight issues` (GitHub issues for flaky tests), `qasight ci preview --from-github`, history backfill from GitHub, and the setup pull request (`gh`).
 - The GitHub Action and `npx qasight` (npm).
 - Scorecard tools that download their own databases (Trivy, Semgrep rules): bring their offline databases or leave them off ([Release Scorecard](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md)).
 - The docs site: the same notes are in `docs/` in the repository.
