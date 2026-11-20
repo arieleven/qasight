@@ -19,7 +19,20 @@ qasight help --json   # every command, subcommand, alias and exit code, for codi
 
 `qasight --help` shows only the core commands, in four panels: **Start** (`init`, `demo`, `doctor`), **Record** (`run`, `ingest`), **Understand** (`summary`, `flaky`, `ui`) and **Share** (`ci`, `mcp`). Every other command works the same and is listed by [`qasight help --all`](#qasight-help) under **More:** panels (understand, release gate, AI, reports and alerts, CI at scale, setup and team server, maintenance). Why: [Focus Review](../Specs%20&%20ADRs/Focus%20Review%20-%202026-11-20.md).
 
-Old names that keep working and are not listed: `qasight try` (now [`qasight ci preview`](#qasight-ci-preview)), `qasight pool` (now [`qasight lease pools`](#qasight-lease-pools)), `qasight config-db` (now `qasight config db`), `qasight plans` (`qasight cycles`) and `qasight version` (`qasight --version`).
+Old names that keep working and are not listed: `qasight try` (now [`qasight ci preview`](#qasight-ci-preview)), `qasight pool` (now [`qasight lease pools`](#qasight-lease-pools)), `qasight config-db` (now `qasight config db`), `qasight plans` and `qasight cycles` (now [`qasight doctor`](#qasight-doctor), which lists the cycles; `qasight cycles list/show` still work), `qasight diff` (now [`qasight summary --against`](#qasight-summary)), `qasight export-site` and `qasight badge` (now [`qasight export site`](#qasight-export) and `qasight export badge`) and `qasight version` (`qasight --version`).
+
+### What happens without a flag
+
+These need no option; each has a way to turn it off or override it. Why: [Merge and Automate - 2026-11-20](../Specs%20&%20ADRs/Merge%20and%20Automate%20-%202026-11-20.md).
+
+| Behaviour | Override |
+|-----------|----------|
+| **The project is found from any subfolder**, like git: the nearest folder above with `qasight.yaml` (or `testosterone.yaml`), a `.testo/` folder, `testo_history.db` or `[tool.qasight]` in `pyproject.toml`. The search stops at a `.git` folder and at the home folder; with nothing found, the current folder is used. The history (`testo_history.db`) and `.testo/` live there | `-c`, `DATABASE_URL`, `TESTO_HOME` |
+| **`--cycle` is never required** by `flaky`, `summary`, `split`, `watch`, `issues sync` and `quarantine add/remove`: the cycle is `$QASIGHT_CYCLE` (or `$TESTO_CYCLE`), else the only cycle in `qasight.yaml`, else the cycle of the newest recorded run. The choice is printed on stderr (`cycle: web (newest recorded run)`). With several cycles and no runs it is exit `2`, listing them | `--cycle` |
+| **Each run and ingest ends with what's new**: new failures, still failing, fixed, newly flaky and slower tests against the previous run of the cycle, or `Nothing new since the previous run.` With `--ci`/`--json` the same block is the `news` field of `plan_finished` ([Troubleshooting](Troubleshooting%20and%20Error%20Codes.md)) | `TESTO_RUN_NEWS=0` or `settings: {run_news: false}` |
+| **Coding agents get JSON**: with `CLAUDECODE=1` (set by Claude Code) or `QASIGHT_AGENT=1`, or `QASIGHT_OUTPUT=json`, the commands that take `--json` print JSON: `run` and `ingest` (NDJSON, `--json` is the same as `--ci`), `summary`, `flaky`, `runs`, `doctor`, `quarantine list`, `cycles list`, `ai status` | `QASIGHT_OUTPUT=text` |
+| **In CI, `run` and `ingest` publish the result** (PR or MR comment, job summary, alerts: what [`qasight ci publish`](#qasight-ci-publish) does) once per run. Messages go to stderr; a publish failure never changes the exit code. The GitHub Action turns it off for its own steps and publishes once itself | `TESTO_PUBLISH=0` or `settings: {publish: false}` |
+| **Project settings live in `qasight.yaml`** under `settings:` (see [`qasight config`](#qasight-config)); `QASIGHT_*` variables are read as their `TESTO_*` name | an exported `TESTO_*`/`QASIGHT_*` variable wins |
 
 Extras: `pip install qasight` is the CLI with pytest, Playwright, `command` and `junit` stages. Add `[bdd]` for `behave` and `behavex` stages (Behave, BehaveX and Allure-Behave), `[api]` for the REST API and UI backend, `[db]` for Postgres or MySQL, `[metrics]` for InfluxDB, `[otel]` for [OpenTelemetry export](#qasight-otel), `[mcp]` for the [MCP server](#qasight-mcp). A `behave` stage without the extra fails with exit `3` and `executable not found: behave (... pip install 'qasight[bdd]')`.
 
@@ -44,7 +57,7 @@ qasight run --cycle sample-pytests --workers 8 --force
 | `--plan` | `-p` | Deprecated alias for `--cycle` (hidden) |
 | `--config` | `-c` | Path to `qasight.yaml` (default: discovery) |
 | `--stream` | | Tail each stage stdout live (vs post-mortem Rich panel) |
-| `--ci` | | NDJSON events on stdout instead of Rich UI |
+| `--ci`, `--json` | | NDJSON events on stdout instead of Rich UI (on by itself for coding agents, see above) |
 | `--no-persist` | | Skip optional run-history DB writes |
 | `--no-report-db` | | Skip archiving cycle artifacts to report DB after run |
 | `--async-report-db` | | Archive in background thread with join timeout; **ignored when `--ci` is set** |
@@ -101,7 +114,15 @@ On failure:
 Run exited with code 1.
 ```
 
-**`--ci`:** One NDJSON object per line (`plan_started`, `stage_started`, `stage_finished`, `plan_finished`, etc.), no Rich styling.
+After the summary table (Stage, Status, Tests, Passed, Failed, Skipped, Duration; a Runner column only when stages use more than one runner) comes the what's-new block:
+
+```text
+New failure    tests/test_cart.py::test_total   AssertionError: 3 != 4
+Fixed          tests/test_login.py::test_ok
+Details: qasight summary · qasight flaky · qasight ui
+```
+
+**`--ci`:** One NDJSON object per line (`plan_started`, `stage_started`, `stage_finished`, `plan_finished`, etc.), no Rich styling. `plan_finished` is last and carries `news`.
 
 ### Exit codes
 
@@ -270,6 +291,20 @@ ok — version=1 cycles=6 reporters=4 defaults_target=.
 
 `qasight config-db` still works as an alias of `qasight config db`.
 
+### Project settings (`settings:`)
+
+Behaviour that was set only with environment variables can live in `qasight.yaml`. Each key fills its `TESTO_*` variable when that isn't exported (an exported variable always wins); secrets (tokens, webhooks) stay in the environment. `qasight doctor`, the UI's Settings page and `GET /api/v1/run-settings` show each value and where it came from. Code: `qasight/project_settings.py`.
+
+```yaml
+settings:
+  quarantine: {auto: 0.3, release_after: 5}     # TESTO_QUARANTINE_AUTO, TESTO_QUARANTINE_RELEASE_AFTER
+  issues: {enabled: true, repo: acme/shop, labels: [flaky-test], assign: "1", close_after: 10}
+  schedule: {digest: week, to: [slack], hour: 8} # TESTO_SCHEDULE_*
+  redact: {enabled: true, patterns: ["secret-[0-9]+"]}
+  publish: true                                  # TESTO_PUBLISH
+  run_news: true                                 # TESTO_RUN_NEWS
+```
+
 ### Editor autocomplete
 
 `schema/qasight.schema.json` is a JSON Schema for `qasight.yaml`. Editors with a YAML language server (VS Code with the Red Hat YAML extension, JetBrains IDEs, Neovim) then suggest keys and built-in equipment, and underline typos as you type. `qasight config init` and `qasight init` add this line at the top of the file; add it yourself to an existing config:
@@ -282,20 +317,47 @@ ok — version=1 cycles=6 reporters=4 defaults_target=.
 
 ---
 
-## `qasight diff` / `qasight summary`
+## `qasight summary`
 
-Compare two recorded runs by id: from `qasight report list`, the UI, MCP, or the "Recorded run" line `qasight run` and `qasight ingest` print.
+What changed between a run and an earlier one: tests that broke, got fixed, changed status, appeared or went. Ids come from [`qasight runs`](#qasight-runs), the UI, MCP or the "Recorded run" line `qasight run` and `qasight ingest` print; the first characters of an id are enough.
 
 ```bash
-qasight diff <BASELINE_ID> <CURRENT_ID>
-qasight summary   # same family; see help for metrics-only variants
+qasight summary                         # the cycle's latest run against the run before
+qasight summary 3f9a --against last-green
+qasight summary --against main --json   # against the latest run on branch main
+qasight diff <BASELINE_ID> <CURRENT_ID> # old form, still works
 ```
+
+| Argument / flag | Default | Meaning |
+|-----------------|---------|---------|
+| `RUN` | `latest` | Run id, its first characters, or `latest` |
+| `--against` | `previous` | `previous` (the cycle's run before), `last-green` (its latest passing run), a branch name (its latest run there) or a run id |
+| `--cycle` | picked (see above) | With `latest` |
+| `--json` | off | The comparison as JSON (`compare_runs`, the same as MCP) |
+
+Exit `2` for an unknown run or baseline.
 
 Rich terminal diff of metrics and (for full diff) extracted Allure deltas. Reads the run history database (SQLite by default; `qasight[db]` for Postgres).
 
 Prefer **`qasight report compare`** for Rich diff plus Allure visual comparison pipeline.
 
 Note: a run's report archive (`qasight report list`) takes the run's own id, so one id names a run in the CLI, the UI, the API and MCP. Archives recorded by 1.7.x and earlier have ids of their own; given a run id, `qasight diff` finds such a run's archive by its cycle and time. See [Architecture Overview § Persistence](../Architecture/Architecture%20Overview.md#persistence). The React Compare page (`GET /api/v1/analytics/delta` + `/analytics/delta/cases`) reaches equivalent per-stage and per-test detail by `run_id` instead, per [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md).
+
+---
+
+## `qasight runs`
+
+The run history, with the ids `qasight run`, the UI and MCP show.
+
+```bash
+qasight runs                      # newest 20 runs
+qasight runs list --cycle web -n 50
+qasight runs show                 # the latest run: outcome, what's new, rerun commands
+qasight runs show 3f9a --json
+qasight runs delete 3f9a 77c1 --yes
+```
+
+`list`: Run, Cycle, Outcome, Tests, Failed, When, Branch. `show RUN` (default `latest`, `--cycle` for a cycle's latest): the run's what's-new block and a command to rerun its failures; `--json` is `get_run` plus `news`. `delete RUNS... [--yes] [--dry-run]`: the same as `qasight clean --history --run`. Ids take their first characters (unique among the last 500 runs). Exit `2` for an unknown id.
 
 ---
 
@@ -312,16 +374,17 @@ qasight flaky --cycle nightly --new --json     # only tests the latest run made 
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--cycle` | required | Cycle whose run history to read |
+| `--cycle` | picked (see above) | Cycle whose run history to read |
 | `--window` | `20` | How many of the cycle's most recent runs to look at (min 2) |
 | `--new` | off | Only tests the cycle's latest run made flaky: flaky in the window ending at that run, not in the window ending at the run before. Used for alerts and the action's `flaky-issues` |
 | `--json` | off | Print the report as JSON |
 | `--fail-on-flaky` | off | Exit `1` when any flaky test that isn't quarantined is found |
+| `--quarantine` | off | Quarantine every flaky test found (this machine's list, or the team server's with `TESTO_SERVER_URL`), the same as `qasight quarantine add` per test |
 | `--config` | discovery | `qasight.yaml` whose `quarantine:` rules mark tests; without a config found, nothing is marked. Exit `2` if the given file is missing or invalid |
 
 A test is flaky when, within the window, it passed on a retry inside one run, passed and failed on the same commit, or both passed and failed with its outcome changing at least twice on one branch (skipped runs are ignored; runs that recorded no branch count as one branch). The Why column (`"reasons"` in `--json`) says which. One change is a regression or a fix, which `qasight summary` shows. A test that failed each of its last 3 runs is listed under "Broken, not flaky" (`"broken"` in `--json`) instead, and `--fail-on-flaky` ignores it; see [Better Flaky Signal - 2026-11-01](../Specs%20&%20ADRs/Better%20Flaky%20Signal%20-%202026-11-01.md). Exit `2` when fewer than two runs with per-test results exist. Reads run-history records (`run_id`s) and each run's artifact snapshot, the same data as `GET /api/v1/analytics/flaky?cycle=<name>` and the Flaky tests card on the cycle page. See [Open Source Features - 2026-10-19](../Specs%20&%20ADRs/Open%20Source%20Features%20-%202026-10-19.md).
 
-The table's Quarantined column (and `"quarantined"` in `--json`) shows which flaky tests match the cycle's [`quarantine:` rules](../Testing%20Workflows/QA%20Strategies.md#defining-work-in-qasightyaml) or the list kept in this machine's run history ([`qasight quarantine`](#qasight-quarantine)). For the others it prints a `qasight quarantine add --cycle <cycle> "<name>"` line per test, which needs no config file, and the `quarantine:` snippet for those who keep the list in `qasight.yaml`. A quarantined test's failures don't fail `qasight run`, `qasight ingest` or `pytest --qasight`; see [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) and [Quarantine From the UI - 2026-11-01](../Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md).
+The table's Quarantined column (and `"quarantined"` in `--json`) shows which flaky tests match the cycle's [`quarantine:` rules](../Testing%20Workflows/QA%20Strategies.md#defining-work-in-qasightyaml) or the list kept in this machine's run history ([`qasight quarantine`](#qasight-quarantine)). For the others it prints a `qasight flaky --cycle <cycle> --quarantine` line (or `qasight quarantine add --cycle <cycle> "<name>"` per test), which needs no config file, and the `quarantine:` snippet for those who keep the list in `qasight.yaml`. A quarantined test's failures don't fail `qasight run`, `qasight ingest` or `pytest --qasight`; see [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) and [Quarantine From the UI - 2026-11-01](../Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md).
 
 ---
 
@@ -350,7 +413,7 @@ Without the `[api]` extra, in a terminal it offers to install it into the runnin
 
 ## `qasight export-site`
 
-Write the UI and the recent runs as a read-only static site, for GitHub Pages, GitLab Pages or any file host. The pages are the ones `qasight ui` shows; starting runs and saving settings are switched off and a notice says it is a snapshot.
+Also `qasight export site`. Write the UI and the recent runs as a read-only static site, for GitHub Pages, GitLab Pages or any file host. The pages are the ones `qasight ui` shows; starting runs and saving settings are switched off and a notice says it is a snapshot.
 
 ```bash
 pip install 'qasight[api]'
@@ -552,7 +615,12 @@ qasight export pptx --period month --brand "Acme QA" # slides with editable char
 qasight export xlsx --period quarter --cycle api --cycle web -o q4.xlsx
 qasight export json -o -                             # the numbers on stdout
 qasight export -o report.pdf                         # the format from the file's extension
+qasight export site -o public --base-path /my-repo/  # = qasight export-site
+qasight export -o badge.svg --cycle web              # = qasight badge
+qasight export -o summary.md                         # = qasight report markdown
 ```
+
+`site`, `badge`, `markdown` and `annotations` run [`export-site`](#qasight-export-site), [`badge`](#qasight-badge), `report markdown` and `report annotations` with `--out`, the first `--cycle` and any other option given (`--base-path`, `--format json`, ...). Without a format, `--out` decides: a folder or a name with no extension is `site`; `.svg` is `badge`, `.md` is `markdown`.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -696,7 +764,7 @@ Headers come only from `OTEL_EXPORTER_OTLP_HEADERS` (or `OTEL_EXPORTER_OTLP_TRAC
 
 ## `qasight badge`
 
-A README badge for a cycle's latest run: **tests | 412 passed · 2 flaky**. Green when everything passed, yellow when the cycle has flaky tests (`qasight flaky`'s window), red when a test failed or broke, grey with no run.
+Also `qasight export badge`. A README badge for a cycle's latest run: **tests | 412 passed · 2 flaky**. Green when everything passed, yellow when the cycle has flaky tests (`qasight flaky`'s window), red when a test failed or broke, grey with no run.
 
 ```bash
 qasight badge --cycle web --out public/testo-badge.svg     # in CI, next to a published report
@@ -720,12 +788,16 @@ Exit `0`, or `2` for a bad `--format`. With no run of `--cycle`, the grey badge 
 
 ## `qasight doctor`
 
-Health check: config load, framework CLIs on PATH, Node.js + Allure Report 3 CLI, optional Docker warnings, DB probe if `DATABASE_URL` or config URL is set (with or without a config).
+Health check: the project folder, config load and unknown keys, each cycle (stages, runners, latest run), framework CLIs on PATH, Node.js + Allure Report 3 CLI, optional Docker warnings, the history database, and every project setting not at its default (with where it came from). It replaces `qasight config validate` plus `qasight cycles list` for a first look.
 
 ```bash
 qasight doctor
 qasight doctor -c qasight.yaml
+qasight doctor --strict     # unknown config keys are FAIL (exit 2), like config validate --strict
+qasight doctor --json       # {"ok", "project", "checks": [{"check", "status", "detail"}]}
 ```
+
+With no history yet, the database row is `INFO` and says where it will be kept.
 
 **Output:** Rich table with Check / Status / Detail rows (`PASS`, `FAIL`, `WARN`, `SKIP`).
 
@@ -820,7 +892,10 @@ qasight init --scan --check       # also ask each runner which tests it would ru
 qasight init --scan --per-package # monorepo: a cycle per package, run only when its folder changed
 qasight init --pr                 # then commit the files on a new branch, push it and open a pull request
 qasight init --attach --dry-run   # add QASight to the workflows that already run your tests; show the diff
+qasight init --no-backfill        # don't import past CI results
 ```
+
+With `gh` signed in and a GitHub `origin`, `init` also imports the results of the last 10 CI runs that uploaded them (as `qasight ingest --from-github` does), so `qasight flaky` and the Overview have history on day one. It says how many it found in one line; without `gh` it does nothing.
 
 | Detected from | Stack (`--stack`) | Stage it writes |
 |---------------|-------------------|-----------------|
@@ -1150,7 +1225,12 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_REDACT_PATTERNS` | Your own regular expressions to hide, one per line |
 | `TESTO_FAILED_FIRST` | `1`: same as [`--qasight-failed-first`](#pytest---qasight) |
 | `TESTO_LIVE` | `0`: same as [`--qasight-no-live`](#pytest---qasight) |
-| `TESTO_CYCLE`, `TESTO_STAGE` | Set by `qasight run` for each stage's process: which cycle and stage it is |
+| `TESTO_CYCLE`, `TESTO_STAGE` | Set by `qasight run` for each stage's process: which cycle and stage it is. `TESTO_CYCLE` (or `QASIGHT_CYCLE`) set outside a run is the default cycle |
+| `QASIGHT_*` | Every `QASIGHT_X` is read as `TESTO_X` when that isn't set (`QASIGHT_RELEASE=2.3`) |
+| `TESTO_PUBLISH` | `0`: `qasight run` and `qasight ingest` don't publish in CI (on by default there) |
+| `TESTO_RUN_NEWS` | `0`: no what's-new block after a run or ingest |
+| `CLAUDECODE`, `QASIGHT_AGENT` | Set (Claude Code sets `CLAUDECODE=1`): JSON output from the commands that take `--json` |
+| `QASIGHT_OUTPUT`, `TESTO_OUTPUT` | `json` or `text`: force the output of those commands either way |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
 
 ---

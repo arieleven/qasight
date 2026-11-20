@@ -32,6 +32,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Better flaky signal: retries, same-commit results, flips per branch, broken kept apart | [Better Flaky Signal - 2026-11-01](Better%20Flaky%20Signal%20-%202026-11-01.md) |
 | CLI-only bug hunt: what a UI review misses, eight fixes and a CLI end-to-end CI job | [CLI-Only Bug Hunt - 2026-11-15](CLI-Only%20Bug%20Hunt%20-%202026-11-15.md) |
 | Focus review: one promise, ten core commands in `--help`, an Overview that leads with what needs attention, optional pages shown once set up | [Focus Review - 2026-11-20](Focus%20Review%20-%202026-11-20.md) |
+| Merge and automate: run and ingest end with what's new, no `--cycle` or ids needed, JSON for agents, publish from `run` in CI, one export, settings in `qasight.yaml`, one Settings page, Test health inside the Overview | [Merge and Automate - 2026-11-20](Merge%20and%20Automate%20-%202026-11-20.md) |
 | Importer and integration bug hunt: ranked findings, fixes and proposals | [Importer and Integration Bug Hunt - 2026-10-31](Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) |
 | Engine fixes from the bug hunt: one run of a cycle at a time, and the other proposals | [Engine Fixes - 2026-11-01](Engine%20Fixes%20-%202026-11-01.md) |
 | Interview-readiness batch (pull requests 67 to 91, v1.1.0) | [Interview Readiness Fixes - 2026-10-07](Interview%20Readiness%20Fixes%20-%202026-10-07.md) |

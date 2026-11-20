@@ -288,3 +288,7 @@ New note [Focus Review - 2026-11-20](Specs%20&%20ADRs/Focus%20Review%20-%202026-
 ## 2026-11-20: added Upload Without Python
 
 New guide [Upload Without Python](Processes%20&%20Guides/Upload%20Without%20Python.md) and ADR [Go Uploader - 2026-11-20](Specs%20&%20ADRs/Go%20Uploader%20-%202026-11-20.md): `qasight-upload`, a one-file Go uploader for CI. Linked from Index, the Specs README, Team Server, the Agent Context Guide and the docs site menu.
+
+## 2026-11-20: added Merge and Automate
+
+New note [Merge and Automate - 2026-11-20](Specs%20&%20ADRs/Merge%20and%20Automate%20-%202026-11-20.md): 13 merges and automatic defaults (what's new after each run, no `--cycle` or ids needed, JSON for agents, one export, settings in `qasight.yaml`, one Settings page). Linked from the Specs README and the docs site menu.

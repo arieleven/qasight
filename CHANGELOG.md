@@ -20,6 +20,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - `qasight help --all` lists every command, grouped; `qasight help --json` describes every command, subcommand, alias and exit code for coding agents
 - `qasight ci preview`, `qasight lease pools` and `qasight config db`: the new homes of `qasight try`, `qasight pool` and `qasight config-db`, which keep working as aliases
+- `qasight run` and `qasight ingest` end with what's new since the previous run (new failures, still failing, fixed, newly flaky, slower); with `--ci` it is the `news` field of `plan_finished`
+- The project and its history are found from any subfolder, like git; `--cycle` is never required (the only cycle, or the newest run's)
+- Coding agents get JSON without asking (`CLAUDECODE=1`, `QASIGHT_AGENT=1`, `QASIGHT_OUTPUT=json`); `run` and `ingest` take `--json` as well as `--ci`; `doctor`, `runs`, `cycles list` and `ai status` take `--json`
+- In CI, `qasight run` and `qasight ingest` publish the result themselves (job summary, PR comment, alerts); `TESTO_PUBLISH=0` turns it off
+- `qasight summary [RUN] --against previous|last-green|<branch>|<id>`, and `qasight runs` to list, show and delete recorded runs
+- `qasight export site|badge|markdown|annotations`, or the format from `--out` (`-o public`, `-o badge.svg`, `-o summary.md`)
+- A `settings:` section in `qasight.yaml` for quarantine, flaky issues, schedules, redaction, publishing and the what's-new block; every `QASIGHT_*` variable is read as its `TESTO_*` name
+- `qasight init` imports the last 10 CI runs' results from GitHub (`--no-backfill` to skip)
+- `qasight doctor` checks the project folder, unknown config keys (`--strict`), each cycle and the settings in effect; `qasight flaky --quarantine` quarantines what it finds
+- UI: one Settings entry with Project, AI and Resources tabs; the Overview's Test health score opens in place with what drives it, what to fix and each cycle's score
 
 ### Fixed
 - `qasight diff` takes the run ids the UI, MCP and `qasight run` / `qasight ingest` show. A run's report archive now takes the run's id, so one id names a run everywhere; for older runs `qasight diff` finds the archive by cycle and time
