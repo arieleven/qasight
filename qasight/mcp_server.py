@@ -365,7 +365,8 @@ class HistoryTools:
             changes = case_changes(baseline, current)
         counts: dict[str, int] = {}
         for c in changes:
-            counts[c["kind"]] = counts.get(c["kind"], 0) + 1
+            kind = str(c["kind"])
+            counts[kind] = counts.get(kind, 0) + 1
         return {
             "baseline": _run_summary(baseline),
             "current": _run_summary(current),

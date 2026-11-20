@@ -91,7 +91,7 @@ SETTINGS: Final[tuple[SettingKey, ...]] = (
 
 def schema_properties() -> dict[str, Any]:
     """The ``settings:`` section for the JSON Schema (built from :data:`SETTINGS`)."""
-    types = {
+    types: dict[str, dict[str, Any]] = {
         "number": {"type": "number", "minimum": 0, "maximum": 1},
         "int": {"type": "integer", "minimum": 0},
         "text": {"type": "string"},
