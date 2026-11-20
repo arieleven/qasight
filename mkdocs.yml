@@ -142,6 +142,7 @@ nav:
       - Scale Runs and Stages: Specs & ADRs/Scale Runs and Stages - 2026-10-24.md
       - Ingest and Team Server: Specs & ADRs/Ingest and Team Server - 2026-10-22.md
       - Closed Network Install: Specs & ADRs/Closed Network Install - 2026-11-15.md
+      - Closed-Network Monorepo Rollout: Specs & ADRs/Closed-Network Monorepo Rollout - 2026-11-20.md
       - Go Uploader: Specs & ADRs/Go Uploader - 2026-11-20.md
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md
       - UI Design Review: Specs & ADRs/UI Design Review - 2026-10-31.md
