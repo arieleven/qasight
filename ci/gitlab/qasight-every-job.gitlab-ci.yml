@@ -9,7 +9,7 @@
 #
 # CI/CD variables (Settings > CI/CD > Variables, masked):
 #   TESTO_SERVER_URL   https://qasight.example.local
-#   TESTO_API_TOKEN    a token from the server (`qasight users token` or Settings > Tokens)
+#   TESTO_API_TOKEN    the server's TESTO_API_TOKEN (in the .env `qasight server init` wrote)
 #
 # The job's image needs `qasight` (Python 3.11+): bake it in from the offline bundle's
 # wheels, or let QASIGHT_INSTALL install it from your PyPI mirror (PIP_INDEX_URL).
