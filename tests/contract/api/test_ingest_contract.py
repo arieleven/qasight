@@ -286,3 +286,24 @@ def test_cli_upload_exit_codes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
         result = runner.invoke(app, ["ingest", "a.xml", "--cycle", "web", "--server", "http://x"])
     assert result.exit_code == 3
     assert "down" in result.output
+
+
+def test_upload_recorded_in_the_worker_process(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The team server records uploads in a spawned worker; it sees the same database
+    # (the environment) and the run lands like one recorded in-process.
+    monkeypatch.setenv("TESTO_INGEST_PROCESS", "1")
+    monkeypatch.setenv("TESTO_HOME", str(tmp_path))
+    try:
+        resp = TestClient(create_app()).post(
+            "/api/v1/ingest", data={"cycle": "web"}, files=_files(("ok.xml", FAILING))
+        )
+        assert junit_ingest._pool is not None  # recorded by the worker, not in-process
+    finally:
+        junit_ingest.shutdown_worker()
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert (body["tests"], body["failed"], body["exit_code"]) == (1, 1, 1)
+    reset_repository_cache()
+    assert get_repository().get_run(body["run_id"]) is not None
