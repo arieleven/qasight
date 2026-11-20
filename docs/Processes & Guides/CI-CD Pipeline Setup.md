@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # CI Integrations
@@ -170,6 +170,7 @@ What runs on QASight itself, as opposed to the wrappers above that run it in oth
 | `dependabot.yml` (config, not a workflow) | weekly | Grouped dependency update PRs for pip, npm (`/` and `frontend/`) and GitHub Actions, committed as `chore(deps)` with the `no-changelog` label so commitlint and `changelog_required` pass; a release must be 7 days old before it is offered (`cooldown`) |
 | `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published (`publish.yml` and `docker-publish.yml` can also be run by hand for an existing tag) | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md), [Publishing Docker Images](Publishing%20Docker%20Images.md)) |
 | `scorecard.yml` | push to `main`, weekly, manual | OpenSSF Scorecard; results go to Security > Code scanning and a workflow artifact. `publish_results` is off, so nothing is published to the public Scorecard API |
+| `uploader.yml` | pull request or push to `main` touching `uploader/`, the ingest route or its smoke script; GitHub Release published; manual | `qasight-upload` (Go): gofmt, `go vet`, tests with `-race`, a build per platform, and an upload to a real `qasight-api` (`scripts/upload_binary_smoke.sh`). On a release it attaches the binaries for Linux, macOS and Windows (amd64, arm64), `qasight-upload-SHA256SUMS` and a build provenance attestation ([Upload Without Python](Upload%20Without%20Python.md)) |
 | `move-major-tag.yml` | GitHub Release published (not prereleases), manual | Force-moves the `v<major>` tag (e.g. `v1`) to the release's commit |
 
 Every third-party action is pinned to a full commit SHA with the version in a comment (`uses: actions/checkout@<sha> # v7.0.1`); Dependabot updates both. Checkouts set `persist-credentials: false` except in the two workflows that push with the job token, the PyPI build restores no cache, and the Docker release builds reuse only the layer cache that the release workflows write themselves.

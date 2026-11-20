@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `qasight-upload`: a one-file uploader for CI jobs without Python (Go, no dependencies). Download it from the release and run `qasight-upload --cycle web-unit 'reports/**/*.xml'`; it sends the same upload as `qasight ingest --server`, with the same CI metadata, exit codes and `--json` event, and retries only when that can't record a run twice. Binaries for Linux, macOS and Windows (amd64, arm64) with checksums and a build provenance attestation are attached to each release; guide: Upload Without Python
 - `qasight export -o report.pdf` takes the format from the file's extension
 - CI runs the CLI end to end the way a coding agent calls it (`scripts/cli_e2e.py`): `qasight doctor` with no config, `try`, `ingest`, `qasight mcp` over stdio, `diff` and `export` in every format
 - Closed networks: `scripts/offline/bundle.sh` packs the wheels, Docker images and GitLab template into one file for a network with no internet, and `install.sh` installs it there (and pushes the images to your registry); guide: Closed Network Install

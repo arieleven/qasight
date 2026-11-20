@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # Specs & ADRs
@@ -24,6 +24,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
 | Adoption blockers: single sign-on, one-click hosting (Render, Helm), the stability promise | [Adoption Blockers - 2026-11-12](Adoption%20Blockers%20-%202026-11-12.md) |
 | Release scorecard: the repo review tools on any repository or version, a 0-100 score per version, compared with the last one, and a release gate | [Release Scorecard - 2026-11-12](Release%20Scorecard%20-%202026-11-12.md) |
+| Go uploader: `qasight-upload`, one static binary that sends results to a team server with no Python, the same ingest request | [Go Uploader - 2026-11-20](Go%20Uploader%20-%202026-11-20.md) |
 | Closed network install: one bundle with wheels and images, registry and AI from the environment, GitLab template with your own image | [Closed Network Install - 2026-11-15](Closed%20Network%20Install%20-%202026-11-15.md) |
 | Plug and play: attach to existing CI workflows, `qasight run -- <command>`, setup from GitHub, day-one history, no-Python install, per-package monorepo cycles, Cypress | [Plug and Play - 2026-11-12](Plug%20and%20Play%20-%202026-11-12.md) |
 | Scorecard on MegaLinter: MegaLinter runs the linters for any language, scores follow SonarQube (worst security finding) and Codacy (issue density per 1,000 lines), new findings per version | [Scorecard on MegaLinter - 2026-11-12](Scorecard%20on%20MegaLinter%20-%202026-11-12.md) |
