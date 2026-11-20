@@ -7,16 +7,40 @@ produces, so the services never see rows.
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy import delete
+from sqlalchemy import select as sa_select
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
 from qasight.repository.models import TestResult
 
 _WRITE_BATCH = 500
+
+# One SQLite read of a run's rows at a time per process. The sqlite3 module gives up the
+# GIL for every row it steps, so threads reading thousands of rows at once take turns on
+# each row: eight concurrent reads of 20 runs x 5,000 rows took 156 s instead of 1.7 s
+# one after another (docs/Specs & ADRs/Stress Test - 2026-11-20.md). Postgres and MySQL
+# drivers fetch a result in one call, so they don't take it.
+_SQLITE_READ_LOCK = threading.Lock()
+_CASE_COLUMNS = (
+    "key",
+    "name",
+    "full_name",
+    "group",
+    "status",
+    "duration_ms",
+    "message",
+    "stage",
+    "framework",
+    "crash",
+    "retried",
+    "labels",
+    "links",
+)
 
 
 def _pairs(value: Any) -> list[dict[str, str]] | None:
@@ -47,20 +71,23 @@ def _row(run_id: str, key: str, case: Mapping[str, Any]) -> TestResult:
     )
 
 
-def _case(row: TestResult) -> dict[str, Any]:
+def _case(row: Any) -> dict[str, Any]:
+    """A plain row of :data:`_CASE_COLUMNS` as the case map entry callers get."""
+    (_, name, full_name, group, status, duration, message, stage, framework, crash) = row[:10]
+    retried, labels, links = row[10:13]
     return {
-        "name": row.name,
-        "full_name": row.full_name,
-        "group": row.group,
-        "status": row.status,
-        "duration_ms": row.duration_ms,
-        "message": row.message,
-        "stage": row.stage,
-        "framework": row.framework,
-        "crash": row.crash,
-        "retried": bool(row.retried),
-        "labels": list(row.labels or []),
-        "links": list(row.links or []),
+        "name": name,
+        "full_name": full_name,
+        "group": group,
+        "status": status,
+        "duration_ms": duration,
+        "message": message,
+        "stage": stage,
+        "framework": framework,
+        "crash": crash,
+        "retried": bool(retried),
+        "labels": list(labels or []),
+        "links": list(links or []),
     }
 
 
@@ -83,10 +110,22 @@ class TestResultStore:
         return len(rows)
 
     def cases(self, run_id: str) -> dict[str, dict[str, Any]]:
-        """``run_id``'s tests as a case map; ``{}`` when none are stored."""
-        stmt = select(TestResult).where(col(TestResult.run_id) == run_id[:64])
-        with Session(self._engine) as session:
-            return {row.key: _case(row) for row in session.exec(stmt)}
+        """``run_id``'s tests as a case map; ``{}`` when none are stored.
+
+        Plain rows rather than ORM objects: the flaky, failures and test history views
+        read 20 runs of rows per request, and building model objects took most of it.
+        """
+        table = TestResult.__table__  # type: ignore[attr-defined]
+        stmt = sa_select(*(table.c[name] for name in _CASE_COLUMNS)).where(
+            table.c.run_id == run_id[:64]
+        )
+        if self._engine.dialect.name == "sqlite":
+            with _SQLITE_READ_LOCK, self._engine.connect() as conn:
+                rows = conn.execute(stmt).all()
+        else:
+            with self._engine.connect() as conn:
+                rows = conn.execute(stmt).all()
+        return {row[0]: _case(row) for row in rows}
 
     def has_rows(self, run_id: str) -> bool:
         stmt = select(TestResult.key).where(col(TestResult.run_id) == run_id[:64]).limit(1)
