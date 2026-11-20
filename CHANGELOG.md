@@ -24,6 +24,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Code quality: a tool's summary says how many findings were in tests, vendored, generated code or docs and not counted, instead of "No lint issues" alone
 - Code quality: a repository checked out under a folder named `build`, `out`, `test`, `docs` or `vendor` (`/build/app` in Docker, `~/test/proj`) no longer has its Ruff findings dropped as generated or test code, which scored it 100. Findings are read relative to the scanned repository, so their fingerprints also stay the same between checkouts and `--no-new` stops flagging old findings as new
 - `qasight run` and `qasight ingest` print the run id the web UI, the API, MCP and `qasight ai summary --run-id` know, instead of the report archive's id, which none of them found
+- Team server: `POST /api/v1/ingest` checks the 100 MB total and the 200-file limit while it reads the upload, instead of after, so an upload of many files just under 20 MB each is refused before it is held in memory (one 475 MB request took the server to 590 MB)
 - `qasight doctor` checks the database from `DATABASE_URL` when there is no `qasight.yaml` (zero-config use) instead of skipping it
 - Code quality: Bandit skips folders git ignores, so a clone of another project inside the repository (the Pages demo keeps fake-api in `.demo/`) no longer counts against it
 

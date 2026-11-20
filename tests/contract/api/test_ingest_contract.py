@@ -144,6 +144,37 @@ def test_oversized_file_is_400(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "larger than" in resp.json()["error"]["message"]
 
 
+def test_upload_over_the_total_is_refused_while_reading(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Each file is under the per-file limit; the total is checked as the files are read,
+    # so the server never holds the whole upload in memory before refusing it.
+    monkeypatch.setattr("qasight_api.routes.ingest.MAX_TOTAL_BYTES", len(PASSING) + 10)
+    read: list[int] = []
+    real_read = junit_ingest.ingest_uploaded_reports
+    monkeypatch.setattr(
+        "qasight_api.routes.ingest.ingest_uploaded_reports",
+        lambda **kw: read.append(1) or real_read(**kw),
+    )
+    resp = TestClient(create_app()).post(
+        "/api/v1/ingest",
+        data={"cycle": "web"},
+        files=_files(("a.xml", PASSING), ("b.xml", PASSING), ("c.xml", PASSING)),
+    )
+    assert resp.status_code == 400
+    assert "in total" in resp.json()["error"]["message"]
+    assert read == []  # refused before anything was recorded
+
+
+def test_too_many_files_is_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("qasight_api.routes.ingest.MAX_FILES", 1)
+    resp = TestClient(create_app()).post(
+        "/api/v1/ingest",
+        data={"cycle": "web"},
+        files=_files(("a.xml", PASSING), ("b.xml", PASSING)),
+    )
+    assert resp.status_code == 400
+    assert "too many files" in resp.json()["error"]["message"]
+
+
 # --- UI served by the API ----------------------------------------------------------
 
 
