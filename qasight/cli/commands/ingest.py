@@ -68,7 +68,9 @@ def ingest(
     ci: bool = typer.Option(
         False,
         "--ci",
-        help="Emit NDJSON events on stdout instead of Rich panels (machine-readable).",
+        "--json",
+        help="Emit NDJSON events on stdout instead of Rich panels (machine-readable). "
+        "On by itself for coding agents (CLAUDECODE=1) and with QASIGHT_OUTPUT=json.",
     ),
     no_persist: bool = typer.Option(
         False,
@@ -131,6 +133,9 @@ def ingest(
     ),
 ) -> None:
     """Record test results from any runner (JUnit XML or a runner's own format) as a run of a cycle."""
+    from qasight.cli.output_mode import wants_json
+
+    ci = wants_json(ci)
     from qasight.services.run_environment import InvalidEnvironmentPair, apply_cli_pairs
 
     try:

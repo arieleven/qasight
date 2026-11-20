@@ -91,6 +91,14 @@ def _main(
     ),
 ) -> None:
     """Every test run, remembered: what's new, what's flaky and what got slower."""
+    # ``settings:`` in qasight.yaml and the QASIGHT_* names of TESTO_* variables,
+    # applied once before any command (exported variables still win).
+    try:
+        from qasight.project_settings import apply_project_settings
+
+        apply_project_settings()
+    except Exception:  # noqa: BLE001 — settings never stop a command; doctor reports them
+        pass
 
 
 def _register_commands() -> None:
@@ -129,6 +137,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import quarantine as quarantine_mod
     from qasight.cli.commands import report as report_cmd
     from qasight.cli.commands import run as run_cmd
+    from qasight.cli.commands import runs as runs_mod
     from qasight.cli.commands import scorecard as scorecard_mod
     from qasight.cli.commands import server_cmd as server_mod
     from qasight.cli.commands import split as split_mod
@@ -175,7 +184,7 @@ def _register_commands() -> None:
         doctor_mod.doctor,
         CommandSpec(
             "doctor",
-            "Check the config, the database and the test tools on PATH.",
+            "Check the project: config and cycles, database, test tools on PATH, settings.",
             "Start",
             core=True,
         ),
@@ -203,7 +212,8 @@ def _register_commands() -> None:
         diff_cli_mod.summary_reports,
         CommandSpec(
             "summary",
-            "What changed since the last run: new failures, fixes and slower tests (--cycle).",
+            "What changed in the latest run: new failures, fixes and slower tests "
+            "(--against previous, last-green, main or a run).",
             "Understand",
             core=True,
         ),
@@ -212,7 +222,8 @@ def _register_commands() -> None:
         flaky_mod.flaky,
         CommandSpec(
             "flaky",
-            "Tests whose outcome keeps flipping across a cycle's recent runs (--cycle).",
+            "Tests whose outcome keeps flipping across recent runs; --quarantine stops them "
+            "failing the build.",
             "Understand",
             core=True,
         ),
@@ -251,12 +262,13 @@ def _register_commands() -> None:
 
     # More: listed by ``qasight help --all``; each works exactly as before.
     _add(
-        diff_cli_mod.diff_reports,
+        runs_mod.app,
         CommandSpec(
-            "diff",
-            "Compare two specific archived runs (UUIDs from qasight report list).",
+            "runs",
+            "Recorded runs: list them, show one (failures first) or delete some; short ids work.",
             "More: understand",
         ),
+        group=True,
     )
     _add(
         quarantine_mod.app,
@@ -265,11 +277,6 @@ def _register_commands() -> None:
             "Quarantine tests without a config change (list, add, remove), here or on a server.",
             "More: understand",
         ),
-        group=True,
-    )
-    _add(
-        cycles_cmd.app,
-        CommandSpec("cycles", "Inspect cycles defined in the config.", "More: understand"),
         group=True,
     )
     _add(
@@ -379,14 +386,15 @@ def _register_commands() -> None:
     _add(
         watch_mod.watch,
         CommandSpec(
-            "watch", "Watch files and re-run a cycle (--cycle required).", "More: CI at scale"
+            "watch", "Watch files and re-run a cycle on every change.", "More: CI at scale"
         ),
     )
     _add(
         config_cmd.app,
         CommandSpec(
             "config",
-            "Validate or scaffold a qasight.yaml; config db sets the database.",
+            "Scaffold a qasight.yaml (config init) or set its database (config db); "
+            "`qasight doctor` validates it.",
             "More: setup and team server",
         ),
         group=True,
@@ -445,6 +453,25 @@ def _register_commands() -> None:
     )
 
     # Old names that keep working; never listed.
+    _add(
+        cycles_cmd.app,
+        CommandSpec(
+            "cycles",
+            "Inspect cycles in the config (`qasight doctor` lists them with their latest run).",
+            "More: understand",
+            alias_of="doctor",
+        ),
+        group=True,
+    )
+    _add(
+        diff_cli_mod.diff_reports,
+        CommandSpec(
+            "diff",
+            "Alias for `qasight summary CURRENT --against BASELINE`.",
+            "More: understand",
+            alias_of="summary --against",
+        ),
+    )
     _add(
         cycles_cmd.app,
         CommandSpec(

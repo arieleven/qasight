@@ -195,9 +195,8 @@ def demo(
         "  - test_redirect_after_login is a new failure in the latest run\n"
         "  - test_results_are_ranked got slower (0.2 s -> about 1.9 s)\n"
         "  - test_badge_count was fixed after run 3\n"
-        f"\nSame history from the CLI (in {root}):\n"
-        f"  TESTO_HOME={env['TESTO_HOME']} DATABASE_URL={env['DATABASE_URL']} "
-        f"qasight flaky --cycle {DEMO_CYCLE}\n"
+        f"\nSame history from the CLI (from {root} or any folder in it):\n"
+        f"  cd {root} && qasight flaky\n"
     )
     if not ui:
         return

@@ -19,6 +19,9 @@ def list_plans(
         "-c",
         help="Path to a qasight.yaml file (defaults to discovery).",
     ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Print as JSON (on by itself for coding agents)."
+    ),
 ) -> None:
     """List every cycle defined in the resolved configuration."""
     from rich.table import Table
@@ -34,6 +37,29 @@ def list_plans(
         console.print(f"[fail]config error:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
 
+    from qasight.cli.output_mode import wants_json
+
+    if wants_json(as_json):
+        import json
+
+        typer.echo(
+            json.dumps(
+                {
+                    "cycles": [
+                        {
+                            "name": c.name,
+                            "description": c.description,
+                            "stages": [
+                                {"name": st.name, "framework": st.framework} for st in c.stages
+                            ],
+                        }
+                        for c in cfg.cycles.values()
+                    ]
+                },
+                indent=2,
+            )
+        )
+        return
     table = Table(title="Cycles", show_lines=False, title_justify="left")
     table.add_column("Name", style="title")
     table.add_column("Description")

@@ -41,6 +41,12 @@ def flaky(
         help="qasight.yaml whose 'quarantine:' rules mark tests (default: auto-discover). "
         "Tests in the stored list (qasight quarantine) are marked too.",
     ),
+    quarantine: bool = typer.Option(
+        False,
+        "--quarantine",
+        help="Quarantine every flaky test listed that isn't yet: it still runs and is "
+        "reported, but its failure stops failing the build (same as `qasight quarantine add`).",
+    ),
 ) -> None:
     """List flaky tests: passed on retry, mixed results on one commit, or flips on a branch."""
     from rich.markup import escape
@@ -74,9 +80,20 @@ def flaky(
             ),
         )
     open_flaky = [t for t in report.flaky if not t.quarantined]
+    if quarantine and open_flaky:
+        added = _quarantine_all(report.cycle, open_flaky)
+        report = replace(
+            report,
+            flaky=tuple(
+                replace(t, quarantined=t.quarantined or t.name in added) for t in report.flaky
+            ),
+        )
+        open_flaky = [t for t in report.flaky if not t.quarantined]
     exit_code = int(EngineExitCode.DOMAIN_FAILURE) if (fail_on_flaky and open_flaky) else 0
 
-    if as_json:
+    from qasight.cli.output_mode import wants_json
+
+    if wants_json(as_json):
         typer.echo(json.dumps(asdict(report), indent=2))
         raise typer.Exit(code=exit_code)
 
@@ -138,11 +155,7 @@ def flaky(
             "[muted]To stop these failing the build while they're fixed, quarantine them "
             "(no config change; the UI's Quarantine button does the same):[/]"
         )
-        for t in open_flaky:
-            console.print(
-                escape(f"  qasight quarantine add --cycle {report.cycle} {json.dumps(t.name)}"),
-                highlight=False,
-            )
+        console.print(f"  qasight flaky --cycle {report.cycle} --quarantine", highlight=False)
         console.print(
             f"[muted]Or, with a qasight.yaml, add them to cycle {report.cycle!r} there:[/]"
         )
@@ -151,6 +164,40 @@ def flaky(
         )
         console.print(escape(snippet), highlight=False)
     raise typer.Exit(code=exit_code)
+
+
+def _quarantine_all(cycle: str, tests: list) -> set[str]:  # type: ignore[type-arg]
+    """Quarantine *tests* (here, or on ``$TESTO_SERVER_URL``); returns the names added."""
+    from qasight.cli.commands.quarantine import _call, _server, _who
+    from qasight.services.quarantine_store import QuarantineError, QuarantineStore, record_audit
+
+    url = _server(None)
+    user = _who()
+    reason = "flaky (qasight flaky --quarantine)"
+    added: set[str] = set()
+    for t in tests:
+        try:
+            if url:
+                _call(
+                    "PUT", url, params={}, body={"cycle": cycle, "test": t.name, "reason": reason}
+                )
+            else:
+                QuarantineStore().add(
+                    cycle=cycle, test=t.name, reason=reason, owner=None, added_by=user or None
+                )
+                record_audit(username=user or "cli", method="PUT", cycle=cycle, test=t.name)
+        except QuarantineError as exc:
+            typer.echo(f"could not quarantine {t.name}: {exc}", err=True)
+            continue
+        added.add(t.name)
+    if added:
+        typer.echo(
+            f"Quarantined {len(added)} flaky test(s) in cycle {cycle}"
+            + (f" on {url}" if url else "")
+            + "; each is released after enough clean runs.",
+            err=True,
+        )
+    return added
 
 
 def _quarantine_rules(cycle: str, config: Path | None) -> tuple[QuarantineRule, ...]:

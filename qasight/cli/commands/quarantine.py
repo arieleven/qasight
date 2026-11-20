@@ -94,7 +94,9 @@ def list_cmd(
             for e in QuarantineStore().list(cycle.strip() if cycle else None)
         ]
         after = release_after()
-    if as_json:
+    from qasight.cli.output_mode import wants_json
+
+    if wants_json(as_json):
         typer.echo(json.dumps({"items": items, "release_after": after}, indent=2))
         return
     if not items:

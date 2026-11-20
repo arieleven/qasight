@@ -22,6 +22,10 @@ os.environ.setdefault("TESTO_AI_SETTINGS_PATH", "")
 os.environ.setdefault("TESTO_ALLOWED_HOSTS", "testserver,testo.test")
 # Tests never ask PyPI for a newer version (qasight doctor, GET /api/v1/version).
 os.environ.setdefault("TESTO_NO_UPDATE_CHECK", "1")
+# Tests see the human output unless they ask for JSON, even when a coding agent
+# (CLAUDECODE=1) runs them (qasight/cli/output_mode.py).
+for _agent_var in ("CLAUDECODE", "QASIGHT_AGENT", "QASIGHT_OUTPUT", "TESTO_OUTPUT"):
+    os.environ.pop(_agent_var, None)
 
 # Project root is parent of ``tests/``; ``pythonpath = .`` in pytest.ini also applies.
 _ROOT = Path(__file__).resolve().parents[1]

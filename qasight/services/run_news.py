@@ -205,3 +205,60 @@ def render_lines(news: RunNews) -> list[str]:
         lines.append("  Nothing new since the previous run.")
     lines.append("Details: qasight summary · qasight flaky · qasight ui")
     return lines
+
+
+def case_changes(baseline: CompletedRunView, current: CompletedRunView) -> list[dict[str, Any]]:
+    """Per-test changes between two runs from the run history alone.
+
+    For runs whose report copy holds no per-test files (``run -- <command>``,
+    ``--no-report-db``), so ``summary`` still names what broke and what was fixed.
+    """
+    from qasight.history.cases import cases_for_run
+
+    before = cases_for_run(baseline)
+    now = cases_for_run(current)
+    out: list[dict[str, Any]] = []
+    for key, case in now.items():
+        old = before.get(key)
+        status = str(case.get("status") or "")
+        if old is None:
+            kind = "added"
+        else:
+            was = str(old.get("status") or "")
+            if was == status:
+                continue
+            if status in _FAILED and was not in _FAILED:
+                kind = "regression"
+            elif was in _FAILED and status == "passed":
+                kind = "fix"
+            else:
+                kind = "status_change"
+        old_ms = (old or {}).get("duration_ms")
+        new_ms = case.get("duration_ms")
+        out.append(
+            {
+                "name": str(case.get("name") or key),
+                "group": str(case.get("group") or ""),
+                "kind": kind,
+                "baseline_status": (old or {}).get("status"),
+                "current_status": status,
+                "duration_delta_ms": (
+                    int(new_ms) - int(old_ms) if new_ms is not None and old_ms is not None else None
+                ),
+            }
+        )
+    for key, case in before.items():
+        if key not in now:
+            out.append(
+                {
+                    "name": str(case.get("name") or key),
+                    "group": str(case.get("group") or ""),
+                    "kind": "removed",
+                    "baseline_status": case.get("status"),
+                    "current_status": None,
+                    "duration_delta_ms": None,
+                }
+            )
+    order = {"regression": 0, "fix": 1, "status_change": 2, "added": 3, "removed": 4}
+    out.sort(key=lambda c: (order.get(c["kind"], 9), c["name"]))
+    return out

@@ -99,5 +99,6 @@ def help_command(
         group.commands = ordered  # type: ignore[attr-defined]
     ctx = group.make_context("qasight", [], resilient_parsing=True)
     if show_all:
-        ctx.command.epilog = "Old names (try, pool, config-db, plans, version) keep working."
+        old = ", ".join(spec.name for spec in COMMANDS if spec.alias_of)
+        ctx.command.epilog = f"Old names ({old}) keep working."
     typer.echo(group.get_help(ctx), nl=False)
