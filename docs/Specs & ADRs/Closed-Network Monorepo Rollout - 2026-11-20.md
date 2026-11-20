@@ -34,4 +34,4 @@ Putting QASight into a large monorepo on a closed network in about a week: self-
 - A team joins by having its runner write JUnit; the server shows every job as a cycle from the first pipeline.
 - Jobs with their own `after_script` need one `!reference` line.
 - Images need Python 3.11+ for `qasight`; older ones use the `qasight-upload` binary, which sends globs and doesn't yet leave out earlier artifacts.
-- Not built, proposed instead: reading GitLab's pipeline test reports through its API, which would need no change in any job.
+- `qasight ingest --from-gitlab` (added the same day, after Taltal chose it): reads each pipeline's test report (`/pipelines/:id/test_report`, plus child pipelines) through GitLab's API and records each job as a cycle, dated when it ran. Jobs that already declare `artifacts: reports: junit:` need no change, and the first pass brings history from past pipelines. It records into the machine's own history (run it in the server's container), because backdating a run isn't part of the upload API.

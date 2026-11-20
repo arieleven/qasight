@@ -172,15 +172,20 @@ def recorded_run_ids(cycle: str) -> set[str]:
 
 def backdate(cycle: str, run: CiRun) -> None:
     """Date the newest run of *cycle* (the one just recorded) when *run* happened on CI."""
+    backdate_run(cycle, run.run_id, run.created_at, run.updated_at, source="github")
+
+
+def backdate_run(cycle: str, run_id: str, started: str, finished: str, *, source: str) -> None:
+    """Date the newest run of *cycle*, if it is CI run *run_id*, from *started* to *finished*."""
     from qasight.repository.db import get_repository
 
     repo = get_repository()
     rows = repo.list_runs(cycle=cycle, limit=1)
-    start, end = _when(run.created_at), _when(run.updated_at)
+    start, end = _when(started), _when(finished)
     if not rows or start is None:
         return
     record = rows[0]
-    if str((record.metadata_ or {}).get("ci_pipeline_id")) != run.run_id:
+    if str((record.metadata_ or {}).get("ci_pipeline_id")) != run_id:
         return
     record.start_time = start
     record.end_time = end or start
@@ -190,7 +195,7 @@ def backdate(cycle: str, run: CiRun) -> None:
             "started_at": start.timestamp(),
             "finished_at": (end or start).timestamp(),
             "started_at_iso": start.isoformat(),
-            "backfilled_from": "github",
+            "backfilled_from": source,
         }
     )
     record.metadata_ = meta

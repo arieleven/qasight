@@ -122,6 +122,7 @@ qasight ingest                                               # find the result f
 qasight ingest 'reports/*.xml' --cycle web-unit \
   --server https://qasight.example.com --token "$TESTO_API_TOKEN"   # team server
 qasight ingest --from-github --runs 50 --workflow ci.yml     # history from past CI runs
+qasight ingest --from-gitlab --gitlab-url https://gitlab.example.local --project group/mono --runs 200
 ```
 
 | Flag | Default | Meaning |
@@ -140,11 +141,16 @@ qasight ingest --from-github --runs 50 --workflow ci.yml     # history from past
 | `--env KEY=VALUE` | `$TESTO_ENV` | What the results were tested on, as `qasight run --env`. With `--server` it is sent with the upload |
 | `--release NAME` | `$TESTO_RELEASE` | The release the results tested, as `qasight run --release`. With `--server` it is sent with the upload |
 | `--from-github` | off | Fill the history from past GitHub Actions runs (below). Not with `--server` or file arguments (exit `2`) |
-| `--runs N` | `20` | With `--from-github`: how many recent completed runs to read |
+| `--from-gitlab` | off | Record GitLab pipelines' test reports through GitLab's API (below). Not with `--from-github`, `--server` or file arguments (exit `2`) |
+| `--gitlab-url` | `$CI_SERVER_URL` | With `--from-gitlab`: your GitLab |
+| `--project` | `$CI_PROJECT_ID` | With `--from-gitlab`: the project, `group/name` or its id |
+| `--runs N` | `20` | With `--from-github` or `--from-gitlab`: how many recent completed runs or finished pipelines to read |
 | `--workflow` | all | With `--from-github`: only this workflow (name or file name) |
-| `--branch` | all | With `--from-github`: only runs on this branch |
+| `--branch` | all | With `--from-github` or `--from-gitlab`: only runs or pipelines on this branch |
 
 **History from day one.** Flaky detection, "got slower" and the trends need runs to compare. `qasight ingest --from-github` lists the repository's recent completed workflow runs with the [GitHub CLI](https://cli.github.com) (`gh auth login` first; it handles tokens and GitHub Enterprise), downloads each run's artifacts, finds the result files in them by content and records each run as one run of the cycle, with its commit, branch and CI run id, dated when it ran. A run without artifacts or result files is skipped and counted; a run already recorded (same CI run id) is skipped, so running it again adds only what is new. Exit `2` when `gh` is missing or can't list the runs, otherwise `0`. Code: `qasight/services/github_backfill.py`.
+
+**From GitLab pipelines.** GitLab keeps the JUnit XML of every job that declares `artifacts: reports: junit:` and serves it, parsed, as the pipeline's test report. `qasight ingest --from-gitlab` reads the newest `--runs` finished pipelines (`success` or `failed`) of `--project` through GitLab's REST API, with the child pipelines each one triggered, and records them into this machine's history (`DATABASE_URL`): each job's test suite as a run of a cycle named after the job (as the GitLab include in [Closed Network Install](../Processes%20&%20Guides/Closed%20Network%20Install.md) names it), or the whole pipeline as one run of `--cycle`. Each run carries the pipeline's id, commit and branch and is dated when the pipeline ran. A pipeline already recorded for a cycle (same pipeline id, from an earlier pass or from the include) is skipped, so it can run on a schedule, for example every 15 minutes inside the team server's container (`docker compose exec -T server qasight ingest --from-gitlab ...`). The token is `$TESTO_GITLAB_TOKEN` (or `$GITLAB_TOKEN`) with `read_api`; `REQUESTS_CA_BUNDLE` takes a company CA. With `--ci`, one `gitlab_backfill_finished` event (`recorded`, `already`, `no_results`, `failed`, `cycles`). Exit `2` when GitLab can't be reached, refuses the token, or the GitLab or project isn't named; otherwise `0`. Code: `qasight/services/gitlab_backfill.py`.
 
 Files it reads, with the command that writes each one (no extra package needed except where noted):
 

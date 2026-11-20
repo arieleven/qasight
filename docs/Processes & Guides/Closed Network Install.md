@@ -109,6 +109,18 @@ include:
 - **`qasight` in the image.** It needs Python 3.11 or newer: bake it in from the bundle's wheels (the Dockerfile above), or set `QASIGHT_INSTALL: auto` with `PIP_INDEX_URL` pointing at your mirror. For images without Python 3.11, set `QASIGHT_UPLOAD` to the [`qasight-upload`](Upload%20Without%20Python.md) binary (one file, no Python; for example mounted read-only into every job by the runner's `volumes`); it sends the globs in `QASIGHT_RESULTS`.
 - **Jobs with their own `after_script`** replace the default; add `- !reference [.qasight-record, after_script]` as their first line.
 
+### A monorepo without touching a job: read GitLab's test reports
+
+Jobs that already declare `artifacts: reports: junit:` (for GitLab's own merge request test widget) need no change at all. A command on the team server reads each pipeline's test report through GitLab's API and records every job as a cycle, dated when it ran; its first pass fills the history from past pipelines:
+
+```bash
+# on the team server, every 15 minutes (cron or a systemd timer)
+docker compose exec -T -e TESTO_GITLAB_TOKEN=glpat-... server \
+  qasight ingest --from-gitlab --gitlab-url https://gitlab.example.local --project group/mono --runs 100
+```
+
+The token needs `read_api` on the project. Pipelines already recorded, by an earlier pass or by the include above, are skipped, so the two can run side by side ([`qasight ingest --from-gitlab`](../CLI%20Commands/Command%20Reference.md#qasight-ingest)).
+
 [`qasight init --scan --ci gitlab`](../CLI%20Commands/Command%20Reference.md#qasight-init) is the other way: it writes a job per runner per folder (pytest, Behave, BehaveX and the rest), for a repository that has no CI yet.
 
 The merge request comment goes to your GitLab's own API (`CI_API_V4_URL`, set by GitLab), never gitlab.com; add a `TESTO_GITLAB_TOKEN` CI/CD variable with `api` scope.
