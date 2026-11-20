@@ -1,4 +1,4 @@
-"""``qasight try`` — the pull request comment your latest results would get, recording nothing.
+"""``qasight ci preview`` (alias ``qasight try``) — the pull request comment your latest results would get, recording nothing.
 
 The command-line partner of the ``/try`` page: it takes the result files a
 test run left (found in the project like ``qasight ingest`` finds them, given as
@@ -106,7 +106,7 @@ def _run_project_tests(project: Path) -> None:
     if not facts.stacks:
         raise typer.BadParameter(
             "no test runner found to run (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, "
-            "Gradle, RSpec, PHPUnit); run your tests yourself, then `qasight try`",
+            "Gradle, RSpec, PHPUnit); run your tests yourself, then `qasight ci preview`",
             param_hint="--run",
         )
     for stack in facts.stacks:

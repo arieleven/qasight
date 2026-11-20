@@ -11,7 +11,17 @@ pip install -e ".[dev]"
 pre-commit install   # one-time; runs ruff + changelog-format checks before each commit
 ```
 
-See [README Quickstart](README.md#quickstart) for the full local infrastructure setup (optional Postgres, frontend).
+Optional local infrastructure:
+
+```bash
+docker compose up -d postgres        # Postgres instead of the default SQLite (DATABASE_URL)
+qasight-api                          # FastAPI on http://127.0.0.1:8000
+npm --prefix frontend install
+npm --prefix frontend run dev        # React on http://localhost:5173
+pip install -e ".[docs]" && mkdocs serve   # the docs site, from docs/
+```
+
+The repository's `qasight.yaml` ships sample cycles: `qasight run --cycle sample-pytests`, then `qasight report --cycle sample-pytests` for the Allure report.
 
 Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Found a security problem? Report it privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
 

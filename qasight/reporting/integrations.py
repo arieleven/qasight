@@ -191,11 +191,28 @@ def test_prometheus_pushgateway(*, pushgateway_url: str | None = None) -> tuple[
     return False, "Pushgateway: could not reach endpoint."
 
 
+METRICS_PUSH_DEPRECATION = (
+    "Pushing run metrics to InfluxDB or a Prometheus Pushgateway is deprecated and goes away "
+    "in 2.0. Send runs to OpenTelemetry instead (an otel reporter, or qasight otel), "
+    "which reaches Prometheus, Grafana, Datadog and InfluxDB through a collector."
+)
+_deprecation_warned = False
+
+
+def _warn_deprecated_once() -> None:
+    global _deprecation_warned
+    if _deprecation_warned:
+        return
+    _deprecation_warned = True
+    logger.warning(METRICS_PUSH_DEPRECATION)
+
+
 def push_run_metrics_if_configured(
     *, results_root: Path, run_id: str | None
 ) -> list[tuple[str, bool, str]]:
     """Push a finished run's test KPIs to every metrics target configured in the environment.
 
+    Deprecated (removed in 2.0; use OpenTelemetry): logs a warning once per process.
     Targets are opt-in by configuration: InfluxDB when all ``INFLUXDB_*`` settings are
     set, Prometheus when ``PROMETHEUS_PUSHGATEWAY_URL`` is set. KPIs come from every
     Allure ``*-result.json`` under *results_root* (a cycle's artifacts dir).
@@ -205,6 +222,7 @@ def push_run_metrics_if_configured(
     status = integration_status_from_env()
     if not status["influx_configured"] and not status["prometheus_configured"]:
         return []
+    _warn_deprecated_once()
     out: list[tuple[str, bool, str]] = []
     try:
         metrics = parse_allure_results_dir(results_root)

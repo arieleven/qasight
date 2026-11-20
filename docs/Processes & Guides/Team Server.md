@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # Team Server
@@ -214,6 +214,8 @@ GitHub Actions, with the Action (it keeps the job summary and pull request comme
           TESTO_SERVER_URL: https://qasight.example.com
           TESTO_API_TOKEN: ${{ secrets.TESTO_API_TOKEN }}
 ```
+
+No Python on the CI image? [`qasight-upload`](Upload%20Without%20Python.md) is one file to download that sends the same upload.
 
 The upload carries the job's CI provenance (provider, pipeline, job, commit, branch and repository for GitHub Actions, GitLab CI, Buildkite, CircleCI, Jenkins and Azure Pipelines). The step exits `1` when a test failed, like the test step itself, and `3` when the server can't be reached or refuses the token. Use the same `--cycle` name for the same suite every time; that name is what Compare, trends and `qasight flaky` group by.
 

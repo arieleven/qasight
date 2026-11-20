@@ -5,7 +5,6 @@ import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from ".
 import { Card, HealthBar, Icons, PageHeader, RunLabel, ShowMoreButton, Spinner, StatusPill, useShowMore } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 import { formatDuration, formatPercent } from "../../lib/format";
-import { DeliveryCard } from "./DeliveryCard";
 import { LiveRunsCard } from "./LiveRunsCard";
 import { NeedsAttention } from "./NeedsAttention";
 import { Gauge, IrisArt, RunBars, SLICE_COLOR, type ResultSlice, type RunTone } from "./DashboardVisuals";
@@ -54,7 +53,7 @@ export function DashboardPage() {
     <section className="space-y-5">
       <PageHeader
         title="Overview"
-        subtitle="What needs you first, how the latest run did, and the two scores: your tests and your code."
+        subtitle="What's new, what's flaky and what got slower since your last runs."
       />
       {data.data_freshness?.degraded ? (
         <p role="status" className="rounded-md border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-sm text-warn-300">
@@ -65,20 +64,19 @@ export function DashboardPage() {
       <LiveRunsCard />
 
       <div className="grid gap-5 lg:grid-cols-12">
-        <LatestRunHero data={data} latest={latestRun} />
-        <div className="flex flex-col gap-5 lg:col-span-5">
-          <ProjectHealthKpi />
-          <CodeQualityKpi />
+        <div className="min-w-0 lg:col-span-5">
+          <NeedsAttention />
         </div>
+        <LatestRunHero data={data} latest={latestRun} />
       </div>
 
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-        <div className="flex min-w-0 flex-col gap-5 lg:w-5/12">
-          <NeedsAttention />
-          <DeliveryCard />
-        </div>
         <div className="min-w-0 flex-1">
           <RecentRunsCard runs={recentRuns} reportLinks={data.report_links} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-5 lg:w-5/12">
+          <ProjectHealthKpi />
+          <CodeQualityKpi />
         </div>
       </div>
     </section>
@@ -275,32 +273,22 @@ function CodeQualityKpi() {
   const query = useQuery({ queryKey: ["scorecard", "", ""], queryFn: () => apiClient.getScorecard() });
   const card = query.data;
   const scored = card?.status === "available" && card.score != null;
-  const tone = scored ? (GRADE_TONE[card.grade ?? ""] ?? "neutral") : "neutral";
+  // Code quality is optional: until a scorecard has run, the Overview leaves it out.
+  if (!scored) return null;
+  const tone = GRADE_TONE[card.grade ?? ""] ?? "neutral";
   return (
     <Link
       to="/code-quality"
       className={`glass-card group flex items-center justify-between gap-4 p-5 ${CARD_HOVER}`}
       data-testid="code-quality-kpi"
-      aria-label={
-        scored
-          ? `Code quality of ${card.version}: grade ${card.grade}, ${card.score} out of 100. Open code quality`
-          : "Code quality: not scanned yet. Open code quality"
-      }
+      aria-label={`Code quality of ${card.version}: grade ${card.grade}, ${card.score} out of 100. Open code quality`}
     >
       <div className="min-w-0">
         <strong className="block text-base font-bold text-white">Code quality</strong>
-        <span className="block text-sm text-ink-300">
-          {scored ? `Your code in ${card.version}: linters, security, API and load tools` : "Your code, graded per release. Not scanned yet"}
-        </span>
+        <span className="block text-sm text-ink-300">Your code in {card.version}: linters, security, API and load tools</span>
       </div>
-      <span className={`shrink-0 text-right text-3xl font-bold tabular-nums ${scored ? TONE_TEXT[tone] : "text-ink-400"}`}>
-        {scored ? (
-          <>
-            {card.grade} <span className="text-white">{card.score}</span>
-          </>
-        ) : (
-          "n/a"
-        )}
+      <span className={`shrink-0 text-right text-3xl font-bold tabular-nums ${TONE_TEXT[tone]}`}>
+        {card.grade} <span className="text-white">{card.score}</span>
       </span>
     </Link>
   );

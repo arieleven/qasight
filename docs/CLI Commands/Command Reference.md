@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-19
+updated: 2026-11-20
 ---
 
 # Command Reference
@@ -12,10 +12,14 @@ Entry point: **`qasight`** (`pyproject.toml` → `qasight.cli.app:main`).
 Parent index: [Index](../Index.md). Architecture: [Architecture Overview](../Architecture/Architecture%20Overview.md). Run lifecycle: [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
 ```bash
-qasight --help
+qasight --help        # the ten core commands
+qasight help --all    # every command, grouped
+qasight help --json   # every command, subcommand, alias and exit code, for coding agents
 ```
 
-Help is grouped into panels: **Run and report**, **Config**, **Diagnostics**, **Maintenance**, **About**.
+`qasight --help` shows only the core commands, in four panels: **Start** (`init`, `demo`, `doctor`), **Record** (`run`, `ingest`), **Understand** (`summary`, `flaky`, `ui`) and **Share** (`ci`, `mcp`). Every other command works the same and is listed by [`qasight help --all`](#qasight-help) under **More:** panels (understand, release gate, AI, reports and alerts, CI at scale, setup and team server, maintenance). Why: [Focus Review](../Specs%20&%20ADRs/Focus%20Review%20-%202026-11-20.md).
+
+Old names that keep working and are not listed: `qasight try` (now [`qasight ci preview`](#qasight-ci-preview)), `qasight pool` (now [`qasight lease pools`](#qasight-lease-pools)), `qasight config-db` (now `qasight config db`), `qasight plans` (`qasight cycles`) and `qasight version` (`qasight --version`).
 
 Extras: `pip install qasight` is the CLI with pytest, Playwright, `command` and `junit` stages. Add `[bdd]` for `behave` and `behavex` stages (Behave, BehaveX and Allure-Behave), `[api]` for the REST API and UI backend, `[db]` for Postgres or MySQL, `[metrics]` for InfluxDB, `[otel]` for [OpenTelemetry export](#qasight-otel), `[mcp]` for the [MCP server](#qasight-mcp). A `behave` stage without the extra fails with exit `3` and `executable not found: behave (... pip install 'qasight[bdd]')`.
 
@@ -264,7 +268,7 @@ qasight config db --url sqlite:////tmp/testo-reports.db
 ok — version=1 cycles=6 reporters=4 defaults_target=.
 ```
 
-**Deprecated:** `qasight config-db` → use `qasight config db`.
+`qasight config-db` still works as an alias of `qasight config db`.
 
 ### Editor autocomplete
 
@@ -436,16 +440,30 @@ The runs show a flaky test (`test_apply_coupon`), a new failure in the latest ru
 
 ---
 
-## `qasight try`
+## `qasight help`
+
+| Command | Prints |
+|---------|--------|
+| `qasight help` | The same as `qasight --help`: the core commands |
+| `qasight help --all` | Every command, grouped into the core panels and the **More:** panels; aliases left out |
+| `qasight help --json` | `name`, `version`, `summary`, `groups`, `commands` (each with `name`, `help`, `group`, `core` and its `subcommands`), `aliases` (old name → new), `exit_codes` and `machine_output`. Meant for coding agents that pick a command |
+
+Exit `0`.
+
+---
+
+## `qasight ci preview`
+
+Alias: `qasight try` (the name before 1.8; it keeps working).
 
 See the pull request comment your latest results would get, before you add anything to CI. It records the result files as a run in a throwaway copy of your history and prints what [`qasight report markdown`](#subcommands) (the job summary and the GitHub Action's comment) says about them. The command-line partner of the `/try` page.
 
 ```bash
-pytest --junitxml=test-results/junit.xml; qasight try    # the files your last run left here
-qasight try reports/junit.xml --cycle api                # these files, compared with cycle `api`
-qasight try --from-github                                # the latest GitHub Actions run's artifacts
-qasight try --from-github --run-id 123456 --out comment.md
-qasight try --run                                        # run the tests first, the way CI would
+pytest --junitxml=test-results/junit.xml; qasight ci preview   # the files your last run left here
+qasight ci preview reports/junit.xml --cycle api                # these files, compared with cycle `api`
+qasight ci preview --from-github                                # the latest GitHub Actions run's artifacts
+qasight ci preview --from-github --run-id 123456 --out comment.md
+qasight ci preview --run                                        # run the tests first, the way CI would
 ```
 
 | Flag | Default | Meaning |
@@ -946,17 +964,19 @@ Exit codes: `2` for an unknown pool, a bad config or no command after `--`; `3` 
 
 ---
 
-## `qasight pool`
+## `qasight lease pools`
+
+Alias: `qasight pool` (the name before 1.8; it keeps working, and every example below works with either).
 
 Compare resource pools with the keys that really exist, and add or remove keys with the pool's own `provider` commands. QASight never creates or deletes a key on its own: `add`, `remove` and `sweep` are dry runs unless `--apply`. Guide: [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#compare-the-pool-with-what-really-exists).
 
 | Command | Effect |
 |---------|--------|
-| `qasight pool status [POOL] [--check] [--json]` | Read-only. For each pool: which keys `provider.list` shows (`yes`, `missing`, or `?` without a list command), which listed keys aren't in the pool, and each key's lease state. `--check` runs `on_check` on every free key that exists |
-| `qasight pool add POOL [KEY...] [-n N] [--apply] [--yes]` | Make keys with `provider.create`: the names given, or `N` names `<name_prefix><n>`. Stops at `max_items`. Doesn't edit your config |
-| `qasight pool remove POOL KEY... [--apply] [--yes]` | Remove keys with `provider.destroy`. Skips keys in `items`, held keys, names without `name_prefix` and keys `provider.list` doesn't show |
-| `qasight pool sweep POOL [--apply] [--yes]` | Remove leftovers: keys `provider.list` shows with `name_prefix` that aren't in the pool or held, 5 at a time |
-| `qasight pool log [POOL] [--limit 20] [--json]` | Every `create`/`destroy` run with `--apply`: when, which key, who and from where, and how it went |
+| `qasight lease pools status [POOL] [--check] [--json]` | Read-only. For each pool: which keys `provider.list` shows (`yes`, `missing`, or `?` without a list command), which listed keys aren't in the pool, and each key's lease state. `--check` runs `on_check` on every free key that exists |
+| `qasight lease pools add POOL [KEY...] [-n N] [--apply] [--yes]` | Make keys with `provider.create`: the names given, or `N` names `<name_prefix><n>`. Stops at `max_items`. Doesn't edit your config |
+| `qasight lease pools remove POOL KEY... [--apply] [--yes]` | Remove keys with `provider.destroy`. Skips keys in `items`, held keys, names without `name_prefix` and keys `provider.list` doesn't show |
+| `qasight lease pools sweep POOL [--apply] [--yes]` | Remove leftovers: keys `provider.list` shows with `name_prefix` that aren't in the pool or held, 5 at a time |
+| `qasight lease pools log [POOL] [--limit 20] [--json]` | Every `create`/`destroy` run with `--apply`: when, which key, who and from where, and how it went |
 
 `add`, `remove` and `sweep` print the commands and run nothing without `--apply`; with it they ask first unless `--yes`. They need the verb under `provider.allow`, take at most 5 keys per command, and are refused when `TESTO_PROVIDER_ACTIONS=0`.
 
@@ -1049,6 +1069,8 @@ Only columns today's tables have are written, so an older backup restores into a
 ---
 
 ## `qasight version`
+
+Not listed in `qasight --help`; `qasight --version` is the same.
 
 ```bash
 qasight version
