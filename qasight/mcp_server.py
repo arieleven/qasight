@@ -343,12 +343,30 @@ class HistoryTools:
         except DeltaComparisonError as exc:
             raise ToolInputError(str(exc)) from exc
         with tempfile.TemporaryDirectory(prefix="testo-mcp-diff-") as td:
-            changes = diff_run_snapshots(baseline=baseline, current=current, tmp=Path(td))
+            snapshot_changes = diff_run_snapshots(baseline=baseline, current=current, tmp=Path(td))
         order = {"regression": 0, "fix": 1, "status_change": 2, "added": 3, "removed": 4}
-        changes.sort(key=lambda c: (order.get(c.kind, 9), c.name))
+        snapshot_changes.sort(key=lambda c: (order.get(c.kind, 9), c.name))
+        changes = [
+            {
+                "name": c.name,
+                "group": c.group,
+                "kind": c.kind,
+                "baseline_status": c.baseline_status,
+                "current_status": c.current_status,
+                "duration_delta_ms": c.duration_delta_ms,
+            }
+            for c in snapshot_changes
+        ]
+        if not changes:
+            # No per-test report files kept (``run -- <command>``, ``--no-report-db``):
+            # the run history's own per-test rows still say what changed.
+            from qasight.services.run_news import case_changes
+
+            changes = case_changes(baseline, current)
         counts: dict[str, int] = {}
         for c in changes:
-            counts[c.kind] = counts.get(c.kind, 0) + 1
+            kind = str(c["kind"])
+            counts[kind] = counts.get(kind, 0) + 1
         return {
             "baseline": _run_summary(baseline),
             "current": _run_summary(current),
@@ -364,17 +382,7 @@ class HistoryTools:
                 for m in delta.metrics
             ],
             "test_changes": counts,
-            "changes": [
-                {
-                    "name": c.name,
-                    "group": c.group,
-                    "kind": c.kind,
-                    "baseline_status": c.baseline_status,
-                    "current_status": c.current_status,
-                    "duration_delta_ms": c.duration_delta_ms,
-                }
-                for c in changes[:MAX_ITEMS]
-            ],
+            "changes": changes[:MAX_ITEMS],
             "truncated": len(changes) > MAX_ITEMS,
         }
 

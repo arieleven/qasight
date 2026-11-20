@@ -62,7 +62,7 @@ function stubOverviewFetch(payload: Record<string, unknown>, attention?: Record<
         return Promise.resolve({ ok: true, json: async () => payload });
       }
       if (url.includes("/api/v1/project-health")) {
-        return Promise.resolve({ ok: true, json: async () => ({ score: 84, grade: "B", cycles: 1, runs_considered: 3, tests: 10, signals: [], by_cycle: [], findings: [] }) });
+        return Promise.resolve({ ok: true, json: async () => ({ score: 84, grade: "B", cycles: 1, runs_considered: 3, tests: 10, signals: [{ key: "passing", name: "Passing tests", weight: 40, score: 90, value: "9 of 10 passed", how: "Share of tests passing" }], by_cycle: [], findings: [] }) });
       }
       if (url.includes("/api/v1/scorecard")) {
         return Promise.resolve({ ok: true, json: async () => ({ status: "available", project: "qasight", version: "1.6.0", grade: "B", score: 87 }) });
@@ -100,8 +100,15 @@ describe("DashboardPage", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument());
     // Two scores, each named for what it measures: the Test health page's, and the code's grade.
-    const health = await screen.findByRole("link", { name: "Test health: 84 out of 100, grade B. Open test health" });
-    expect(health).toHaveAttribute("href", "/test-health");
+    // The Test health score opens in place with what drives it, and links to its full page.
+    const health = await screen.findByRole("button", { name: "Test health: 84 out of 100, grade B. Show what drives it" });
+    expect(health).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(health);
+    const breakdown = await screen.findByTestId("health-breakdown");
+    await waitFor(() => expect(breakdown).toHaveTextContent("Passing tests"));
+    expect(breakdown).toHaveTextContent("Nothing to fix");
+    expect(within(breakdown).getByRole("link", { name: "Full page with the AI review" })).toHaveAttribute("href", "/test-health");
+    expect(health).toHaveAttribute("aria-expanded", "true");
     const code = await screen.findByRole("link", { name: "Code quality of 1.6.0: grade B, 87 out of 100. Open code quality" });
     expect(code).toHaveAttribute("href", "/code-quality");
     expect(screen.getByTestId("failed-trend")).toHaveTextContent("Better than last run");

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { ResourcesPage } from "./ResourcesPage";
@@ -35,9 +36,11 @@ function renderPage(body: unknown, actions: unknown[] = []) {
   });
   vi.stubGlobal("fetch", fetchMock);
   render(
+    <MemoryRouter>
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ResourcesPage />
     </QueryClientProvider>
+    </MemoryRouter>
   );
   return fetchMock;
 }

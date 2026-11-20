@@ -24,7 +24,11 @@ def _config_candidates(cwd: Path) -> list[Path]:
 
 def discover_config_path(*, cwd: Path | None = None) -> Path | None:
     """First existing config file among YAML / pyproject (same order as the loader)."""
-    base = (cwd or Path.cwd()).expanduser().resolve()
+    if cwd is None:
+        from qasight.project_root import find_project_root
+
+        cwd = find_project_root()
+    base = cwd.expanduser().resolve()
     for p in _config_candidates(base):
         if p.is_file():
             return p

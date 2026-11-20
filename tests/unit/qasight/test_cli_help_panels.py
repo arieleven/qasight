@@ -60,6 +60,10 @@ def test_help_json_describes_every_command_for_agents() -> None:
     names = {c["name"] for c in data["commands"]}
     assert set(CORE) <= names and {"scorecard", "lease", "export"} <= names
     assert data["aliases"] == {
+        "cycles": "doctor",
+        "diff": "summary --against",
+        "export-site": "export site",
+        "badge": "export badge",
         "plans": "cycles",
         "try": "ci preview",
         "pool": "lease pools",

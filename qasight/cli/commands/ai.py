@@ -86,23 +86,57 @@ def setup(
 
 
 @app.command("status")
-def status() -> None:
-    """Show the AI provider in use, and where its settings come from."""
-    from qasight.services.ai.cli_settings import settings_from_env, settings_store
+def status(
+    as_json: bool = typer.Option(
+        False, "--json", help="Print as JSON (on by itself for coding agents)."
+    ),
+) -> None:
+    """Show the AI provider in use, where its settings come from, and what this machine has."""
+    import os
+
+    from qasight.cli.output_mode import agent_detected, wants_json
+    from qasight.services.ai.cli_settings import detect_settings, settings_from_env, settings_store
 
     source = "TESTO_AI_PROVIDER" if settings_from_env() else "the AI settings file"
     settings = settings_store().get()
-    if not settings.enabled:
-        typer.echo("AI summaries are off. Turn them on with: qasight ai setup")
+    found = detect_settings()
+    key_var = ""
+    if settings.enabled and settings.provider != "claude_code":
+        key_var = settings.to_provider_config().resolved_api_key_env_var()
+    if wants_json(as_json):
+        import json
+
+        typer.echo(
+            json.dumps(
+                {
+                    "enabled": settings.enabled,
+                    "provider": settings.provider if settings.enabled else None,
+                    "model": settings.model if settings.enabled else None,
+                    "source": source if settings.enabled else None,
+                    "share_test_source": settings.share_test_source,
+                    "key_env": key_var or None,
+                    "key_set": bool(key_var and os.environ.get(key_var)),
+                    "detected": (
+                        {"provider": found.settings.provider, "why": found.why} if found else None
+                    ),
+                    "agent": agent_detected(),
+                },
+                indent=2,
+            )
+        )
         return
-    key = settings.to_provider_config()
-    key_var = key.resolved_api_key_env_var() if settings.provider != "claude_code" else ""
+    if not settings.enabled:
+        line = "AI summaries are off."
+        if found is not None:
+            line += f" This machine has {found.why}: turn them on with `qasight ai setup`."
+        else:
+            line += " Turn them on with: qasight ai setup"
+        typer.echo(line)
+        return
     typer.echo(f"AI summaries on: {settings.provider} {settings.model} (from {source})")
     shared = "on (failing tests' excerpts)" if settings.share_test_source else "off"
     typer.echo(f"Test source: {shared}")
     if key_var:
-        import os
-
         present = "set" if os.environ.get(key_var) else "NOT set"
         typer.echo(f"Key: ${key_var} ({present})")
 

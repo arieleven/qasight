@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-05
+updated: 2026-11-20
 ---
 
 # Troubleshooting and Error Codes
@@ -141,9 +141,12 @@ When the executor sets an error string (timeout, missing binary):
   "exit_code":1,
   "duration_s":12.5,
   "stages":[...],
-  "error":null
+  "error":null,
+  "news":{"run_id":"...","baseline_run_id":"...","new_failures":[...],"known_failures":[...],"fixed":[...],"newly_flaky":[...],"slower":[...]}
 }
 ```
+
+`news` is the what's-new block a human run prints (`qasight/services/run_news.py`): `null` when nothing was recorded or `TESTO_RUN_NEWS=0`. It rides on `plan_finished` so that event stays last.
 
 ### `plan_aborted` (engine `fail_fast`)
 

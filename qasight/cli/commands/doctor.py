@@ -47,6 +47,25 @@ def _check_allure3() -> tuple[str, str]:
         return "[warn]WARN[/]", str(exc)
 
 
+class _Checks:
+    """The doctor's rows, printed as a table or as JSON (``--json``)."""
+
+    def __init__(self) -> None:
+        self.rows: list[tuple[str, str, str]] = []
+
+    def add_row(self, check: str, status: str, detail: str) -> None:
+        self.rows.append((check, status, detail))
+
+    @staticmethod
+    def word(status: str) -> str:
+        import re
+
+        return re.sub(r"\[/?[a-z ]*\]", "", status).strip()
+
+    def as_dicts(self) -> list[dict[str, str]]:
+        return [{"check": c, "status": self.word(s), "detail": d} for c, s, d in self.rows]
+
+
 def doctor(
     config: Path | None = typer.Option(
         None,
@@ -54,19 +73,26 @@ def doctor(
         "-c",
         help="Path to qasight.yaml (defaults to discovery).",
     ),
+    strict: bool = typer.Option(
+        False, "--strict", help="Fail (exit 2) when qasight.yaml has keys nothing reads."
+    ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Print the checks as JSON (on by itself for coding agents)."
+    ),
 ) -> None:
-    """Validate config load, optional DB reachability, and common CLIs on PATH."""
-    from rich.table import Table
-
+    """Check the project folder, the config (and its cycles), the database, the test tools
+    on PATH and the settings in effect. Absorbs ``config validate`` and ``cycles list``."""
+    from qasight.cli.output_mode import wants_json
     from qasight.cli.ui.console import default_console
     from qasight.config.errors import ConfigDiscoveryError, ConfigError
     from qasight.config.loader import discover_and_load
+    from qasight.project_root import find_project_root
 
+    machine = wants_json(as_json)
     console = default_console()
-    table = Table(title="Doctor", show_lines=False)
-    table.add_column("Check", style="title")
-    table.add_column("Status", style="bold")
-    table.add_column("Detail", overflow="fold")
+    table = _Checks()
+    project = find_project_root()
+    table.add_row("Project folder", "[ok]INFO[/]", str(project))
 
     hard_fail = False
     db_url: str | None = None
@@ -93,6 +119,13 @@ def doctor(
         table.add_row("Config load", "[fail]FAIL[/]", str(exc))
 
     if cfg is not None:
+        for message in cfg.warnings:
+            if strict:
+                hard_fail = True
+            table.add_row(
+                "Config key", "[fail]FAIL[/]" if strict else "[warn]WARN[/]", str(message)
+            )
+        _cycle_rows(table, cfg)
         used_fw: set[str] = set()
         for plan in cfg.cycles.values():
             for st in plan.stages:
@@ -138,21 +171,30 @@ def doctor(
             f"Java `allure` at {legacy_java} — QASight uses Allure Report 3 (Node.js) instead",
         )
 
-    if cfg is not None:
-        import os
+    # The database every command uses: DATABASE_URL, database.url, else the default
+    # SQLite file in the project folder (found upward from here).
+    import os
 
-        from qasight.config.database_section import database_url_from_discovered_config
+    from qasight.config.database_section import database_url_from_discovered_config
+    from qasight.repository.db_config import resolve_database_url
 
-        anchor = cfg.source_path.parent.expanduser().resolve() if cfg.source_path else Path.cwd()
-        db_url = (
-            os.environ.get("DATABASE_URL") or ""
-        ).strip() or database_url_from_discovered_config(cwd=anchor)
-        db_url = db_url or None
-    else:
-        # No config (zero-config `qasight ingest` / `qasight ui`): DATABASE_URL still applies.
-        import os
-
-        db_url = (os.environ.get("DATABASE_URL") or "").strip() or None
+    db_url = resolve_database_url()
+    explicit = bool((os.environ.get("DATABASE_URL") or "").strip()) or bool(
+        database_url_from_discovered_config()
+    )
+    if not explicit and db_url.startswith("sqlite:///"):
+        db_file = Path(db_url[len("sqlite:///") :])
+        if not db_file.is_absolute():
+            db_file = (Path.cwd() / db_file).resolve()
+        if not db_file.exists():
+            table.add_row(
+                "Database",
+                "[ok]INFO[/]",
+                f"no runs recorded yet; the history will be kept in {db_file}",
+            )
+            db_url = None
+        else:
+            table.add_row("History file", "[ok]INFO[/]", str(db_file))
 
     if db_url:
         try:
@@ -175,8 +217,6 @@ def doctor(
                 logger.debug("database probe failed", exc_info=True)
                 hard_fail = True
                 table.add_row("Database", "[fail]FAIL[/]", str(exc))
-    else:
-        table.add_row("Database", "[dim]SKIP[/]", "no database.url / DATABASE_URL")
 
     _storage_rows(table, with_database=bool(db_url))
 
@@ -198,11 +238,65 @@ def doctor(
             detail += " (update check off: CI or TESTO_NO_UPDATE_CHECK)"
         table.add_row("qasight", "[ok]PASS[/]", detail)
 
-    console.print(table)
+    _settings_rows(table)
+
+    if machine:
+        import json
+
+        typer.echo(
+            json.dumps(
+                {"ok": not hard_fail, "project": str(project), "checks": table.as_dicts()},
+                indent=2,
+            )
+        )
+        if hard_fail:
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+        return
+    from rich.table import Table
+
+    rendered = Table(title="Doctor", show_lines=False)
+    rendered.add_column("Check", style="title")
+    rendered.add_column("Status", style="bold")
+    rendered.add_column("Detail", overflow="fold")
+    for row in table.rows:
+        rendered.add_row(*row)
+    console.print(rendered)
     if hard_fail:
         console.print("[fail]One or more required checks failed.[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     console.print("[ok]Doctor checks passed (optional warnings may remain).[/]")
+
+
+def _cycle_rows(table: _Checks, cfg: Any) -> None:
+    """One row per cycle: its stages and its latest recorded run (what `cycles list` showed)."""
+    try:
+        from qasight.history.read_model import latest_run_per_cycle
+
+        latest = latest_run_per_cycle()
+    except Exception:  # noqa: BLE001 — no database yet
+        latest = {}
+    for name, plan in sorted(cfg.cycles.items()):
+        runners = sorted({str(st.framework) for st in plan.stages})
+        detail = f"{len(plan.stages)} stage(s) ({', '.join(runners)})"
+        run = latest.get(name)
+        if run is not None:
+            outcome = "passed" if run.returncode == 0 else "failed"
+            detail += f"; latest run {run.run_id[:8]} {outcome}"
+        else:
+            detail += "; no runs yet"
+        table.add_row(f"Cycle {name}", "[ok]INFO[/]", detail)
+
+
+def _settings_rows(table: _Checks) -> None:
+    """Settings that aren't at their default, and where each came from."""
+    from qasight.project_settings import effective_settings
+
+    for item in effective_settings():
+        if item.source == "default":
+            continue
+        table.add_row(
+            f"Setting {item.name}", "[ok]INFO[/]", f"{item.value!r} from {item.source} ({item.env})"
+        )
 
 
 def _storage_rows(table: Any, *, with_database: bool) -> None:

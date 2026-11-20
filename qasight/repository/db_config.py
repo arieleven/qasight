@@ -39,12 +39,14 @@ def resolve_database_url() -> str:
 
     1. ``DATABASE_URL`` environment variable (recommended single source of truth).
     2. ``database.url`` from the discovered qasight config (``qasight.yaml`` /
-       ``qasight.yml`` / ``[tool.qasight]`` in ``pyproject.toml`` under the current
-       working directory), when set.
+       ``qasight.yml`` / ``[tool.qasight]`` in ``pyproject.toml`` in the project
+       folder, found upward from the working directory), when set.
     3. Legacy Postgres: if ``POSTGRES_USER``, ``POSTGRES_PASSWORD``, and ``POSTGRES_DB`` are all
        non-empty, build ``postgresql+psycopg://...`` using ``POSTGRES_HOST`` / ``POSTGRES_PORT``
        (with docker-aware host default when host is unset).
-    4. Default file-backed SQLite at ``sqlite:///./testo_history.db`` for sandbox / zero-config runs.
+    4. Default file-backed SQLite: ``testo_history.db`` in the project folder (the
+       nearest folder at or above the working directory with QASight's files, else
+       the working directory itself).
     """
     from pathlib import Path
 
@@ -54,7 +56,7 @@ def resolve_database_url() -> str:
     if explicit:
         return normalize_database_url(explicit)
 
-    file_url = database_url_from_discovered_config(cwd=Path.cwd())
+    file_url = database_url_from_discovered_config()
     if file_url:
         return file_url.strip()
 
@@ -66,7 +68,12 @@ def resolve_database_url() -> str:
         port = (os.getenv("POSTGRES_PORT") or "5432").strip()
         return f"postgresql+psycopg://{user}:{pwd}@{host}:{port}/{db}"
 
-    return _DEFAULT_SQLITE_URL
+    from qasight.project_root import HISTORY_DB_NAME, find_project_root
+
+    root = find_project_root()
+    if root == Path.cwd().resolve():
+        return _DEFAULT_SQLITE_URL
+    return f"sqlite:///{(root / HISTORY_DB_NAME).as_posix()}"
 
 
 def normalize_database_url(url: str) -> str:

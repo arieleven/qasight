@@ -3033,6 +3033,20 @@ export interface components {
             summary: string | null;
         };
         /**
+         * ProjectSetting
+         * @description One ``settings:`` value in effect (qasight/project_settings.py) and where it came from.
+         */
+        ProjectSetting: {
+            /** Env */
+            env: string;
+            /** Name */
+            name: string;
+            /** Source */
+            source: string;
+            /** Value */
+            value: string | null;
+        };
+        /**
          * QuarantineItem
          * @description A test (or glob) whose failures don't fail its cycle's runs, kept on the server.
          */
@@ -3817,7 +3831,14 @@ export interface components {
             config_found: boolean;
             /** Default Stage Timeout S */
             default_stage_timeout_s: number | null;
+            /** Project Folder */
+            project_folder: string | null;
             retention: components["schemas"]["RetentionSettings"];
+            /**
+             * Settings
+             * @default []
+             */
+            settings: components["schemas"]["ProjectSetting"][];
         };
         /** RunSlice */
         RunSlice: {

@@ -4926,6 +4926,42 @@
         "title": "ProjectReviewResponse",
         "type": "object"
       },
+      "ProjectSetting": {
+        "description": "One ``settings:`` value in effect (qasight/project_settings.py) and where it came from.",
+        "properties": {
+          "env": {
+            "title": "Env",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name",
+          "env",
+          "value",
+          "source"
+        ],
+        "title": "ProjectSetting",
+        "type": "object"
+      },
       "QuarantineItem": {
         "description": "A test (or glob) whose failures don't fail its cycle's runs, kept on the server.",
         "properties": {
@@ -7127,15 +7163,36 @@
             ],
             "title": "Default Stage Timeout S"
           },
+          "project_folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Folder"
+          },
           "retention": {
             "$ref": "#/components/schemas/RetentionSettings"
+          },
+          "settings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProjectSetting"
+            },
+            "title": "Settings",
+            "type": "array"
           }
         },
         "required": [
           "config_found",
           "retention",
           "cleanup_interval_hours",
-          "default_stage_timeout_s"
+          "default_stage_timeout_s",
+          "project_folder",
+          "settings"
         ],
         "title": "RunSettingsResponse",
         "type": "object"

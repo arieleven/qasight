@@ -35,11 +35,11 @@ def _should_ignore(path: Path) -> bool:
 
 
 def watch(
-    cycle: str = typer.Option(
-        ...,
+    cycle: str | None = typer.Option(
+        None,
         "--cycle",
         "-c",
-        help="Cycle name to pass to qasight run on each change batch.",
+        help="Cycle to run on each change batch (default: the only cycle in qasight.yaml, else the newest recorded run's).",
     ),
     config: Path | None = typer.Option(
         None,
@@ -62,10 +62,12 @@ def watch(
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
 
+    from qasight.cli.cycle_pick import require_cycle
     from qasight.cli.runner import execute_plan_command
     from qasight.cli.ui.console import default_console
 
     console = default_console()
+    cycle = require_cycle(cycle, config=config)
     root = watch_root.expanduser().resolve()
     if not root.is_dir():
         console.print(f"[fail]Watch path is not a directory: {root}[/]")

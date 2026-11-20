@@ -22,6 +22,18 @@ os.environ.setdefault("TESTO_AI_SETTINGS_PATH", "")
 os.environ.setdefault("TESTO_ALLOWED_HOSTS", "testserver,testo.test")
 # Tests never ask PyPI for a newer version (qasight doctor, GET /api/v1/version).
 os.environ.setdefault("TESTO_NO_UPDATE_CHECK", "1")
+# Tests see the human output unless they ask for JSON, even when a coding agent
+# (CLAUDECODE=1) runs them (qasight/cli/output_mode.py).
+for _agent_var in ("CLAUDECODE", "QASIGHT_AGENT", "QASIGHT_OUTPUT", "TESTO_OUTPUT"):
+    os.environ.pop(_agent_var, None)
+# Runs recorded by tests never comment on a pull request or append to the job
+# summary, even when the suite itself runs in CI (qasight/cli/runner.auto_publish).
+os.environ.setdefault("TESTO_PUBLISH", "0")
+# A suite run as a qasight stage (the self-test cycle) inherits TESTO_CYCLE, which
+# commands read as the default cycle (qasight/cli/cycle_pick.py): `qasight watch`
+# with no --cycle would then start watching instead of asking for one.
+for _cycle_var in ("TESTO_CYCLE", "QASIGHT_CYCLE", "TESTO_STAGE"):
+    os.environ.pop(_cycle_var, None)
 
 # Project root is parent of ``tests/``; ``pythonpath = .`` in pytest.ini also applies.
 _ROOT = Path(__file__).resolve().parents[1]

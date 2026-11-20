@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { ResourcesPage } from "./ResourcesPage";
@@ -45,9 +46,11 @@ describe("ResourcesPage in the read-only demo", () => {
   it("shows the made-up pools as of the snapshot, without buttons", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, status: 200, json: async () => demo })));
     render(
+      <MemoryRouter>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <ResourcesPage />
       </QueryClientProvider>
+      </MemoryRouter>
     );
 
     await waitFor(() => expect(screen.getByText("demo-flow-vms")).toBeInTheDocument());

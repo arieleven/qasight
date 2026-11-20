@@ -224,6 +224,12 @@ def init(
         "flag on the test command, one QASight step after it) instead of writing a second "
         "workflow that runs them again.",
     ),
+    backfill: bool = typer.Option(
+        True,
+        "--backfill/--no-backfill",
+        help="With a GitHub remote and a signed-in GitHub CLI, also record the last CI runs' "
+        "results (as `qasight ingest --from-github`), so flaky and slower tests show on day one.",
+    ),
     dependabot: bool = typer.Option(
         False,
         "--dependabot",
@@ -394,6 +400,8 @@ def init(
         code = _first_run(
             console=console, repo=repo, cycle=run_cycle, config=config_path, ingest=not packages
         )
+    if backfill and run_first and not packages:
+        _backfill(console, repo=repo, cycle=run_cycle, config=config_path)
 
     written = [t.relative_to(repo).as_posix() for t, _, keep in files if not keep]
     if missing:
@@ -562,6 +570,71 @@ def _confirm(console: Console, files: list[Path], run_first: bool) -> None:
             "Nothing written. See the files in full with --dry-run; skip this with --yes."
         )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+
+
+BACKFILL_RUNS = 10
+
+
+def _backfill(console: Console, *, repo: Path, cycle: str, config: Path) -> None:
+    """Record the last CI runs' results, when this is a GitHub repository and gh can read it.
+
+    Quietly does nothing without the GitHub CLI, a github.com remote or a sign-in:
+    it is a head start, not a step that can fail ``init``.
+    """
+    import shutil
+    import subprocess  # nosec B404 - fixed argv below
+
+    if shutil.which("gh") is None or shutil.which("git") is None:
+        return
+    remote = subprocess.run(  # noqa: S603, S607  # nosec B603 B607 - argv list, no shell
+        ["git", "-C", str(repo), "remote", "get-url", "origin"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if remote.returncode != 0 or "github.com" not in remote.stdout:
+        return
+    import io
+
+    from rich.console import Console as RichConsole
+
+    from qasight.cli.runner import execute_ingest_command
+    from qasight.services import github_backfill
+
+    quiet = RichConsole(file=io.StringIO())  # one line at the end, not a panel per past run
+    console.print(
+        f"\nLooking for results in the last {BACKFILL_RUNS} CI runs (skip with --no-backfill)"
+    )
+    try:
+        with _cwd(repo):
+            report = github_backfill.backfill(
+                cwd=repo,
+                cycle=cycle,
+                limit=BACKFILL_RUNS,
+                record=lambda files, folder: int(
+                    execute_ingest_command(
+                        console=quiet,
+                        reports=files,
+                        cycle=cycle,
+                        stage="junit",
+                        tier="unit",
+                        repo=folder,
+                        config_path=config,
+                        ci=False,
+                        persist=True,
+                    )
+                ),
+            )
+    except Exception as exc:  # noqa: BLE001 — a head start only; init already succeeded
+        console.print(f"[muted]No CI history recorded ({exc}).[/]")
+        return
+    if report.recorded:
+        console.print(f"[ok]Recorded {len(report.recorded)} past CI run(s) into {cycle!r}.[/]")
+    elif report.no_results:
+        console.print(
+            "[muted]The CI runs uploaded no result files; once the new workflow runs, "
+            "its history fills in.[/]"
+        )
 
 
 def _first_run(

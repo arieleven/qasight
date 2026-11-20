@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
@@ -9,10 +10,13 @@ import { LiveRunsCard } from "./LiveRunsCard";
 import { NeedsAttention } from "./NeedsAttention";
 import { Gauge, IrisArt, RunBars, SLICE_COLOR, type ResultSlice, type RunTone } from "./DashboardVisuals";
 import { TONE_TEXT, scoreTone } from "../health/score";
+import { ByCycle, Findings, Signals } from "../health/HealthParts";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
 
 export function DashboardPage() {
+  // The Test health score opens in place: its breakdown shows under the cards, full width.
+  const [healthOpen, setHealthOpen] = useState(false);
   const overviewQuery = useQuery({
     queryKey: ["dashboard-overview"],
     queryFn: () => apiClient.getDashboardOverview(6)
@@ -75,10 +79,12 @@ export function DashboardPage() {
           <RecentRunsCard runs={recentRuns} reportLinks={data.report_links} />
         </div>
         <div className="flex min-w-0 flex-col gap-5 lg:w-5/12">
-          <ProjectHealthKpi />
+          <ProjectHealthKpi open={healthOpen} onToggle={() => setHealthOpen((open) => !open)} />
           <CodeQualityKpi />
         </div>
       </div>
+
+      {healthOpen ? <HealthBreakdown /> : null}
     </section>
   );
 }
@@ -233,30 +239,77 @@ function TrendBaseline({ kpis }: { kpis: DashboardOverviewResponse["headline_kpi
 }
 
 /**
- * The project's test health score, the same number the Test health page
- * leads with (one source: GET /api/v1/project-health), linking to that page.
+ * The project's test health score (one source: GET /api/v1/project-health). It opens in
+ * place: the button shows what drives it under the cards, so the Overview answers "how
+ * healthy are my tests" without a second page. /test-health keeps the full page (AI review,
+ * one cycle at a time) for links and bookmarks.
  */
-function ProjectHealthKpi() {
+function ProjectHealthKpi({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const query = useQuery({ queryKey: ["project-health", ""], queryFn: () => apiClient.getProjectHealth() });
   const score = query.data?.score;
   const tone = scoreTone(score);
   return (
-    <Link
-      to="/test-health"
-      className={`glass-card group flex flex-1 flex-col p-5 ${CARD_HOVER}`}
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls="health-breakdown"
+      className={`glass-card group flex flex-1 flex-col p-5 text-left ${CARD_HOVER}`}
       data-testid="project-health-kpi"
-      aria-label={score == null ? "Test health: no score yet. Open test health" : `Test health: ${score} out of 100${query.data?.grade ? `, grade ${query.data.grade}` : ""}. Open test health`}
+      aria-label={
+        (score == null ? "Test health: no score yet" : `Test health: ${score} out of 100${query.data?.grade ? `, grade ${query.data.grade}` : ""}`) +
+        (open ? ". Hide what drives it" : ". Show what drives it")
+      }
     >
       <strong className="text-base font-bold text-white">Test health</strong>
       <span className="text-sm text-ink-300">Your tests: passing, stable, fast. Scored out of 100</span>
-      <div className="mt-2 flex flex-1 items-center justify-center">
+      <span className="mt-2 flex flex-1 items-center justify-center self-stretch">
         <Gauge value={score ?? null} color={GAUGE_COLOR[tone]}>
           <span className={`text-4xl font-bold tabular-nums ${score == null ? "text-white" : TONE_TEXT[tone]}`}>{score == null ? "n/a" : score}</span>
           <span className="text-xs text-ink-300">{query.data?.grade ? `Grade ${query.data.grade}` : "out of 100"}</span>
         </Gauge>
-      </div>
-      <p className="-mt-3 text-center text-sm font-semibold text-brand-300 group-hover:underline">See what drives it →</p>
-    </Link>
+      </span>
+      <span className="-mt-3 self-center text-sm font-semibold text-brand-300 group-hover:underline">
+        {open ? "Hide what drives it ↑" : "See what drives it ↓"}
+      </span>
+    </button>
+  );
+}
+
+/** What the Test health score is made of, what to fix first and each cycle's score, on the Overview. */
+function HealthBreakdown() {
+  const query = useQuery({ queryKey: ["project-health", ""], queryFn: () => apiClient.getProjectHealth() });
+  const health = query.data;
+  return (
+    <div id="health-breakdown" data-testid="health-breakdown" className="grid gap-5 lg:grid-cols-2">
+      {!health ? (
+        <div className="flex items-center gap-2 text-sm text-ink-300">
+          <Spinner /> Scoring the project…
+        </div>
+      ) : (
+        <>
+          <Card title="What drives the score" copy={false}>
+            <Signals signals={health.signals} />
+            <p className="mt-4 text-xs text-ink-400">
+              Same runs, same score: computed from results, no AI.{" "}
+              <Link to="/test-health" className="text-brand-300 hover:underline">
+                Full page with the AI review
+              </Link>
+            </p>
+          </Card>
+          <div className="flex min-w-0 flex-col gap-5">
+            <Card title="What to fix first" copy={false}>
+              <Findings findings={health.findings} />
+            </Card>
+            {health.by_cycle.length > 1 ? (
+              <Card title="By cycle" copy={false}>
+                <ByCycle rows={health.by_cycle} />
+              </Card>
+            ) : null}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

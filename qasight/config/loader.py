@@ -59,7 +59,11 @@ def discover_and_load(*, config_path: Path | None = None, cwd: Path | None = Non
     discovery order above applies.  ``cwd`` defaults to ``Path.cwd()`` and
     is the only seam tests need to monkeypatch.
     """
-    cwd = (cwd or Path.cwd()).expanduser().resolve()
+    if cwd is None:
+        from qasight.project_root import find_project_root
+
+        cwd = find_project_root()
+    cwd = cwd.expanduser().resolve()
     if config_path is not None:
         path = config_path.expanduser().resolve()
         if not path.is_file():

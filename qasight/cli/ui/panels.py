@@ -86,35 +86,28 @@ def render_plan_summary(
     stage_results: list[StagePanelData],
     aggregate_returncode: int,
 ) -> None:
-    """Render a final table summarising every stage in the plan."""
+    """One table for the whole cycle: each stage's status, test counts and duration.
+
+    It used to be two tables (status, then counts) with an "Equipment" column; one
+    table with the runner shown only when stages use different ones says the same
+    in half the lines.
+    """
     style = "ok" if aggregate_returncode == 0 else "fail"
     table = Table(
         title=Text.from_markup(f"[{style}]Cycle summary — {plan_name}[/]"),
         show_lines=False,
         title_justify="left",
     )
+    show_runner = len({(s.framework or "").strip().lower() for s in stage_results}) > 1
     table.add_column("Stage", style="title")
-    table.add_column("Equipment", style="framework")
+    if show_runner:
+        table.add_column("Runner", style="framework")
     table.add_column("Status")
+    table.add_column("Tests", justify="right")
+    table.add_column("Passed", justify="right", style="ok")
+    table.add_column("Failed", justify="right", style="fail")
+    table.add_column("Skipped", justify="right", style="muted")
     table.add_column("Duration", justify="right")
-    for stage in stage_results:
-        table.add_row(
-            stage.name,
-            _equipment_cell(stage.framework),
-            _status_markup(stage),
-            f"{stage.duration_s:.2f}s",
-        )
-    console.print(table)
-
-    # Secondary table: metrics derived from Allure results (robust to BehaveX parallel stdout shape).
-    metrics = Table(title="Cycle Summary", show_lines=False, title_justify="left")
-    metrics.add_column("Stage", style="title")
-    metrics.add_column("Equipment", style="framework")
-    metrics.add_column("Total", justify="right")
-    metrics.add_column("Passed", justify="right", style="ok")
-    metrics.add_column("Failed", justify="right", style="fail")
-    metrics.add_column("Skipped", justify="right", style="muted")
-
     for stage in stage_results:
         total = passed = failed = skipped = 0
         if stage.results_dir:
@@ -127,15 +120,19 @@ def render_plan_summary(
             except OSError:
                 logger.debug("could not read results for %s", stage.name, exc_info=True)
                 total = passed = failed = skipped = 0
-        metrics.add_row(
-            stage.name,
-            _equipment_cell(stage.framework),
+        cells = [stage.name]
+        if show_runner:
+            cells.append(_equipment_cell(stage.framework))
+        cells += [
+            _status_markup(stage),
             str(total),
             str(passed),
             str(failed),
             str(skipped),
-        )
-    console.print(metrics)
+            f"{stage.duration_s:.2f}s",
+        ]
+        table.add_row(*cells)
+    console.print(table)
 
 
 def _format_equipment(equipment: str) -> str:

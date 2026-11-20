@@ -46,7 +46,9 @@ def resolve_data_root(*, package_dir: Path | None = None, cwd: Path | None = Non
     """Where runtime data lives.
 
     Precedence: ``$TESTO_HOME`` → the source checkout root (unchanged repo behaviour)
-    → ``<cwd>/.testo`` for a ``pip install``, so nothing is written into ``site-packages``.
+    → ``<project>/.testo`` for a ``pip install``, so nothing is written into ``site-packages``.
+    ``<project>`` is the nearest folder at or above *cwd* with QASight's files
+    (:func:`qasight.project_root.find_project_root`), else *cwd*.
     """
     override = (os.environ.get(DATA_HOME_ENV) or "").strip()
     if override:
@@ -54,7 +56,9 @@ def resolve_data_root(*, package_dir: Path | None = None, cwd: Path | None = Non
     checkout = source_checkout_root(package_dir)
     if checkout is not None:
         return checkout
-    return (cwd or Path.cwd()).resolve() / DEFAULT_DATA_DIRNAME
+    from qasight.project_root import find_project_root
+
+    return find_project_root(cwd) / DEFAULT_DATA_DIRNAME
 
 
 def safe_child_path(root: Path, child: str, *, label: str = "path segment") -> Path:

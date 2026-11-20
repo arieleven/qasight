@@ -133,7 +133,7 @@ def test_flaky_marks_stored_entries_and_suggests_the_command(
     assert marks == {"test_stored": True, "test_open": False}
 
     text = CliRunner().invoke(app, ["flaky", "--cycle", "web"], env={"COLUMNS": "200"}).output
-    assert 'qasight quarantine add --cycle web "test_open"' in text
+    assert "qasight flaky --cycle web --quarantine" in text
     assert 'qasight quarantine add --cycle web "test_stored"' not in text
     # Config users still get the yaml snippet.
     assert "qasight.yaml" in text and '- test: "test_open"' in text

@@ -220,6 +220,13 @@ def _json_safe_errors(errors: Sequence[Any]) -> list[dict[str, Any]]:
 
 
 def create_app() -> FastAPI:
+    # settings: in qasight.yaml and QASIGHT_* aliases, as the CLI applies them.
+    try:
+        from qasight.project_settings import apply_project_settings
+
+        apply_project_settings()
+    except Exception:  # noqa: BLE001 — never stop the server over optional settings
+        logger.debug("could not apply project settings", exc_info=True)
     app = FastAPI(
         title="QASight API",
         version=__version__,

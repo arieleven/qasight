@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-11-04
+updated: 2026-11-20
 ---
 
 # Phase 3 Delta Comparison Engine Plan
@@ -19,7 +19,7 @@ QA teams need side-by-side comparison of two runs (reliability + performance) wi
 |-------|--------|
 | Metric semantics | [Delta Comparison Policy](Delta%20Comparison%20Policy.md) |
 | Core service | `qasight/services/delta_service.py` |
-| CLI | [Command Reference § `qasight diff` / `qasight summary`](../CLI%20Commands/Command%20Reference.md#qasight-diff--qasight-summary) |
+| CLI | [Command Reference § `qasight summary`](../CLI%20Commands/Command%20Reference.md#qasight-summary) |
 | API | `GET /api/v1/analytics/delta` |
 | React | `frontend/src/features/compare/` |
 

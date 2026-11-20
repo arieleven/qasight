@@ -336,11 +336,17 @@ def _execute_one_cycle(
     service = CycleRunService(
         listener=_ConsoleCycleListener(console=console, ci=ci), console=console
     )
+    renderer = (
+        CIRenderer(defer_finish=True)
+        if ci
+        else _pick_renderer(console=console, stream=stream, ci=ci)
+    )
+    outcome = None
     try:
         outcome = service.run(
             cfg=cfg,
             plan=plan,
-            renderer=_pick_renderer(console=console, stream=stream, ci=ci),
+            renderer=renderer,
             options=CycleRunOptions(
                 persist=persist,
                 force=force,
@@ -355,7 +361,95 @@ def _execute_one_cycle(
     except (NoStagesEnabledError, SelectionError) as exc:
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
+    finally:
+        if isinstance(renderer, CIRenderer):
+            news = None
+            if outcome is not None and outcome.run_id and not outcome.skipped:
+                news = run_news_dict(outcome.run_id)
+            renderer.finish(news=news)
+    if not ci and outcome.run_id and not outcome.skipped:
+        emit_run_news(console=console, run_id=outcome.run_id)
+    if outcome.run_id and not outcome.skipped:
+        auto_publish(cycle=plan.name, config_path=cfg.source_path)
     return outcome.exit_code
+
+
+def auto_publish(*, cycle: str, config_path: Path | None) -> None:
+    """In CI, publish the run just recorded: PR/MR comment, job summary, annotations, alerts.
+
+    What ``qasight ci publish`` does, so a pipeline needs only ``qasight run`` (or
+    ``ingest``). Messages go to stderr, so ``--ci`` stdout stays NDJSON. Off with
+    ``TESTO_PUBLISH=0`` (or ``settings: {publish: false}``); never changes the exit code.
+    """
+    import os
+    import sys
+
+    try:
+        from qasight.services.ci_publish import PublishOptions, auto_publish_enabled, publish
+
+        env = dict(os.environ)
+        if not auto_publish_enabled(env):
+            return
+        publish(
+            cycle=cycle,
+            env=env,
+            opts=PublishOptions(config_path=config_path),
+            echo=lambda line: print(f"qasight publish: {line}", file=sys.stderr),
+            skip_published=False,
+        )
+    except Exception as exc:  # noqa: BLE001 — the run is recorded; publishing is best-effort
+        print(f"qasight publish: skipped ({exc})", file=sys.stderr)
+
+
+def _news_enabled() -> bool:
+    import os
+
+    return os.environ.get("TESTO_RUN_NEWS", "").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def run_news_dict(run_id: str) -> dict[str, object] | None:
+    """The run's news for ``plan_finished``'s ``news`` field, or ``None``."""
+    if not _news_enabled():
+        return None
+    try:
+        from qasight.services.run_news import run_news
+
+        news = run_news(run_id)
+    except Exception:  # noqa: BLE001 — the summary is a bonus, never a failure
+        return None
+    return news.to_dict() if news is not None else None
+
+
+def emit_run_news(*, console: Console, run_id: str) -> None:
+    """End a recorded run with what's new in it (new failures, flaky, slower, fixed).
+
+    ``--ci`` puts the same data on ``plan_finished`` as ``news`` instead. Never
+    fails the run: the run is already recorded, and its exit code stands.
+    ``TESTO_RUN_NEWS=0`` turns it off.
+    """
+    if not _news_enabled():
+        return
+    try:
+        from qasight.services.run_news import render_lines, run_news
+
+        news = run_news(run_id)
+    except Exception:  # noqa: BLE001 — the summary is a bonus, never a failure
+        return
+    if news is None:
+        return
+    from rich.markup import escape
+
+    lines = render_lines(news)
+    style = "fail" if news.outcome == "failed" else "ok"
+    console.print(f"[{style}]{escape(lines[0])}[/]", highlight=False)
+    for line in lines[1:-1]:
+        tone = "fail" if line.startswith(("  New failure", "  Still failing")) else "warn"
+        if line.startswith(("  Fixed", "  Nothing new")):
+            tone = "ok"
+        if line.startswith("  …"):
+            tone = "muted"
+        console.print(f"[{tone}]{escape(line)}[/]", highlight=False)
+    console.print(f"[muted]{escape(lines[-1])}[/]", highlight=False)
 
 
 class _ConsoleCycleListener:
@@ -406,9 +500,7 @@ class _ConsoleCycleListener:
                 "(may not complete if the process exits immediately).[/]"
             )
         elif report_id is not None:
-            self._console.print(
-                f"[muted]Recorded run[/] [bold]{report_id}[/] [muted](see it with `qasight ui`)[/]"
-            )
+            self._console.print(f"[muted]Recorded run[/] [bold]{report_id}[/]")
 
 
 def _emit_cycle_trigger_event(*, ci: bool, plan: Plan, tr: TriggerResult) -> None:

@@ -34,7 +34,11 @@ def _read_tests(source: str) -> list[str]:
 
 
 def split(
-    cycle: str = typer.Option(..., "--cycle", help="Cycle whose test times to use."),
+    cycle: str | None = typer.Option(
+        None,
+        "--cycle",
+        help="Cycle whose test times to use (default: the only cycle in qasight.yaml, else the newest recorded run's).",
+    ),
     shards: int = typer.Option(..., "--shards", min=1, help="How many shards."),
     index: int | None = typer.Option(
         None,
@@ -88,8 +92,10 @@ def split(
         console.print(f"[fail]--index {index} is more than --shards {shards}.[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     try:
+        from qasight.cli.cycle_pick import require_cycle
+
         times = load_test_times(
-            cycle.strip(),
+            require_cycle(cycle),
             stage=stage,
             server=server or os.environ.get("TESTO_SERVER_URL") or None,
             token=os.environ.get("TESTO_API_TOKEN") or None,

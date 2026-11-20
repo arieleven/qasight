@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Monorepos on GitLab: `ci/gitlab/qasight-every-job.gitlab-ci.yml`, one include that records every job's test results on the team server (also in the offline bundle)
+- `qasight init --scan` finds Behave and BehaveX suites
+- `qasight ingest --from-gitlab` records GitLab pipelines' test reports through GitLab's API: each job a cycle, dated when it ran, child pipelines included, already-recorded pipelines skipped; no change to jobs that declare `artifacts: reports: junit:`
 - `qasight-upload`: a one-file uploader for CI jobs without Python (Go, no dependencies). Download it from the release and run `qasight-upload --cycle web-unit 'reports/**/*.xml'`; it sends the same upload as `qasight ingest --server`, with the same CI metadata, exit codes and `--json` event, and retries only when that can't record a run twice. Binaries for Linux, macOS and Windows (amd64, arm64) with checksums and a build provenance attestation are attached to each release; guide: Upload Without Python
 - `qasight export -o report.pdf` takes the format from the file's extension
 - CI runs the CLI end to end the way a coding agent calls it (`scripts/cli_e2e.py`): `qasight doctor` with no config, `try`, `ingest`, `qasight mcp` over stdio, `diff` and `export` in every format
@@ -20,8 +23,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - `qasight help --all` lists every command, grouped; `qasight help --json` describes every command, subcommand, alias and exit code for coding agents
 - `qasight ci preview`, `qasight lease pools` and `qasight config db`: the new homes of `qasight try`, `qasight pool` and `qasight config-db`, which keep working as aliases
+- `qasight run` and `qasight ingest` end with what's new since the previous run (new failures, still failing, fixed, newly flaky, slower); with `--ci` it is the `news` field of `plan_finished`
+- The project and its history are found from any subfolder, like git; `--cycle` is never required (the only cycle, or the newest run's)
+- Coding agents get JSON without asking (`CLAUDECODE=1`, `QASIGHT_AGENT=1`, `QASIGHT_OUTPUT=json`); `run` and `ingest` take `--json` as well as `--ci`; `doctor`, `runs`, `cycles list` and `ai status` take `--json`
+- In CI, `qasight run` and `qasight ingest` publish the result themselves (job summary, PR comment, alerts); `TESTO_PUBLISH=0` turns it off
+- `qasight summary [RUN] --against previous|last-green|<branch>|<id>`, and `qasight runs` to list, show and delete recorded runs
+- `qasight export site|badge|markdown|annotations`, or the format from `--out` (`-o public`, `-o badge.svg`, `-o summary.md`)
+- A `settings:` section in `qasight.yaml` for quarantine, flaky issues, schedules, redaction, publishing and the what's-new block; every `QASIGHT_*` variable is read as its `TESTO_*` name
+- `qasight init` imports the last 10 CI runs' results from GitHub (`--no-backfill` to skip)
+- `qasight doctor` checks the project folder, unknown config keys (`--strict`), each cycle and the settings in effect; `qasight flaky --quarantine` quarantines what it finds
+- UI: one Settings entry with Project, AI and Resources tabs; the Overview's Test health score opens in place with what drives it, what to fix and each cycle's score
 
 ### Fixed
+- The team server reads the `TESTO_AI_*` settings from its environment (`.env`), as the closed network guide and the compose files already said; before, it ignored them and AI stayed off
+- `qasight init --ci gitlab|circleci`: two folders with the same runner no longer get the same job name, and the GitLab artifacts path includes the folder
+- `qasight ingest` with no files: finds results past a large checkout's first 20,000 files, and in a GitLab job leaves out earlier jobs' artifacts
+- `qasight ingest --server` packs more than 200 JUnit files (one per Behave feature) into a few, under the server's limit
 - `qasight diff` takes the run ids the UI, MCP and `qasight run` / `qasight ingest` show. A run's report archive now takes the run's id, so one id names a run everywhere; for older runs `qasight diff` finds the archive by cycle and time
 - `qasight try` and `qasight ingest` with no files leave out older JUnit files of the same tests (`run-1.xml` ... next to `run-8.xml`, or a results folder nobody cleans) instead of recording them all as one run with every test counted once per file, and say which they left out
 - Team server: `qasight-api` and `qasight ui` record uploads in a worker process (`TESTO_INGEST_PROCESS`, on by default there), so uploads and page requests no longer take turns in one process. Eight 5,000-test uploads next to four clients reading non-stop took over 10 minutes; now 51 s, with reads at 15 ms

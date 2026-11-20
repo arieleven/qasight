@@ -78,7 +78,10 @@ def test_delete_needs_at_least_one_id(client: TestClient) -> None:
 def test_run_settings_without_a_config(client: TestClient) -> None:
     resp = client.get("/api/v1/run-settings")
     assert resp.status_code == 200
-    assert resp.json() == {
+    body = resp.json()
+    assert body.pop("project_folder")
+    assert {s["name"] for s in body.pop("settings")} >= {"quarantine.auto", "publish"}
+    assert body == {
         "config_found": False,
         "retention": {"days": None, "runs_per_cycle": None, "enabled": False},
         "cleanup_interval_hours": None,
@@ -95,6 +98,8 @@ def test_run_settings_read_qasight_yaml(client: TestClient, tmp_path: Path) -> N
         encoding="utf-8",
     )
     got = client.get("/api/v1/run-settings").json()
+    got.pop("settings")
+    assert got.pop("project_folder")
     assert got == {
         "config_found": True,
         "retention": {"days": 30, "runs_per_cycle": 50, "enabled": True},

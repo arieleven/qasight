@@ -50,7 +50,9 @@ def run(
     ci: bool = typer.Option(
         False,
         "--ci",
-        help="Emit NDJSON events on stdout instead of Rich panels (machine-readable).",
+        "--json",
+        help="Emit NDJSON events on stdout instead of Rich panels (machine-readable). "
+        "On by itself for coding agents (CLAUDECODE=1) and with QASIGHT_OUTPUT=json.",
     ),
     no_persist: bool = typer.Option(
         False,
@@ -132,6 +134,9 @@ def run(
     ),
 ) -> None:
     """Run a plan end-to-end, or any test command after ``--`` (recorded without a config)."""
+    from qasight.cli.output_mode import wants_json
+
+    ci = wants_json(ci)
     from qasight.engine.exit_codes import EngineExitCode
     from qasight.services.run_environment import InvalidEnvironmentPair, apply_cli_pairs
 

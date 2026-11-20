@@ -68,7 +68,9 @@ def ingest(
     ci: bool = typer.Option(
         False,
         "--ci",
-        help="Emit NDJSON events on stdout instead of Rich panels (machine-readable).",
+        "--json",
+        help="Emit NDJSON events on stdout instead of Rich panels (machine-readable). "
+        "On by itself for coding agents (CLAUDECODE=1) and with QASIGHT_OUTPUT=json.",
     ),
     no_persist: bool = typer.Option(
         False,
@@ -112,14 +114,40 @@ def ingest(
             "happened. Runs already recorded are skipped."
         ),
     ),
+    from_gitlab: bool = typer.Option(
+        False,
+        "--from-gitlab",
+        help=(
+            "Record GitLab pipelines' test reports (jobs with artifacts:reports:junit) through "
+            "GitLab's API, dated when each ran; each job becomes a cycle unless --cycle is given. "
+            "Pipelines already recorded are skipped, so it can run on a schedule. Token: "
+            "$TESTO_GITLAB_TOKEN (read_api)."
+        ),
+    ),
+    gitlab_url: str | None = typer.Option(
+        None,
+        "--gitlab-url",
+        help="With --from-gitlab: your GitLab, https://gitlab.example.local. Default: $CI_SERVER_URL.",
+    ),
+    project: str | None = typer.Option(
+        None,
+        "--project",
+        help="With --from-gitlab: the project, group/name or its id. Default: $CI_PROJECT_ID.",
+    ),
     runs: int = typer.Option(
-        20, "--runs", min=1, max=1000, help="With --from-github: how many recent runs to read."
+        20,
+        "--runs",
+        min=1,
+        max=1000,
+        help="With --from-github or --from-gitlab: how many recent runs or pipelines to read.",
     ),
     workflow: str | None = typer.Option(
         None, "--workflow", help="With --from-github: only this workflow (name or file name)."
     ),
     branch: str | None = typer.Option(
-        None, "--branch", help="With --from-github: only runs on this branch."
+        None,
+        "--branch",
+        help="With --from-github or --from-gitlab: only runs or pipelines on this branch.",
     ),
     release: str | None = typer.Option(
         None,
@@ -131,6 +159,9 @@ def ingest(
     ),
 ) -> None:
     """Record test results from any runner (JUnit XML or a runner's own format) as a run of a cycle."""
+    from qasight.cli.output_mode import wants_json
+
+    ci = wants_json(ci)
     from qasight.services.run_environment import InvalidEnvironmentPair, apply_cli_pairs
 
     try:
@@ -160,9 +191,39 @@ def ingest(
         find_result_files,
         latest_result_set,
         result_patterns,
+        written_in_this_job,
     )
 
     repo_dir = repo.expanduser().resolve()
+    if from_gitlab:
+        clash = "--from-github" if from_github else "--server" if server else "the file arguments"
+        if from_github or server or reports:
+            message = f"--from-gitlab records into this machine's history by itself; drop {clash}"
+            console.print(f"error: {message}" if ci else f"[fail]{message}[/]")
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+        raise typer.Exit(
+            code=_from_gitlab(
+                console=console,
+                gitlab_url=gitlab_url,
+                project=project,
+                cycle=(cycle or "").strip() or None,
+                runs=runs,
+                branch=branch,
+                record=lambda files, folder, name: execute_ingest_command(
+                    console=console,
+                    reports=files,
+                    cycle=name,
+                    stage=stage,
+                    tier=tier,
+                    repo=folder,
+                    config_path=config,
+                    ci=ci,
+                    persist=not no_persist,
+                    coverage=[],
+                ),
+                ci=ci,
+            )
+        )
     if from_github:
         if server or reports:
             message = "--from-github records locally and finds the files itself; drop " + (
@@ -194,7 +255,13 @@ def ingest(
             )
         )
     if not reports:
-        found = find_result_files(repo_dir)
+        found, earlier = written_in_this_job(find_result_files(repo_dir), os.environ)
+        if earlier and not ci:
+            console.print(
+                f"Left out {len(earlier)} result file(s) written before this CI job started "
+                "(artifacts of earlier jobs). Pass the files to record them anyway.",
+                markup=False,
+            )
         if not found:
             message = (
                 f"no result files found under {repo_dir} (JUnit XML, Jest/Vitest/Playwright/"
@@ -206,7 +273,9 @@ def ingest(
         found, older = latest_result_set(found)
         reports = result_patterns(found, repo=repo_dir)
         if not ci:
-            console.print(f"Found {len(reports)} result file(s): {', '.join(reports)}")
+            shown = ", ".join(reports[:10])
+            more = f" and {len(reports) - 10} more" if len(reports) > 10 else ""
+            console.print(f"Found {len(reports)} result file(s): {shown}{more}", markup=False)
         if older and not ci:
             skipped = ", ".join(str(o.relative_to(repo_dir)) for o in older[:5])
             more = f" and {len(older) - 5} more" if len(older) > 5 else ""
@@ -275,5 +344,86 @@ def _from_github(
         say(
             "None of these runs uploaded result files as artifacts. Upload them "
             "(actions/upload-artifact) or add QASight to the workflow: qasight init --attach."
+        )
+    return 0
+
+
+def _from_gitlab(
+    *,
+    console,  # noqa: ANN001 — a Rich console
+    gitlab_url: str | None,
+    project: str | None,
+    cycle: str | None,
+    runs: int,
+    branch: str | None,
+    record,  # noqa: ANN001 — (files, folder, cycle) -> exit code
+    ci: bool,
+) -> int:
+    """``qasight ingest --from-gitlab``: 0, or 2 when GitLab couldn't be read or isn't named."""
+    from qasight.services import gitlab_backfill
+
+    def fail(text: str) -> int:
+        if ci:
+            from qasight.cli.ui.ci_renderer import emit_ndjson
+
+            emit_ndjson({"event": "error", "code": "invalid_input", "message": text})
+        else:
+            console.print(f"[fail]--from-gitlab: {text}[/]", markup=True)
+        return int(EngineExitCode.INVALID_INPUT)
+
+    def say(text: str) -> None:
+        if not ci:
+            console.print(text, markup=False)
+
+    base = gitlab_backfill.gitlab_url(gitlab_url, os.environ)
+    ref = gitlab_backfill.project_ref(project, os.environ)
+    if base is None or ref is None:
+        return fail(
+            "name your GitLab and project: --gitlab-url https://gitlab.example.local "
+            "--project group/name (in a GitLab job they default to $CI_SERVER_URL and "
+            "$CI_PROJECT_ID)"
+        )
+    client = gitlab_backfill.GitLabClient(base, ref, gitlab_backfill.token_from(os.environ))
+    try:
+        report = gitlab_backfill.backfill(
+            client=client,
+            project=ref,
+            limit=runs,
+            cycle=cycle,
+            branch=branch,
+            record=lambda files, folder, name: int(record(files, folder, name)),
+            progress=say,
+        )
+    except gitlab_backfill.GitLabError as exc:
+        return fail(str(exc))
+    cycles = sorted({name for _, name in report.recorded})
+    if ci:
+        from qasight.cli.ui.ci_renderer import emit_ndjson
+
+        emit_ndjson(
+            {
+                "event": "gitlab_backfill_finished",
+                "recorded": len(report.recorded),
+                "already": len(report.already),
+                "no_results": len(report.no_results),
+                "failed": len(report.failed),
+                "cycles": cycles,
+            }
+        )
+        return 0
+    say(
+        f"Recorded {len(report.recorded)} run(s) from GitLab pipelines"
+        + (f" into {len(cycles)} cycle(s): {', '.join(cycles[:10])}" if cycles else "")
+        + f"; {len(report.already)} already recorded"
+        f", {len(report.no_results)} pipeline(s) without test reports"
+        f", {len(report.failed)} failed."
+    )
+    for pipeline, error in report.failed:
+        say(f"  pipeline {pipeline.pipeline_id}: {error}")
+    if report.no_results and not report.recorded and not report.already:
+        say(
+            "None of these pipelines has a test report. Give the test jobs "
+            "`artifacts: reports: junit: <their JUnit files>`, or record from the jobs "
+            "themselves with the GitLab include (Closed Network Install guide)."
         )
     return 0

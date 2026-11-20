@@ -377,6 +377,14 @@ def build_json_schema() -> dict[str, Any]:
                 "propertyNames": {"pattern": _KEY_PATTERN},
                 "additionalProperties": {"$ref": "#/definitions/resource_pool"},
             },
+            "settings": {
+                "type": "object",
+                "description": "Project behaviour that used to need environment variables "
+                "(auto-quarantine, flaky issues, schedules, redaction, publishing). Each key "
+                "maps to a TESTO_* variable; an exported variable wins.",
+                "properties": _settings_properties(),
+                "additionalProperties": False,
+            },
             "history": {
                 "type": "object",
                 "description": "How long run history and report archives are kept. Without it "
@@ -473,3 +481,9 @@ def build_json_schema() -> dict[str, Any]:
             "resource_pool": resource_pool,
         },
     }
+
+
+def _settings_properties() -> dict[str, Any]:
+    from qasight.project_settings import schema_properties
+
+    return schema_properties()
