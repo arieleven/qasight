@@ -1,4 +1,4 @@
-"""``qasight config-db`` — set ``database.url`` in qasight config (YAML or pyproject)."""
+"""``qasight config db`` (alias ``qasight config-db``) — set ``database.url`` in qasight config (YAML or pyproject)."""
 
 from __future__ import annotations
 
