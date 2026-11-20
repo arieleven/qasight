@@ -9,6 +9,7 @@ would write them.
 from __future__ import annotations
 
 import json
+import re
 import subprocess  # nosec B404 - runs test tools; every call passes an argv list without a shell
 from pathlib import Path
 
@@ -341,6 +342,9 @@ CI_SYSTEMS: tuple[str, ...] = ("github", "gitlab", "jenkins", "circleci")
 # ``command`` stacks already are a shell command (see project_setup).
 _NATIVE_COMMANDS: dict[str, str] = {
     "pytest": "pytest {args} --junitxml=test-results/pytest.xml",
+    "behave": "behave {args} --junit --junit-directory test-results",
+    # BehaveX writes its JUnit files to <output>/behave/ (and report.html beside them).
+    "behavex": "behavex {args} -o test-results/behavex",
     "jest": "npx jest --ci --json --outputFile=test-results/jest.json",
     "vitest": (
         "npx vitest run --reporter=default --reporter=json --outputFile.json=test-results/vitest.json"
@@ -453,11 +457,22 @@ def _record(cycle: str, history_dir: str) -> list[str]:
     ]
 
 
+def _job_id(stack: Stack, facts: ProjectFacts) -> str:
+    """The CI job's name: the runner, or the stage's own name when two folders use the same runner.
+
+    ``qasight init --scan`` finds one stage per runner per folder (a monorepo has many
+    ``pytest`` folders), and two jobs with one name would overwrite each other.
+    """
+    if sum(1 for s in facts.stacks if s.key == stack.key) == 1:
+        return stack.key
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", str(stack.stage.get("name") or stack.key)).strip("-")
+
+
 def _cycles(facts: ProjectFacts, cycle: str) -> list[tuple[Stack, str]]:
-    """One job per stack; with more than one, each records its own cycle (``<cycle>-<stack>``)."""
+    """One job per stack; with more than one, each records its own cycle (``<cycle>-<job>``)."""
     if len(facts.stacks) == 1:
         return [(facts.stacks[0], cycle)]
-    return [(s, f"{cycle}-{s.key}") for s in facts.stacks]
+    return [(s, f"{cycle}-{_job_id(s, facts)}") for s in facts.stacks]
 
 
 def zero_config_github_workflow(facts: ProjectFacts, *, cycle: str, branch: str = "main") -> str:
@@ -499,14 +514,15 @@ def gitlab_ci(facts: ProjectFacts, *, cycle: str) -> str:
         "stages: [test]",
     ]
     for stack, name in _cycles(facts, cycle):
+        job = _job_id(stack, facts)
         lines += [
             "",
-            f"{stack.key}:",
+            f"{job}:",
             "  stage: test",
             f"  image: {_image(GITLAB_IMAGES, stack, facts)}",
             "  cache:",
-            f"    key: testo-history-{stack.key}-$CI_COMMIT_REF_SLUG",
-            f"    fallback_keys: [testo-history-{stack.key}-$CI_DEFAULT_BRANCH]",
+            f"    key: testo-history-{job}-$CI_COMMIT_REF_SLUG",
+            f"    fallback_keys: [testo-history-{job}-$CI_DEFAULT_BRANCH]",
             "    paths: [.testo-history/]",
             "    when: always",
             "  script:",
@@ -514,10 +530,12 @@ def gitlab_ci(facts: ProjectFacts, *, cycle: str) -> str:
         lines += [f"    - {_yaml_cmd(c)}" for c in _install_and_test(stack)]
         lines.append("  after_script:")
         lines += [f"    - {_yaml_cmd(c)}" for c in _record(name, "$CI_PROJECT_DIR/.testo-history")]
+        folder = str(stack.stage.get("target_repo") or ".").strip("/")
+        results = "test-results/" if folder in ("", ".") else _q(f"{folder}/test-results/")
         lines += [
             "  artifacts:",
             "    when: always",
-            "    paths: [testo-summary.md, test-results/]",
+            f"    paths: [testo-summary.md, {results}]",
         ]
     return "\n".join(lines) + "\n"
 
@@ -576,15 +594,15 @@ def circleci_config(facts: ProjectFacts, *, cycle: str) -> str:
     jobs = _cycles(facts, cycle)
     for stack, name in jobs:
         lines += [
-            f"  {stack.key}:",
+            f"  {_job_id(stack, facts)}:",
             "    docker:",
             f"      - image: {_image(CIRCLECI_IMAGES, stack, facts)}",
             "    steps:",
             "      - checkout",
             "      - restore_cache:",
             "          keys:",
-            f"            - testo-history-{stack.key}-{{{{ .Branch }}}}-",
-            f"            - testo-history-{stack.key}-",
+            f"            - testo-history-{_job_id(stack, facts)}-{{{{ .Branch }}}}-",
+            f"            - testo-history-{_job_id(stack, facts)}-",
         ]
         lines += [f"      - run: {_yaml_cmd(c)}" for c in _install_and_test(stack)]
         lines += [
@@ -597,11 +615,11 @@ def circleci_config(facts: ProjectFacts, *, cycle: str) -> str:
         lines += [
             "      - save_cache:",
             "          when: always",
-            f"          key: testo-history-{stack.key}-{{{{ .Branch }}}}-{{{{ .BuildNum }}}}",
+            f"          key: testo-history-{_job_id(stack, facts)}-{{{{ .Branch }}}}-{{{{ .BuildNum }}}}",
             "          paths: [~/.testo-history]",
             "      - store_artifacts:",
             "          path: testo-summary.md",
         ]
     lines += ["workflows:", "  tests:", "    jobs:"]
-    lines += [f"      - {stack.key}" for stack, _ in jobs]
+    lines += [f"      - {_job_id(stack, facts)}" for stack, _ in jobs]
     return "\n".join(lines) + "\n"

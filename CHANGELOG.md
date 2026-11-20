@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Monorepos on GitLab: `ci/gitlab/qasight-every-job.gitlab-ci.yml`, one include that records every job's test results on the team server (also in the offline bundle)
+- `qasight init --scan` finds Behave and BehaveX suites
 - `qasight export -o report.pdf` takes the format from the file's extension
 - CI runs the CLI end to end the way a coding agent calls it (`scripts/cli_e2e.py`): `qasight doctor` with no config, `try`, `ingest`, `qasight mcp` over stdio, `diff` and `export` in every format
 - Closed networks: `scripts/offline/bundle.sh` packs the wheels, Docker images and GitLab template into one file for a network with no internet, and `install.sh` installs it there (and pushes the images to your registry); guide: Closed Network Install
@@ -21,6 +23,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `qasight ci preview`, `qasight lease pools` and `qasight config db`: the new homes of `qasight try`, `qasight pool` and `qasight config-db`, which keep working as aliases
 
 ### Fixed
+- `qasight init --ci gitlab|circleci`: two folders with the same runner no longer get the same job name, and the GitLab artifacts path includes the folder
+- `qasight ingest` with no files: finds results past a large checkout's first 20,000 files, and in a GitLab job leaves out earlier jobs' artifacts
+- `qasight ingest --server` packs more than 200 JUnit files (one per Behave feature) into a few, under the server's limit
 - `qasight diff` takes the run ids the UI, MCP and `qasight run` / `qasight ingest` show. A run's report archive now takes the run's id, so one id names a run everywhere; for older runs `qasight diff` finds the archive by cycle and time
 - `qasight try` and `qasight ingest` with no files leave out older JUnit files of the same tests (`run-1.xml` ... next to `run-8.xml`, or a results folder nobody cleans) instead of recording them all as one run with every test counted once per file, and say which they left out
 - `qasight doctor` with no `qasight.yaml` reports it as INFO and exits 0, since `ingest`, `ui` and `run -- <command>` need none; a config named with `-c` that is missing, or one that doesn't load, still fails

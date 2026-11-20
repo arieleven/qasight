@@ -284,3 +284,7 @@ New note [CLI-Only Bug Hunt - 2026-11-15](Specs%20&%20ADRs/CLI-Only%20Bug%20Hunt
 ## 2026-11-20: added Focus Review
 
 New note [Focus Review - 2026-11-20](Specs%20&%20ADRs/Focus%20Review%20-%202026-11-20.md): one core promise, ten commands in `qasight --help` (`help --all`, `help --json` for the rest), a shorter README and an Overview that leads with what needs attention. The REST API table moved into the Architecture Overview and the v1.0 migration into the Stability and Deprecation Policy. Linked from the Specs README and the docs site menu.
+
+## 2026-11-20: added Closed-Network Monorepo Rollout
+
+New note [Closed-Network Monorepo Rollout - 2026-11-20](Specs%20&%20ADRs/Closed-Network%20Monorepo%20Rollout%20-%202026-11-20.md): one GitLab include that records every job of a monorepo, Behave and BehaveX in `qasight init --scan`, and the fixes a monorepo trial showed. Linked from the Specs README and the docs site menu.

@@ -39,7 +39,7 @@ It writes `dist-offline/qasight-offline-<version>-linux-<arch>.tar.gz` with:
 
 - `wheels/`: `qasight[<extras>]` and every dependency as wheels for the target's Python versions (`--python`, default `3.11,3.12,3.13`) and CPU (`--arch amd64|arm64`), not this machine's, so a Mac can pack for a Linux server.
 - `images/`: `qasight-server`, `qasight-runner` and `postgres:16-alpine` (`docker save`), plus `qasight-runner-service` with `--runner`.
-- `gitlab/qasight.gitlab-ci.yml`, `install.sh`, `bundle.env` (what was packed) and `SHA256SUMS`.
+- `gitlab/qasight.gitlab-ci.yml`, `gitlab/qasight-every-job.gitlab-ci.yml` (a monorepo, below), `install.sh`, `bundle.env` (what was packed) and `SHA256SUMS`.
 
 The published server image has no Chromium, so the Report page offers PowerPoint, Excel and HTML but not PDF or PNG. For those, build `Dockerfile.qasight-server` with `--build-arg TESTO_REPORT_PDF=1` on the machine with internet and `docker save` it next to the others.
 
@@ -94,6 +94,22 @@ RUN pip install --no-index --find-links /tmp/wheels "qasight[api,db]" && rm -rf 
 ```
 
 Jobs that [`qasight init --ci gitlab`](../CLI%20Commands/Command%20Reference.md#qasight-init) writes run your tests in your language's image and record them after; they skip installing when `qasight` is already on the image's `PATH`, so add the same `pip install --no-index` line to that image. To upload every pipeline to the team server, add `qasight ingest --server https://<your server> --token "$TESTO_API_TOKEN"` ([Upload from CI](Team%20Server.md#upload-from-ci)).
+
+### A monorepo: one include records every job
+
+A large repository already has its own jobs, written by many teams. Rather than a QASight job per suite, include `gitlab/qasight-every-job.gitlab-ci.yml` once at the top of `.gitlab-ci.yml`. It adds a `default:` `after_script` to every job: when the job wrote test results, they are uploaded to the [team server](Team%20Server.md) as a run of a cycle named after the job (`QASIGHT_CYCLE` on a job overrides it); a job without results records nothing, and the job's outcome never changes.
+
+```yaml
+include:
+  - local: .gitlab/qasight-every-job.gitlab-ci.yml
+# CI/CD variables: TESTO_SERVER_URL and TESTO_API_TOKEN (masked)
+```
+
+- **Results.** `qasight ingest` finds them by content anywhere in the checkout: pytest needs `--junitxml=<file>` (or `--junitxml` in its `addopts`), Behave `--junit` (writes `reports/TESTS-*.xml`), BehaveX writes `output/behave/*.xml` on its own. Files written before the job started (GitLab's `CI_JOB_STARTED_AT`), such as earlier jobs' artifacts, are left out, so a later job doesn't record them again. A BDD suite's one-file-per-feature output is packed into a few files when it passes the server's 200-file limit.
+- **`qasight` in the image.** It needs Python 3.11 or newer: bake it in from the bundle's wheels (the Dockerfile above), or set `QASIGHT_INSTALL: auto` with `PIP_INDEX_URL` pointing at your mirror. For images without Python 3.11, set `QASIGHT_UPLOAD` to the `qasight-upload` binary (the one-file uploader that needs no Python; for example mounted read-only into every job by the runner's `volumes`); it sends the globs in `QASIGHT_RESULTS`.
+- **Jobs with their own `after_script`** replace the default; add `- !reference [.qasight-record, after_script]` as their first line.
+
+[`qasight init --scan --ci gitlab`](../CLI%20Commands/Command%20Reference.md#qasight-init) is the other way: it writes a job per runner per folder (pytest, Behave, BehaveX and the rest), for a repository that has no CI yet.
 
 The merge request comment goes to your GitLab's own API (`CI_API_V4_URL`, set by GitLab), never gitlab.com; add a `TESTO_GITLAB_TOKEN` CI/CD variable with `api` scope.
 

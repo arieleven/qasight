@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # Agent Context Guide
@@ -15,7 +15,7 @@ Map for AI coding agents working on QASight (`qasight`, CLI `qasight`): which no
 * **CLI changes:** before adding or changing a command, flag or exit code, read [Command Reference](../CLI%20Commands/Command%20Reference.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md). `tests/contract/qasight/test_cli_docs_drift.py` fails if the reference documents a command that doesn't exist. A new `qasight.yaml` key also goes in `qasight/config/json_schema.py` (then run `python scripts/export_config_schema.py`).
 * **CI and releases:** [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md), [QA Strategies § CI and streaming output](../Testing%20Workflows/QA%20Strategies.md#ci-and-streaming-output), and the publishing guides ([PyPI](../Processes%20&%20Guides/Publishing%20to%20PyPI.md), [Docker images](../Processes%20&%20Guides/Publishing%20Docker%20Images.md), [Artifactory](../Processes%20&%20Guides/Publishing%20to%20Artifactory.md)).
 * **Team server and `qasight ingest`:** [Team Server](../Processes%20&%20Guides/Team%20Server.md) and [Ingest and Team Server - 2026-10-22](../Specs%20&%20ADRs/Ingest%20and%20Team%20Server%20-%202026-10-22.md). `Dockerfile.qasight-server`, `deploy/server/` and `scripts/team_server_smoke.sh` change together. Where a stage's process runs (host or the container runner service) is `qasight/engine/backends/`; read [Throwaway Stage Containers - 2026-10-24](../Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md) before touching it or `Dockerfile.qasight-runner-service`.
-* **Closed networks (no internet):** [Closed Network Install](../Processes%20&%20Guides/Closed%20Network%20Install.md). `scripts/offline/`, both compose files (`deploy/server/` and `qasight/templates/server/`, kept identical by a test) and `ci/gitlab/testo.gitlab-ci.yml` change together; a new image or outbound call updates that note.
+* **Closed networks (no internet):** [Closed Network Install](../Processes%20&%20Guides/Closed%20Network%20Install.md). `scripts/offline/`, both compose files (`deploy/server/` and `qasight/templates/server/`, kept identical by a test) and `ci/gitlab/testo.gitlab-ci.yml` / `qasight-every-job.gitlab-ci.yml` change together; a new image or outbound call updates that note.
 * **Resource pools and `qasight lease`:** [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md) and [Resource Pools and Leases - 2026-10-26](../Specs%20&%20ADRs/Resource%20Pools%20and%20Leases%20-%202026-10-26.md). Code in `qasight/resources/`, the API in `qasight_api/routes/resources.py`.
 * **Release scorecard (`qasight scorecard`, the Code quality tab under Releases, `/code-quality`):** [Release Scorecard - 2026-11-12](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md). A new tool is an entry in `qasight/services/scorecard/tools.py` and, for a new report format, a parser in `parsers.py`; its logo goes in `frontend/src/features/scorecard/brandMarks.ts` only when the tool has one of its own in Simple Icons.
 * **Pages demo:** [GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md) (covers GitHub Pages too).

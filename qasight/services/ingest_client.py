@@ -8,17 +8,78 @@ records them as a run in the team's shared history.
 from __future__ import annotations
 
 import os
+import re
+import tempfile
 from collections.abc import Mapping
 from contextlib import ExitStack
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from qasight.services.ci_provenance import ci_repository, detect_ci_provenance
+from qasight.services.junit_ingest import MAX_FILE_BYTES, MAX_FILES
 
 if TYPE_CHECKING:
     from qasight.config.schema import QuarantineRule
 
 UPLOAD_TIMEOUT_S = 120.0
+
+
+# Room under the server's per-file limit for the <testsuites> wrapper.
+_COMBINED_BYTES = MAX_FILE_BYTES - 64 * 1024
+_XML_DECL = re.compile(rb"^\s*(?:\xef\xbb\xbf)?\s*<\?xml[^>]*\?>\s*")
+_ENCODING = re.compile(rb"""encoding=["'](?!utf-?8["'])""", re.I)
+_ROOT = re.compile(rb"^\s*(?:<!--.*?-->\s*)*<(testsuites?)[\s>/]", re.S)
+
+
+def combine_junit_files(files: list[Path], scratch: Path) -> list[Path]:
+    """*files* with their JUnit XML packed into a few ``<testsuites>`` files.
+
+    Behave and BehaveX write one JUnit file per feature, so a large BDD suite can
+    pass the server's limit of files per upload. Each ``<testsuite>`` element is kept
+    as it is, only wrapped together, so the server reads the same tests. Other
+    formats, and files that would not fit, are sent as they are.
+    """
+    kept: list[Path] = []
+    chunks: list[list[bytes]] = [[]]
+    size = 0
+    for path in files:
+        try:
+            content = path.read_bytes() if path.suffix.lower() == ".xml" else b""
+        except OSError:
+            content = b""
+        decl = _XML_DECL.match(content)
+        body = content[decl.end() :] if decl else content
+        match = _ROOT.match(body)
+        other_encoding = decl and _ENCODING.search(decl.group(0))
+        if not match or other_encoding or len(body) > _COMBINED_BYTES:
+            kept.append(path)
+            continue
+        if match.group(1) == b"testsuites":
+            body = _inner_suites(body)
+        if size + len(body) > _COMBINED_BYTES and chunks[-1]:
+            chunks.append([])
+            size = 0
+        chunks[-1].append(body)
+        size += len(body)
+    combined: list[Path] = []
+    for index, chunk in enumerate(c for c in chunks if c):
+        out = scratch / f"qasight-combined-{index + 1}.xml"
+        out.write_bytes(
+            b'<?xml version="1.0" encoding="utf-8"?>\n<testsuites>\n'
+            + b"\n".join(chunk)
+            + b"\n</testsuites>\n"
+        )
+        combined.append(out)
+    return combined + kept
+
+
+def _inner_suites(body: bytes) -> bytes:
+    """The children of a ``<testsuites>`` root (its own attributes are totals, not tests)."""
+    start = body.find(b">", body.find(b"<testsuites")) + 1
+    end = body.rfind(b"</testsuites>")
+    if start <= 0 or end < start:
+        return b""  # an empty <testsuites/>
+    return body[start:end].strip()
 
 
 class IngestUploadError(RuntimeError):
@@ -61,6 +122,9 @@ def upload_reports(
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     data = {"cycle": cycle, "stage": stage, "tier": tier, **dict(metadata or {})}
     with ExitStack() as stack:
+        if len(files) > MAX_FILES:
+            scratch = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="qasight-up-")))
+            files = combine_junit_files(files, scratch)
         parts = [
             ("files", (path.name, stack.enter_context(path.open("rb")), _content_type(path)))
             for path in files
