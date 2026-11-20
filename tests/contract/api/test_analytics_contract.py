@@ -403,7 +403,7 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
     seen: dict[str, object] = {}
 
     def fake_list(
-        cycle: str, *, window: int, query: str | None, label: str | None = None
+        cycle: str, *, window: int, query: str | None = None, label: str | None = None
     ) -> th.CycleTests:
         seen.update(cycle=cycle, window=window, query=query)
         return th.CycleTests(cycle=cycle, runs_considered=4, tests=(summary,))
@@ -438,7 +438,8 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
     client = TestClient(create_app())
     listing = client.get("/api/v1/analytics/tests", params={"cycle": "smoke", "q": "login"})
     assert listing.status_code == 200
-    assert seen == {"cycle": "smoke", "window": 20, "query": "login"}
+    # The route asks for every test once (cached until a run lands) and filters itself.
+    assert seen == {"cycle": "smoke", "window": 20, "query": None}
     item = listing.json()["items"][0]
     assert (item["name"], item["slowdown_ms"], item["median_duration_ms"]) == (
         "test_login",

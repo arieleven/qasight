@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Query
 
 from qasight.config.schema import QuarantineRule
+from qasight.history import memo
 from qasight.history.read_model import get_run
 from qasight.services.delta_models import MetricDelta
 from qasight.services.delta_service import (
@@ -17,7 +18,12 @@ from qasight.services.flaky_service import DEFAULT_WINDOW, FlakyTest, find_flaky
 from qasight.services.releases import ReleaseSummary, list_releases, load_release
 from qasight.services.run_snapshot_diff import diff_run_snapshots
 from qasight.services.test_attachments import attachments_for
-from qasight.services.test_history import cycle_source, list_cycle_tests, load_test_history
+from qasight.services.test_history import (
+    cycle_source,
+    filter_cycle_tests,
+    list_cycle_tests,
+    load_test_history,
+)
 from qasight.services.test_issues import cycle_issues
 from qasight.services.test_labels import cycle_labels
 from qasight.services.test_ownership import issue_url, owners_for
@@ -216,7 +222,11 @@ def get_flaky_tests(
 
     UI parity with ``qasight flaky --cycle``; see ``qasight/services/flaky_service.py``.
     """
-    report = find_flaky_tests(cycle=cycle, window=window)
+    # The same until a run lands (memo keys on the run history): the page and the
+    # dashboard ask for it often, and it reads every test of the window's runs.
+    report = memo.cached(
+        "flaky", (cycle, window), lambda: find_flaky_tests(cycle=cycle, window=window)
+    )
     checkout, repository = cycle_source(cycle)
     quarantine = flaky_quarantine(cycle, report.flaky)
     owners = {t.key: owners_for(checkout, t.full_name, t.group) for t in report.flaky}
@@ -281,7 +291,10 @@ def get_cycle_tests(
     window: int = Query(DEFAULT_WINDOW, ge=1, le=200),
 ) -> CycleTestsResponse:
     """Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns."""
-    found = list_cycle_tests(cycle, window=window, query=q, label=label)
+    every = memo.cached(
+        "cycle-tests", (cycle, window), lambda: list_cycle_tests(cycle, window=window)
+    )
+    found = filter_cycle_tests(every, query=q, label=label)
     return CycleTestsResponse(
         cycle=found.cycle,
         runs_considered=found.runs_considered,

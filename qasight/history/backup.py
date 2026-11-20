@@ -286,6 +286,9 @@ def restore_backup(path: Path, *, replace: bool = False) -> RestoreSummary:
                 while chunk := src.read(1 << 20):
                     dst.write(chunk)
             files += 1
+    from qasight.repository.test_results import clear_cache
+
+    clear_cache()  # restored rows may replace runs this process has cached
     return RestoreSummary(
         rows=rows, files=files, skipped_tables=tuple(skipped), dropped_columns=dropped
     )

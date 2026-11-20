@@ -34,3 +34,30 @@ def cases_for_run(run: CompletedRunView) -> dict[str, dict[str, Any]]:
         except Exception:  # noqa: BLE001 - a failed adoption must not fail the read
             logger.warning("could not store test rows for run %s", run.run_id, exc_info=True)
     return cases
+
+
+def history_of(
+    runs: list[CompletedRunView], keys: set[str]
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """``keys``' cases in each of ``runs``, as ``{run_id: {key: case}}``.
+
+    Every run that has tests gets an entry, empty when none of ``keys`` ran in it,
+    so a caller can tell "didn't run" from "run has no tests" (which is left out).
+    One query for the lot instead of every row of every run.
+    """
+    if not runs:
+        return {}
+    store = get_test_result_store()
+    ids = [r.run_id for r in runs]
+    found = store.cases_for_keys(ids, keys) if keys else {}
+    stored = store.runs_with_rows(ids)
+    out: dict[str, dict[str, dict[str, Any]]] = {}
+    for run in runs:
+        if run.run_id[:64] in stored:
+            out[run.run_id] = found.get(run.run_id[:64], {})
+            continue
+        # No rows yet: an older run with only its snapshot; adopting it stores them.
+        cases = cases_for_run(run)
+        if cases:
+            out[run.run_id] = {k: cases[k] for k in keys if k in cases}
+    return out
