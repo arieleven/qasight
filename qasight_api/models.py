@@ -1581,6 +1581,10 @@ class ScorecardScanRequest(BaseModel):
     url: str | None = Field(default=None, max_length=1024)
     openapi: str | None = Field(default=None, max_length=1024)
     tools: list[str] | None = None
+    # Git ref: Claude's security review reads only the changes since it.
+    diff_base: str | None = Field(
+        default=None, max_length=255, pattern=r"^[A-Za-z0-9_.@^~][A-Za-z0-9_./@^~-]*$"
+    )
 
 
 class ScorecardScanToolItem(ApiModel):

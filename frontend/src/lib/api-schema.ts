@@ -4300,6 +4300,8 @@ export interface components {
          * @description Scan a folder on the server or a git URL with the switched-on tools.
          */
         ScorecardScanRequest: {
+            /** Diff Base */
+            diff_base?: string | null;
             /** Openapi */
             openapi?: string | null;
             /** Project */

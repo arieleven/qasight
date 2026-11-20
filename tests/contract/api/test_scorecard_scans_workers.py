@@ -16,7 +16,14 @@ pytestmark = [pytest.mark.contract, pytest.mark.tier_fast]
 
 def _request(target: str) -> SimpleNamespace:
     return SimpleNamespace(
-        target=target, tools=[], project=None, version=None, ref=None, url=None, openapi=None
+        target=target,
+        tools=[],
+        project=None,
+        version=None,
+        ref=None,
+        url=None,
+        openapi=None,
+        diff_base=None,
     )
 
 

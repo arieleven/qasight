@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-11-12
+updated: 2026-11-20
 ---
 
 # Architecture Overview
@@ -123,6 +123,29 @@ Until v1.1 a second, Docker-based execution stack (`HeadlessEngineService` → `
 
 **`qasight run`** does not require Docker. `docker-compose.yml` only provides Postgres for local development. For a shared history, `deploy/server/docker-compose.yml` runs the [Team Server](../Processes%20&%20Guides/Team%20Server.md) (API + UI image and Postgres) that CI jobs upload to with `qasight ingest --server`.
 
+### `qasight/services/scorecard/` (Code quality)
+
+The release scorecard scores a repository or version with outside review tools, separately from test runs. `qasight scorecard scan` and `POST /api/v1/scorecard/scans` both call `scan.run_scan()`; results go to the `scorecard_result` / `scorecard_tool` tables through `store.py`.
+
+```mermaid
+flowchart LR
+    CLI["qasight scorecard scan"] --> RS["scan.run_scan()"]
+    API["POST /api/v1/scorecard/scans"] --> RS
+    RS --> PT["plan_tools(): switched on, fits the languages, installed, --url given"]
+    PT --> ML["MegaLinter in Docker (engine)"]
+    PT --> REPO["repo tools: Bandit, Semgrep, CodeQL, gitleaks, TruffleHog, Claude security review, ..."]
+    PT --> APP["app tools (--url): ZAP, Nuclei, Lighthouse, axe, k6, Schemathesis"]
+    ML --> P["parsers.py: report to 0-100 score and findings"]
+    REPO --> P
+    APP --> P
+    IMP["qasight scorecard import"] --> P
+    P --> ST["store.py: scorecard_result, scorecard_tool"]
+```
+
+- **`tools.py`** is the one list of tools: id, category, kind (`engine`, `repo`, `app`, `import`), `default_on`, binary, and the `Command` that runs it (argv, `before` steps, `empty_ok` for JSON-lines tools that print nothing when clean). The UI's tool list and toggles come from it through the API, so a new tool needs no UI change beyond an optional brand mark in `frontend/src/features/scorecard/brandMarks.ts`.
+- **Defaults.** Bandit, pip-audit, npm audit, zizmor, Ruff and the app tools run by default; Semgrep, CodeQL, gitleaks, Trivy, TruffleHog, Nuclei and Claude security review are opt-in (`qasight scorecard tools --on <id>` or the UI switch). Why: [Release Scorecard](../Specs%20&%20ADRs/Release%20Scorecard%20-%202026-11-12.md).
+- **Parsers** (`parsers.py`) are pure: a report file in, a `ToolResult` out, so every tool's report can also be imported from CI.
+
 ### Official documentation
 
 | Technology | Reference |
@@ -216,6 +239,25 @@ Retention (`qasight/history/retention.py`): when `history.retention` is set, exp
 Code that needs per-test outcomes for a *run_id* (not a *report_id*) calls `history.cases.cases_for_run(run)`: since revision `0003` each run's tests are rows of the `test_result` table (`repository/test_results.py`), written by `persistence/db_backend.py` after the run and, for runs recorded earlier, filled once from the run's snapshot on first read. Attachments and traces still come from `CompletedRunView.snapshot_dir` (via `history.snapshots.snapshot_files_for_download()`). Neither resolves a `ReportArchive` row — there isn't one to resolve to. See `qasight/services/run_snapshot_diff.py` for the file-based pattern.
 
 Resource pool leases (`qasight/resources/store.py`, tables `resource_item`, `resource_lease`, `resource_waiter`, plus `resource_action`, the log of provider commands people ran with `qasight pool`) live in the same database and are unrelated to runs: they say which parallel worker holds which key right now. See [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md).
+
+## REST API
+
+`qasight_api` serves `/api/v1`; interactive docs are at `/docs` while `qasight-api` or `qasight ui` runs. The frontend's types come from this OpenAPI schema.
+
+| Area | Endpoints (`/api/v1`) |
+|------|-----------------------|
+| Cycles | `GET /cycles`, `GET /cycles/{cycle}` |
+| Executions | `POST /cycles/{cycle}/executions`, `POST /adhoc-executions`, `GET /cycle-executions/{id}`, `GET /cycle-executions/{id}/events` (SSE) |
+| Ingest | `POST /ingest` (JUnit XML upload from `qasight ingest --server`) |
+| Runs | `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/reports`, `GET /runs/{id}/pyramid`, `GET /runs/{id}/markdown` |
+| Report | `GET /report` (`?period=&cycle=`), `GET /report/export?format=pdf\|pptx\|xlsx\|png\|html\|csv\|json` |
+| Analytics | `GET /analytics/delta`, `GET /analytics/delta/cases`, `GET /analytics/flaky`, `GET /dashboard/overview`, `GET /dashboard/runs/recent` |
+| AI (bring your own key) | `GET /ai/config/status`, `PUT /ai/config`, `GET /runs/{id}/ai-summary`, `POST /runs/{id}/ai-summary:generate`, `POST /ask` |
+| Triage and Jira | `PUT /triage`, `GET /triage/accuracy`, `GET /jira`, `POST /jira/issues` |
+| Live results | `POST /live-runs`, `GET /live-runs` (sessions in table `live_session`, shared by every worker) |
+| ReportPortal agents | `/api/v1/{project}/…` and `/api/v2/{project}/…` (launch, item, log, finish), `GET /api/info`, outside `/api/v1`'s own routes; see [Moving from ReportPortal](../Processes%20&%20Guides/Moving%20from%20ReportPortal.md) |
+| Badge | `GET /badge.svg`, `GET /badge.json` (`?cycle=`) |
+| Health | `GET /health/live`, `GET /health/ready` |
 
 ## Related operational docs
 

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-11-13
+updated: 2026-11-20
 ---
 
 # Getting Started
@@ -185,7 +185,7 @@ pip install qasight
 qasight ingest 'reports/**/*.xml' --cycle web-unit
 ```
 
-Before touching CI, `qasight try` shows the pull request comment your latest results would get, without recording anything (`--from-github` uses your last GitHub Actions run's artifacts).
+Before touching CI, `qasight ci preview` shows the pull request comment your latest results would get, without recording anything (`--from-github` uses your last GitHub Actions run's artifacts).
 
 Copy-paste versions for each runner and each CI system (GitHub Actions, GitLab CI, Jenkins, CircleCI) are in [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md).
 

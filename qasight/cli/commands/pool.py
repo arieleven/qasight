@@ -1,4 +1,4 @@
-"""``qasight pool`` — look at and change the real keys behind a resource pool, with your own commands.
+"""``qasight lease pools`` (alias ``qasight pool``) — look at and change the real keys behind a resource pool, with your own commands.
 
 QASight never creates or deletes a VM (or any key) on its own. A pool's
 ``provider:`` holds the config author's commands, and only this command group

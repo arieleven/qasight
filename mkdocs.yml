@@ -131,6 +131,7 @@ nav:
       - Test Labels, Environments and Releases: Specs & ADRs/Test Labels, Environments and Releases - 2026-11-02.md
       - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
       - CLI-Only Bug Hunt: Specs & ADRs/CLI-Only Bug Hunt - 2026-11-15.md
+      - Focus Review: Specs & ADRs/Focus Review - 2026-11-20.md
       - Importer and Integration Bug Hunt: Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md
       - Engine Fixes: Specs & ADRs/Engine Fixes - 2026-11-01.md
       - Lifecycle Fixes: Specs & ADRs/Lifecycle Fixes - 2026-11-02.md

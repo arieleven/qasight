@@ -8,16 +8,66 @@ optional database layer.
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
+from typing import Any
 
 import typer
 
+# The one promise ``qasight --help`` leads with (see the Focus Review ADR).
+TAGLINE = "Every test run, remembered: what's new, what's flaky and what got slower."
+
+# Panels of the short ``qasight --help``: the ten commands every user needs.
+CORE_PANELS = ("Start", "Record", "Understand", "Share")
+# Panels the rest of the commands sit in, shown by ``qasight help --all``.
+MORE_PANELS = (
+    "More: understand",
+    "More: release gate",
+    "More: AI",
+    "More: reports and alerts",
+    "More: CI at scale",
+    "More: setup and team server",
+    "More: maintenance",
+)
+
 app = typer.Typer(
     name="qasight",
-    help="QASight: see what broke, what's flaky and what got slower on every run.",
+    help=TAGLINE,
+    epilog=(
+        "More commands (scorecard, ai, export, affected, split, lease, server, ...): "
+        "qasight help --all. For coding agents: qasight help --json."
+    ),
     no_args_is_help=True,
     add_completion=True,
     pretty_exceptions_show_locals=False,
 )
+
+
+@dataclass(frozen=True)
+class CommandSpec:
+    """One top-level command: where ``--help`` lists it, or which command it is an alias of."""
+
+    name: str
+    help: str
+    panel: str
+    core: bool = False
+    alias_of: str | None = None
+
+
+COMMANDS: list[CommandSpec] = []
+
+
+def _add(target: Any, spec: CommandSpec, *, group: bool = False) -> None:
+    """Register ``target`` (a function, or a Typer app when ``group``) under ``spec``."""
+    COMMANDS.append(spec)
+    hidden = not spec.core
+    if group:
+        app.add_typer(
+            target, name=spec.name, help=spec.help, hidden=hidden, rich_help_panel=spec.panel
+        )
+    else:
+        app.command(name=spec.name, help=spec.help, hidden=hidden, rich_help_panel=spec.panel)(
+            target
+        )
 
 
 def _version_callback(show_version: bool) -> None:
@@ -40,14 +90,16 @@ def _main(
         help="Show the qasight version and exit.",
     ),
 ) -> None:
-    """QASight: see what broke, what's flaky and what got slower on every run."""
+    """Every test run, remembered: what's new, what's flaky and what got slower."""
 
 
 def _register_commands() -> None:
     """Wire every subcommand at module load time without importing heavy modules.
 
     Each handler does its own deferred imports (engine, frameworks, DB), so
-    only the lightweight Typer + Rich surface is loaded here.
+    only the lightweight Typer + Rich surface is loaded here. Only the core
+    commands show in ``qasight --help``; every other command works the same and
+    is listed by ``qasight help --all``. Aliases keep old names working.
     """
     from qasight.cli.commands import affected as affected_mod
     from qasight.cli.commands import ai as ai_mod
@@ -64,6 +116,7 @@ def _register_commands() -> None:
     from qasight.cli.commands import export_cmd as export_mod
     from qasight.cli.commands import export_site as export_site_mod
     from qasight.cli.commands import flaky as flaky_mod
+    from qasight.cli.commands import help_cmd as help_mod
     from qasight.cli.commands import import_cmd as import_mod
     from qasight.cli.commands import ingest as ingest_mod
     from qasight.cli.commands import init_cmd as init_cmd_mod
@@ -87,236 +140,382 @@ def _register_commands() -> None:
     from qasight.cli.commands import version as version_cmd
     from qasight.cli.commands import watch as watch_mod
 
-    app.command(
-        name="run",
-        help="Execute a cycle defined in qasight.yaml.",
-        rich_help_panel="Run and report",
-    )(run_cmd.run)
-    app.command(
-        name="ingest",
-        help="Record test results (JUnit XML, Jest/Vitest, .trx, go test -json, Robot, Allure, ...) as a run of a cycle.",
-        rich_help_panel="Run and report",
-    )(ingest_mod.ingest)
-    app.command(
-        name="ui",
-        help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
-        rich_help_panel="Run and report",
-    )(ui_cmd.ui)
-    app.command(
-        name="export-site",
-        help="Write the UI and recent runs as a read-only static site (GitHub Pages, any file host).",
-        rich_help_panel="Run and report",
-    )(export_site_mod.export_site)
-    app.add_typer(
-        mcp_mod.app,
-        name="mcp",
-        help="Serve the run history to coding agents over MCP (stdio); `qasight mcp install` sets "
-        "up Claude Code, Cursor, VS Code or Claude Desktop.",
-        rich_help_panel="Run and report",
-    )
-    app.command(
-        name="demo",
-        help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
-        rich_help_panel="Run and report",
-    )(demo_mod.demo)
-    app.command(
-        name="try",
+    # Merged commands: the new home of each old top-level command.
+    ci_mod.app.command(
+        "preview",
         help="Preview the pull request comment your latest results would get; records nothing.",
-        rich_help_panel="Run and report",
     )(try_cmd.try_comment)
-    app.command(
-        name="split",
-        help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",
-        rich_help_panel="Run and report",
-    )(split_mod.split)
-    app.command(
-        name="affected",
-        help="Pick the tests a change can affect, with why; anything unmapped runs all.",
-        rich_help_panel="Run and report",
-    )(affected_mod.affected)
-    app.command(
-        name="notify",
-        help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
-        rich_help_panel="Run and report",
-    )(notify_mod.notify)
-    app.add_typer(
-        ci_mod.app,
-        name="ci",
-        help="After a CI run: summary, pull/merge request comment, annotations, chat alerts.",
-        rich_help_panel="Run and report",
-    )
-    app.add_typer(
-        import_mod.app,
-        name="import",
-        help="Import a ReportPortal project's launches and failure decisions as run history.",
-        rich_help_panel="Run and report",
-    )
-    app.add_typer(
-        triage_mod.app,
-        name="triage",
-        help="How often a cause suggested from similar marked failures would have been right.",
-        rich_help_panel="Run and report",
-    )
-    app.add_typer(
-        issues_mod.app,
-        name="issues",
-        help="Open a GitHub issue per flaky test and close it once the test is stable.",
-        rich_help_panel="Run and report",
-    )
-    app.command(
-        name="case-study",
-        help="Before/after numbers for a team that switched to QASight, as Markdown.",
-        rich_help_panel="Run and report",
-    )(case_study_mod.case_study)
-    app.command(
-        name="otel",
-        help="Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",
-        rich_help_panel="Run and report",
-    )(otel_mod.otel)
-    app.command(
-        name="export",
-        help="Write the manager report as a PDF, PNG, HTML, PowerPoint, Excel, CSV or JSON file.",
-        rich_help_panel="Run and report",
-    )(export_mod.export)
-    app.add_typer(
-        scorecard_mod.app,
-        name="scorecard",
-        help="Score a release with the repo review tools (security, dependencies, API, web, load, "
-        "tests) on any folder or git URL, compare it with the last version and gate it.",
-        rich_help_panel="Run and report",
-    )
-    app.command(
-        name="badge",
-        help="Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",
-        rich_help_panel="Run and report",
-    )(badge_mod.badge)
-    app.command(
-        name="config-db",
-        help="Set database.url in qasight.yaml (or \\[tool.qasight] in pyproject.toml).",
-        rich_help_panel="Config",
-    )(config_db_cmd.config_db)
-    app.command(
-        name="diff",
-        help="Compare two archived report runs (UUIDs from qasight report list).",
-        rich_help_panel="Diagnostics",
-    )(diff_cli_mod.diff_reports)
-    app.command(
-        name="summary",
-        help="Rich diff of the two most recent archived runs (optional --cycle).",
-        rich_help_panel="Diagnostics",
-    )(diff_cli_mod.summary_reports)
-    app.command(
-        name="flaky",
-        help="Tests whose outcome keeps flipping across a cycle's recent runs (--cycle).",
-        rich_help_panel="Diagnostics",
-    )(flaky_mod.flaky)
-    app.add_typer(
-        quarantine_mod.app,
-        name="quarantine",
-        help="Quarantine tests without a config change (list, add, remove), here or on a server.",
-        rich_help_panel="Diagnostics",
-    )
-    app.add_typer(
-        plugins_mod.app,
-        name="plugins",
-        help="List built-in and installed framework and reporter plugins (--check imports them); "
-        "`qasight plugins new NAME` starts one.",
-        rich_help_panel="Diagnostics",
-    )
-    app.add_typer(
-        cycles_cmd.app,
-        name="cycles",
-        help="Inspect cycles defined in the config.",
-        rich_help_panel="Diagnostics",
-    )
-    # Backward-compatible alias for muscle memory.
-    app.add_typer(
-        cycles_cmd.app,
-        name="plans",
-        help="Deprecated alias for `qasight cycles`.",
-        hidden=True,
-        rich_help_panel="Diagnostics",
-    )
-    app.add_typer(
-        lease_mod.app,
-        name="lease",
-        help="Give each parallel worker its own key from a resource pool (resources: in the config).",
-        rich_help_panel="Run and report",
-    )
-    app.add_typer(
+    lease_mod.app.add_typer(
         pool_mod.app,
-        name="pool",
+        name="pools",
         help="Compare resource pools with the keys that really exist (read-only, your own commands).",
-        rich_help_panel="Run and report",
     )
-    app.add_typer(
-        ai_mod.app,
-        name="ai",
-        help="AI failure summaries: set up a provider, check it, summarize a failed run.",
-        rich_help_panel="Config",
-    )
-    app.add_typer(
-        users_cmd.app,
-        name="users",
-        help="Team server accounts and roles (TESTO_AUTH=accounts).",
-        rich_help_panel="Config",
-    )
-    app.add_typer(
-        server_mod.app,
-        name="server",
-        help="Set up a team server: docker compose, a generated token, HTTPS and a first admin.",
-        rich_help_panel="Config",
-    )
-    app.add_typer(
-        config_cmd.app,
-        name="config",
-        help="Validate or scaffold a qasight.yaml.",
-        rich_help_panel="Config",
-    )
-    app.add_typer(
-        report_cmd.report_app,
-        name="report",
-        help=(
-            "Unified Allure reports from the latest cycle, or raw framework-native reports "
-            "(e.g. BehaveX HTML) via qasight report native."
+    config_cmd.app.command(
+        "db", help="Set database.url in qasight.yaml (or \\[tool.qasight] in pyproject.toml)."
+    )(config_db_cmd.config_db)
+
+    # Core: what ``qasight --help`` shows.
+    _add(
+        init_cmd_mod.init,
+        CommandSpec(
+            "init",
+            "Set up a project: detect its test runners, write qasight.yaml and the CI workflow, "
+            "record a first run.",
+            "Start",
+            core=True,
         ),
-        rich_help_panel="Run and report",
     )
+    _add(
+        demo_mod.demo,
+        CommandSpec(
+            "demo",
+            "Try it on eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
+            "Start",
+            core=True,
+        ),
+    )
+    _add(
+        doctor_mod.doctor,
+        CommandSpec(
+            "doctor",
+            "Check the config, the database and the test tools on PATH.",
+            "Start",
+            core=True,
+        ),
+    )
+    _add(
+        run_cmd.run,
+        CommandSpec(
+            "run",
+            "Run a cycle from qasight.yaml, or any test command with no config: qasight run -- pytest.",
+            "Record",
+            core=True,
+        ),
+    )
+    _add(
+        ingest_mod.ingest,
+        CommandSpec(
+            "ingest",
+            "Record results you already have (JUnit XML, Jest/Vitest, Playwright, .trx, go test -json, "
+            "Robot, Allure, ...).",
+            "Record",
+            core=True,
+        ),
+    )
+    _add(
+        diff_cli_mod.summary_reports,
+        CommandSpec(
+            "summary",
+            "What changed since the last run: new failures, fixes and slower tests (--cycle).",
+            "Understand",
+            core=True,
+        ),
+    )
+    _add(
+        flaky_mod.flaky,
+        CommandSpec(
+            "flaky",
+            "Tests whose outcome keeps flipping across a cycle's recent runs (--cycle).",
+            "Understand",
+            core=True,
+        ),
+    )
+    _add(
+        ui_cmd.ui,
+        CommandSpec(
+            "ui",
+            "Open the web UI on this machine's run history (http://127.0.0.1:8000).",
+            "Understand",
+            core=True,
+        ),
+    )
+    _add(
+        ci_mod.app,
+        CommandSpec(
+            "ci",
+            "After a CI run: pull/merge request comment, job summary, annotations, chat alerts "
+            "(ci preview shows the comment first).",
+            "Share",
+            core=True,
+        ),
+        group=True,
+    )
+    _add(
+        mcp_mod.app,
+        CommandSpec(
+            "mcp",
+            "Give coding agents your run history over MCP; `qasight mcp install` sets up Claude Code, "
+            "Cursor, VS Code or Claude Desktop.",
+            "Share",
+            core=True,
+        ),
+        group=True,
+    )
+
+    # More: listed by ``qasight help --all``; each works exactly as before.
+    _add(
+        diff_cli_mod.diff_reports,
+        CommandSpec(
+            "diff",
+            "Compare two specific archived runs (UUIDs from qasight report list).",
+            "More: understand",
+        ),
+    )
+    _add(
+        quarantine_mod.app,
+        CommandSpec(
+            "quarantine",
+            "Quarantine tests without a config change (list, add, remove), here or on a server.",
+            "More: understand",
+        ),
+        group=True,
+    )
+    _add(
+        cycles_cmd.app,
+        CommandSpec("cycles", "Inspect cycles defined in the config.", "More: understand"),
+        group=True,
+    )
+    _add(
+        scorecard_mod.app,
+        CommandSpec(
+            "scorecard",
+            "Score a release with the repo review tools (security, dependencies, API, web, load, "
+            "tests) on any folder or git URL, compare it with the last version and gate it.",
+            "More: release gate",
+        ),
+        group=True,
+    )
+    _add(
+        ai_mod.app,
+        CommandSpec(
+            "ai",
+            "AI failure summaries with your own model: set up a provider, check it, summarize a run.",
+            "More: AI",
+        ),
+        group=True,
+    )
+    _add(
+        export_mod.export,
+        CommandSpec(
+            "export",
+            "Write the manager report as a PDF, PNG, HTML, PowerPoint, Excel, CSV or JSON file.",
+            "More: reports and alerts",
+        ),
+    )
+    _add(
+        export_site_mod.export_site,
+        CommandSpec(
+            "export-site",
+            "Write the UI and recent runs as a read-only static site (GitHub Pages, any file host).",
+            "More: reports and alerts",
+        ),
+    )
+    _add(
+        badge_mod.badge,
+        CommandSpec(
+            "badge",
+            "Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",
+            "More: reports and alerts",
+        ),
+    )
+    _add(
+        notify_mod.notify,
+        CommandSpec(
+            "notify",
+            "Send a recorded run to Slack or Teams (webhook URLs from the environment).",
+            "More: reports and alerts",
+        ),
+    )
+    _add(
+        report_cmd.report_app,
+        CommandSpec(
+            "report",
+            "Allure and framework-native reports (report native), and the run as Markdown "
+            "(report markdown).",
+            "More: reports and alerts",
+        ),
+        group=True,
+    )
+    _add(
+        issues_mod.app,
+        CommandSpec(
+            "issues",
+            "Open a GitHub issue per flaky test and close it once the test is stable.",
+            "More: reports and alerts",
+        ),
+        group=True,
+    )
+    _add(
+        triage_mod.app,
+        CommandSpec(
+            "triage",
+            "How often a cause suggested from similar marked failures would have been right.",
+            "More: understand",
+        ),
+        group=True,
+    )
+    _add(
+        case_study_mod.case_study,
+        CommandSpec(
+            "case-study",
+            "Before/after numbers for a team that switched to QASight, as Markdown.",
+            "More: reports and alerts",
+        ),
+    )
+    _add(
+        otel_mod.otel,
+        CommandSpec(
+            "otel",
+            "Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",
+            "More: reports and alerts",
+        ),
+    )
+    _add(
+        affected_mod.affected,
+        CommandSpec(
+            "affected",
+            "Pick the tests a change can affect, with why; anything unmapped runs all.",
+            "More: CI at scale",
+        ),
+    )
+    _add(
+        split_mod.split,
+        CommandSpec(
+            "split",
+            "Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",
+            "More: CI at scale",
+        ),
+    )
+    _add(
+        lease_mod.app,
+        CommandSpec(
+            "lease",
+            "Give each parallel worker its own key from a resource pool; lease pools checks the "
+            "real keys.",
+            "More: CI at scale",
+        ),
+        group=True,
+    )
+    _add(
+        watch_mod.watch,
+        CommandSpec(
+            "watch", "Watch files and re-run a cycle (--cycle required).", "More: CI at scale"
+        ),
+    )
+    _add(
+        config_cmd.app,
+        CommandSpec(
+            "config",
+            "Validate or scaffold a qasight.yaml; config db sets the database.",
+            "More: setup and team server",
+        ),
+        group=True,
+    )
+    _add(
+        plugins_mod.app,
+        CommandSpec(
+            "plugins",
+            "List built-in and installed framework and reporter plugins (--check imports them); "
+            "`qasight plugins new NAME` starts one.",
+            "More: setup and team server",
+        ),
+        group=True,
+    )
+    _add(
+        server_mod.app,
+        CommandSpec(
+            "server",
+            "Set up a team server: docker compose, a generated token, HTTPS and a first admin.",
+            "More: setup and team server",
+        ),
+        group=True,
+    )
+    _add(
+        users_cmd.app,
+        CommandSpec(
+            "users",
+            "Team server accounts and roles (TESTO_AUTH=accounts).",
+            "More: setup and team server",
+        ),
+        group=True,
+    )
+    _add(
+        import_mod.app,
+        CommandSpec(
+            "import",
+            "Import a ReportPortal project's launches and failure decisions as run history.",
+            "More: setup and team server",
+        ),
+        group=True,
+    )
+    _add(
+        clean_mod.clean,
+        CommandSpec(
+            "clean",
+            "Remove artifacts/temp (--yes, --docker) or expired run history (--history).",
+            "More: maintenance",
+        ),
+    )
+    _add(
+        backup_mod.backup,
+        CommandSpec(
+            "backup",
+            "Save the run history (every table, plus each run's results) to one .tar.gz.",
+            "More: maintenance",
+        ),
+    )
+    _add(
+        backup_mod.restore,
+        CommandSpec(
+            "restore",
+            "Load a qasight backup into the active database (--replace to overwrite).",
+            "More: maintenance",
+        ),
+    )
+
+    # Old names that keep working; never listed.
+    _add(
+        cycles_cmd.app,
+        CommandSpec(
+            "plans", "Deprecated alias for `qasight cycles`.", "More: understand", alias_of="cycles"
+        ),
+        group=True,
+    )
+    _add(
+        try_cmd.try_comment,
+        CommandSpec("try", "Alias for `qasight ci preview`.", "Share", alias_of="ci preview"),
+    )
+    _add(
+        pool_mod.app,
+        CommandSpec(
+            "pool", "Alias for `qasight lease pools`.", "More: CI at scale", alias_of="lease pools"
+        ),
+        group=True,
+    )
+    _add(
+        config_db_cmd.config_db,
+        CommandSpec(
+            "config-db",
+            "Alias for `qasight config db`.",
+            "More: setup and team server",
+            alias_of="config db",
+        ),
+    )
+    _add(
+        version_cmd.version,
+        CommandSpec(
+            "version",
+            "Print the qasight version (same as --version).",
+            "More: maintenance",
+            alias_of="--version",
+        ),
+    )
+
     app.command(
-        name="version",
-        help="Print qasight version.",
-        rich_help_panel="About",
-    )(version_cmd.version)
-    app.command(
-        name="doctor",
-        help="Health check: config load, DB probe, CLIs on PATH.",
-        rich_help_panel="Maintenance",
-    )(doctor_mod.doctor)
-    app.command(
-        name="clean",
-        help="Remove artifacts/temp (--yes, --docker) or expired run history (--history).",
-        rich_help_panel="Maintenance",
-    )(clean_mod.clean)
-    app.command(
-        name="backup",
-        help="Save the run history (every table, plus each run's results) to one .tar.gz.",
-        rich_help_panel="Maintenance",
-    )(backup_mod.backup)
-    app.command(
-        name="restore",
-        help="Load a qasight backup into the active database (--replace to overwrite).",
-        rich_help_panel="Maintenance",
-    )(backup_mod.restore)
-    app.command(
-        name="watch",
-        help="Watch files and re-run a cycle (--cycle required).",
-        rich_help_panel="Maintenance",
-    )(watch_mod.watch)
-    app.command(
-        name="init",
-        help="Set up a project: detect its test runners, write qasight.yaml and the CI workflow, record a first run.",
-        rich_help_panel="Config",
-    )(init_cmd_mod.init)
+        name="help",
+        help="All commands (--all), or every command as JSON for coding agents (--json).",
+        hidden=True,
+    )(help_mod.help_command)
 
 
 _register_commands()

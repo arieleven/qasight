@@ -23,6 +23,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The team server compose files read `TESTO_REGISTRY` and `TESTO_POSTGRES_IMAGE`, and pass `TESTO_NO_UPDATE_CHECK` and the `TESTO_AI_*` settings to the server, so an AI model inside your network can be set from `.env`
 - The GitLab template takes `TESTO_IMAGE` and `TESTO_INSTALL` (`auto`: install only when the image has no `qasight`)
 - Code quality: CodeQL as a scorecard tool (Python, or JavaScript/TypeScript), opt-in
+- Code quality: three more opt-in scanners. Nuclei scans the running app at `--url` with the community templates (no DoS, fuzzing or intrusive ones); TruffleHog finds secrets and checks which are live; Claude security review has Claude Code read the code for exploitable bugs, or only a pull request's changes with the new `qasight scorecard scan --diff-base REF`
+
+- `qasight help --all` lists every command, grouped; `qasight help --json` describes every command, subcommand, alias and exit code for coding agents
+- `qasight ci preview`, `qasight lease pools` and `qasight config db`: the new homes of `qasight try`, `qasight pool` and `qasight config-db`, which keep working as aliases
 
 ### Fixed
 - `qasight diff` takes the run ids the UI, MCP and `qasight run` / `qasight ingest` show. A run's report archive now takes the run's id, so one id names a run everywhere; for older runs `qasight diff` finds the archive by cycle and time
@@ -39,6 +43,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Code quality: Semgrep, gitleaks and Trivy are opt-in like CodeQL; Bandit stays the default security scanner. While one is off, MegaLinter leaves its linter out too. Switch them on with `qasight scorecard tools --on <tool>` or in the UI
 - Code quality: numbered versions sort by number whatever order they were scored in, and names such as `main` sit above them, so releases scored after `main` still line up on the Versions strip
 - The Pages demo's Code quality page shows every release since 1.0.0, and fake-api now has real findings to show
+- `qasight --help` leads with one promise and shows the ten core commands (init, demo, doctor, run, ingest, summary, flaky, ui, ci, mcp); every other command works the same and is listed by `qasight help --all`
+- The README is a short start page: what QASight answers, three commands, and one table of optional features; the details moved to the docs
+- The Overview leads with Needs attention and the latest run, shows Code quality only once a scorecard has run, and leaves delivery numbers to the Report page; Ask appears in the menu once an AI provider is set up and Resources once a resource pool exists
+
+### Deprecated
+- Pushing run metrics to InfluxDB (`INFLUXDB_*`) or a Prometheus Pushgateway (`PROMETHEUS_PUSHGATEWAY_URL`): use OpenTelemetry (an `otel` reporter or `qasight otel`). It keeps working until 2.0 and logs a warning once per process
 
 ### Security
 - QASight's own scan is clean (Bandit, pip-audit, npm audit, zizmor, Ruff): asserts in shipped code are explicit errors, storage counts use SQLAlchemy instead of f-string SQL, the GitHub Action checks its API URL's scheme, Allure's glob and minimatch and the frontend's eslint minimatch are overridden to fixed versions, and Dependabot waits 7 days before offering a new release

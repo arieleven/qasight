@@ -7814,6 +7814,19 @@
       "ScorecardScanRequest": {
         "description": "Scan a folder on the server or a git URL with the switched-on tools.",
         "properties": {
+          "diff_base": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "pattern": "^[A-Za-z0-9_.@^~][A-Za-z0-9_./@^~-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Base"
+          },
           "openapi": {
             "anyOf": [
               {

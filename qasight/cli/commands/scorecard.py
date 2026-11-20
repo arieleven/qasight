@@ -293,13 +293,20 @@ def scan_cmd(
     ),
     ref: str | None = typer.Option(None, "--ref", help="Branch or tag to clone (git URLs only)."),
     url: str | None = typer.Option(
-        None, "--url", help="A running copy of the app: enables ZAP, Lighthouse, axe and k6."
+        None,
+        "--url",
+        help="A running copy of the app: enables ZAP, Lighthouse, axe and k6 (and Nuclei when switched on).",
     ),
     openapi: str | None = typer.Option(
         None, "--openapi", help="OpenAPI schema URL or file: enables Schemathesis."
     ),
     tools: str | None = typer.Option(
         None, "--tools", help="Run only these tools (comma-separated ids), on or off."
+    ),
+    diff_base: str | None = typer.Option(
+        None,
+        "--diff-base",
+        help="Git ref (origin/main): Claude's security review reads only the changes since it, as on a pull request.",
     ),
     out: Path = typer.Option(
         Path("scorecard-reports"),
@@ -338,6 +345,7 @@ def scan_cmd(
     from qasight.services.scorecard.report import build_scorecard, to_markdown
     from qasight.services.scorecard.scan import (
         ScanError,
+        checked_diff_base,
         finish,
         known_tool_ids,
         resolve_target,
@@ -367,6 +375,7 @@ def scan_cmd(
 
     try:
         only = known_tool_ids(tools)
+        diff_base = checked_diff_base(diff_base)
         scan_target = resolve_target(
             target, project=project, version=version, ref=ref, on_event=show
         )
@@ -394,6 +403,7 @@ def scan_cmd(
             on_event=show,
             ignore_file=ignore,
             engine_image=megalinter_image,
+            diff_base=diff_base,
             record_coverage=(
                 (
                     lambda o: store.record_coverage(

@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # Vault log
@@ -284,3 +284,7 @@ New note [CLI-Only Bug Hunt - 2026-11-15](Specs%20&%20ADRs/CLI-Only%20Bug%20Hunt
 ## 2026-11-16: added Surpass ReportPortal
 
 New ADR [Surpass ReportPortal - 2026-11-16](Specs%20&%20ADRs/Surpass%20ReportPortal%20-%202026-11-16.md) and guides [Moving from ReportPortal](Processes%20&%20Guides/Moving%20from%20ReportPortal.md), [Benchmark](Processes%20&%20Guides/Benchmark.md) and [Beta Case Study Kit](Processes%20&%20Guides/Beta%20Case%20Study%20Kit.md). Linked from Index, the Specs README, the Agent Context Guide and the docs site menu.
+
+## 2026-11-20: added Focus Review
+
+New note [Focus Review - 2026-11-20](Specs%20&%20ADRs/Focus%20Review%20-%202026-11-20.md): one core promise, ten commands in `qasight --help` (`help --all`, `help --json` for the rest), a shorter README and an Overview that leads with what needs attention. The REST API table moved into the Architecture Overview and the v1.0 migration into the Stability and Deprecation Policy. Linked from the Specs README and the docs site menu.

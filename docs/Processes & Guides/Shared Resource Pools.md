@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-26
-updated: 2026-11-04
+updated: 2026-11-20
 ---
 
 # Shared Resource Pools
@@ -31,10 +31,10 @@ resources:
     on_check: "./vm-ready.sh $TESTO_RESOURCE_ID"     # optional: exit 0 if the key is usable
     on_release: "my-cleanup $TESTO_RESOURCE_ID"      # optional
     hook_timeout: 300                                # seconds, for each hook
-    provider:                                        # optional: your own commands for `qasight pool`
+    provider:                                        # optional: your own commands for `qasight lease pools`
       list: "./vms.sh list"                          # prints the VMs that exist, one per line
-      create: "./vms.sh create $TESTO_RESOURCE_ID"   # only `qasight pool add --apply` runs it
-      destroy: "./vms.sh delete $TESTO_RESOURCE_ID"  # only `qasight pool remove/sweep --apply`
+      create: "./vms.sh create $TESTO_RESOURCE_ID"   # only `qasight lease pools add --apply` runs it
+      destroy: "./vms.sh delete $TESTO_RESOURCE_ID"  # only `qasight lease pools remove/sweep --apply`
       allow: [create, destroy]                       # without this, both are refused
       max_items: 6                                   # never more VMs than this
       name_prefix: "testo-flow-"                     # create and destroy only touch these names
@@ -53,8 +53,8 @@ resources:
 | `on_check` | none | Shell command run after `on_take`: exit `0` if the key is usable. If it fails, the key is disabled and another key is tried |
 | `on_release` | none | Shell command run before a key is given back. If it works, the key is marked clean for the next taker (`TESTO_RESOURCE_CLEAN=1`). If it fails, the key is disabled |
 | `hook_timeout` | `300` | Seconds each hook may take; longer counts as a failure |
-| `provider.list` | none | Shell command that prints the keys that really exist, one per line (blank lines and `#` lines skipped). Only `qasight pool` runs it, when you type it ([below](#compare-the-pool-with-what-really-exists)). Never sent to a server or to a stage's workers |
-| `provider.create` / `provider.destroy` | none | Shell commands that make or remove the key in `$TESTO_RESOURCE_ID`. Only `qasight pool add`, `remove` and `sweep` with `--apply` run them ([below](#add-or-remove-vms-yourself)) |
+| `provider.list` | none | Shell command that prints the keys that really exist, one per line (blank lines and `#` lines skipped). Only `qasight lease pools` runs it, when you type it ([below](#compare-the-pool-with-what-really-exists)). Never sent to a server or to a stage's workers |
+| `provider.create` / `provider.destroy` | none | Shell commands that make or remove the key in `$TESTO_RESOURCE_ID`. Only `qasight lease pools add`, `remove` and `sweep` with `--apply` run them ([below](#add-or-remove-vms-yourself)) |
 | `provider.allow` | none | Which of `create`, `destroy` may run at all. An allowed verb needs its command, `list` and `name_prefix`; `create` also needs `max_items` |
 | `provider.max_items` | none | Most keys that may exist: the pool's `items` plus what `list` shows |
 | `provider.name_prefix` | none | Keys made or removed through the provider must start with this, so `destroy` can't reach other VMs |
@@ -195,8 +195,8 @@ The **Resources** page in the UI (under Tools) shows every pool, each key's hold
 QASight never creates or deletes a VM, or any key, on its own. To see whether the pool still matches your real VMs, give it a read-only `provider.list` command and run:
 
 ```bash
-qasight pool status              # every pool: missing keys, VMs outside the pool
-qasight pool status flow-vms --check   # also run on_check on each free key
+qasight lease pools status              # every pool: missing keys, VMs outside the pool
+qasight lease pools status flow-vms --check   # also run on_check on each free key
 ```
 
 | Column | Meaning |
@@ -212,11 +212,11 @@ It only reads: it never disables a key, takes a lease or changes your VMs. Fix w
 Making or deleting a VM is always your decision, typed as a command. QASight runs your `provider.create` or `provider.destroy`, never on its own: not from a run, a lease, an expired lease, a schedule or the team server.
 
 ```bash
-qasight pool add flow-vms --count 2           # dry run: prints the commands and the new names
-qasight pool add flow-vms --count 2 --apply   # asks, then runs ./vms.sh create for testo-flow-1, testo-flow-2
-qasight pool remove flow-vms testo-flow-2 --apply --yes
-qasight pool sweep flow-vms                   # dry run: leftovers to remove
-qasight pool log                              # who ran what, from where, and how it went
+qasight lease pools add flow-vms --count 2           # dry run: prints the commands and the new names
+qasight lease pools add flow-vms --count 2 --apply   # asks, then runs ./vms.sh create for testo-flow-1, testo-flow-2
+qasight lease pools remove flow-vms testo-flow-2 --apply --yes
+qasight lease pools sweep flow-vms                   # dry run: leftovers to remove
+qasight lease pools log                              # who ran what, from where, and how it went
 ```
 
 | Rail | What it does |
@@ -226,9 +226,9 @@ qasight pool log                              # who ran what, from where, and ho
 | Limits | At most 5 keys per command; `add` stops at `max_items`; names must start with `name_prefix` |
 | Safe deletes | `remove` and `sweep` skip a key that is in `items`, one someone holds, and one `provider.list` doesn't show. `sweep` only takes listed keys with the prefix that aren't in the pool |
 | No guessing | If `provider.list` fails, nothing runs |
-| Log | Every command run with `--apply` is logged with the person, machine, time and result, in this machine's database or on the team server. `qasight pool log` and the Resources page show it |
+| Log | Every command run with `--apply` is logged with the person, machine, time and result, in this machine's database or on the team server. `qasight lease pools log` and the Resources page show it |
 
-`add` doesn't change your config: put the new keys under `items` in `qasight.yaml` to use them (until then `qasight pool status` shows them as `not in pool`). To remove a VM from the pool, take it out of `items` first, then run `remove`.
+`add` doesn't change your config: put the new keys under `items` in `qasight.yaml` to use them (until then `qasight lease pools status` shows them as `not in pool`). To remove a VM from the pool, take it out of `items` first, then run `remove`.
 
 ## How it works
 

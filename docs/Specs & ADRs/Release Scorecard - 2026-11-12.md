@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-11-12
-updated: 2026-11-15
+updated: 2026-11-19
 related: "Scorecard on MegaLinter - 2026-11-12, Command Reference, CI-CD Pipeline Setup, Releases"
 ---
 
@@ -78,3 +78,13 @@ Taltal asked to add the well-known open source scanners QASight lacked or ran by
 - **MegaLinter follows the switch.** While one of them is off, the engine is told to leave its linter out (`OPT_IN_LINTERS` in `megalinter.py`), unless that engine linter itself was switched on by name.
 - **CodeQL** (`codeql` from the CodeQL bundle): a `Command` can now carry `before` steps; CodeQL's is `codeql database create --build-mode=none` for Python, else JavaScript/TypeScript, then `codeql database analyze` with the language's code-scanning pack to SARIF. A failed step says which command failed and the last lines of its output.
 - **The Pages demo** scans with an explicit tool list (Bandit, pip-audit, npm audit, zizmor, Ruff), so its scores and the Versions strip don't change. Its tool list shows the four as off; switching one on in the read-only demo has no stored result to add.
+
+## More opt-in scanners: Nuclei, TruffleHog, Claude security review (2026-11-19)
+
+Taltal's direction: QASight should be as versatile as possible, so add well-known options and let each team choose. Three more tools, all `default_on=False`:
+
+- **Nuclei** (app tool, needs `--url`): DAST with the community templates against a running app or preview server. DoS, fuzzing and intrusive templates are excluded and the rate is capped at 50 requests a second, because a release check must not attack the target. It complements ZAP's passive scan with known CVEs and exposures.
+- **TruffleHog** (repo tool): an alternative to gitleaks that verifies each secret with its provider, so a live key (critical) stands apart from a dead one (medium). Verification sends the secret to its provider, the reason MegaLinter's own TruffleHog linter stays off; the tool runs on its own (`in_engine=False`) when switched on.
+- **Claude security review** (repo tool, `claude` binary): Claude Code reads the code, after [anthropics/claude-code-security-review](https://github.com/anthropics/claude-code-security-review), with read-only tools (Read, Grep, Glob, `git diff/log/show`). A new `--diff-base REF` scan flag (and `diff_base` in the API request) limits it to a pull request's changes. It sends code to Anthropic and costs API usage, so it is never on by default. The parser reads Claude Code's JSON envelope or the action's findings file.
+- **Mechanics.** `Command.empty_ok`: Nuclei and TruffleHog print one JSON line per finding, so an empty report from a run that exited 0 means clean, while an empty report from a failed run is still an error. `--diff-base` takes only a plain git ref (exit 2 otherwise), since it reaches a prompt and a `git diff` argument.
+

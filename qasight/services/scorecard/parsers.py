@@ -873,6 +873,162 @@ def parse_mutation(path: Path) -> ToolResult:
     )
 
 
+# --- JSON lines (Nuclei, TruffleHog) and Claude's security review -----------------
+
+
+def _load_json_lines(path: Path, *, expected: str) -> list[dict[str, Any]]:
+    """One JSON object per line (log lines in between skipped), or one JSON array; empty is none."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError as exc:
+        raise ReportError(f"can't read {path}: {exc}") from exc
+    if not text:
+        return []
+    if text.startswith("["):
+        # A JSON array (an export), unless it is a log line like "[INF] ..." before JSON lines.
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            data = None
+        if isinstance(data, list):
+            return [d for d in data if isinstance(d, dict)]
+    rows: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    _expect(bool(rows), f"{path.name} has no JSON lines; expected {expected}")
+    return rows
+
+
+def parse_nuclei(path: Path) -> ToolResult:
+    """Nuclei's ``-jsonl`` output (or ``-json-export`` array): each template match is a finding."""
+    rows = _load_json_lines(path, expected="Nuclei's JSON lines (nuclei -jsonl)")
+    _expect(
+        all("template-id" in r or "templateID" in r for r in rows),
+        "expected Nuclei's JSON lines (nuclei -jsonl), with a template-id on each",
+    )
+    findings: list[Finding] = []
+    seen: set[tuple[str, str, str]] = set()
+    for r in rows:
+        raw_info = r.get("info")
+        info: dict[str, Any] = raw_info if isinstance(raw_info, dict) else {}
+        template = str(r.get("template-id") or r.get("templateID") or "template")
+        matcher = str(r.get("matcher-name") or "")
+        where = str(r.get("matched-at") or r.get("matched") or r.get("host") or "")
+        key = (template, matcher, where)
+        if key in seen:
+            continue
+        seen.add(key)
+        name = str(info.get("name") or template)
+        detail = f"{template}" + (f" ({matcher})" if matcher else "")
+        if info.get("description"):
+            detail += f": {info['description']}"
+        findings.append(
+            Finding(severity_of(info.get("severity"), "low"), name, _short(detail), where)
+        )
+    return from_findings(findings, what="finding", clean="No templates matched")
+
+
+def _trufflehog_location(row: dict[str, Any]) -> str:
+    data = (row.get("SourceMetadata") or {}).get("Data") or {}
+    for source in data.values() if isinstance(data, dict) else []:
+        if isinstance(source, dict) and source.get("file"):
+            line = source.get("line")
+            return f"{source['file']}:{line}" if line else str(source["file"])
+    return ""
+
+
+def parse_trufflehog(path: Path) -> ToolResult:
+    """TruffleHog's ``--json`` lines: each distinct secret once, test and fixture files left out."""
+    rows = _load_json_lines(path, expected="TruffleHog's JSON lines (trufflehog --json)")
+    rows = [r for r in rows if "DetectorName" in r or "DetectorType" in r]
+    findings: list[Finding] = []
+    seen: set[tuple[str, str]] = set()
+    in_tests = 0
+    live = 0
+    for r in rows:
+        location = _trufflehog_location(r)
+        if is_test_path(location.rsplit(":", 1)[0] if location else ""):
+            in_tests += 1
+            continue
+        detector = str(r.get("DetectorName") or r.get("DetectorType") or "secret")
+        secret = str(r.get("Raw") or r.get("Redacted") or location)
+        if (detector, secret) in seen:
+            continue
+        seen.add((detector, secret))
+        if r.get("Verified"):
+            severity, state = "critical", "live: the provider accepted it"
+            live += 1
+        elif r.get("VerificationError"):
+            severity, state = "high", "could not be checked"
+        else:
+            severity, state = "medium", "not verified"
+        findings.append(Finding(severity, f"{detector} secret", state, location))
+    extra: dict[str, float | int | str] = {"live": live}
+    if in_tests:
+        extra["in_test_files"] = in_tests
+    result = from_findings(findings, what="secret", clean="No secrets found", extra=extra)
+    if in_tests:
+        result = _with_note(result, f"{in_tests} in test or fixture files not counted")
+    return result
+
+
+def _claude_findings(data: Any) -> tuple[list[Any], dict[str, float | int | str]]:
+    """The findings list from Claude Code's JSON envelope, or from the review action's results file."""
+    metrics: dict[str, float | int | str] = {}
+    if isinstance(data, dict) and "findings" not in data and "result" in data:
+        if data.get("is_error"):
+            raise ReportError(f"Claude Code stopped: {_short(data.get('result'), 200)}")
+        cost = data.get("total_cost_usd")
+        if isinstance(cost, (int, float)):
+            metrics["cost_usd"] = round(float(cost), 4)
+        text = str(data.get("result") or "")
+        start, end = text.find("{"), text.rfind("}")
+        _expect(start >= 0 and end > start, "Claude's answer has no JSON findings in it")
+        try:
+            data = json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            raise ReportError("Claude's answer has no readable JSON findings in it") from None
+    if isinstance(data, list):
+        return data, metrics
+    _expect(
+        isinstance(data, dict) and isinstance(data.get("findings"), list),
+        "expected Claude Code's JSON output (claude -p --output-format json) or a findings JSON",
+    )
+    return data["findings"], metrics
+
+
+def parse_claude_security_review(path: Path) -> ToolResult:
+    """Claude's security review: findings with file, line, severity and a description."""
+    rows, metrics = _claude_findings(_load_json(path))
+    findings: list[Finding] = []
+    for f in rows:
+        if not isinstance(f, dict):
+            continue
+        file = str(f.get("file") or "")
+        line = f.get("line")
+        title = str(f.get("category") or f.get("title") or "security issue").replace("_", " ")
+        detail = str(f.get("description") or "")
+        if f.get("recommendation"):
+            detail += f" Fix: {f['recommendation']}"
+        findings.append(
+            Finding(
+                severity_of(f.get("severity"), "medium"),
+                title,
+                _short(detail),
+                f"{file}:{line}" if file and line else file,
+            )
+        )
+    return from_findings(findings, what="finding", clean="No security findings", extra=metrics)
+
+
 PARSERS: dict[str, Callable[[Path], ToolResult]] = {
     "sarif": parse_sarif,
     "bandit": parse_bandit,
@@ -890,4 +1046,7 @@ PARSERS: dict[str, Callable[[Path], ToolResult]] = {
     "junit": parse_junit,
     "coverage": parse_coverage,
     "mutation": parse_mutation,
+    "nuclei": parse_nuclei,
+    "trufflehog": parse_trufflehog,
+    "claude-security-review": parse_claude_security_review,
 }

@@ -52,7 +52,8 @@ describe("AppShell mobile menu", () => {
     const labels = within(panel)
       .getAllByRole("link")
       .map((link) => link.textContent);
-    expect(labels).toEqual(["Overview", "Runs", "Cycles", "Test health", "Releases", "Report", "Ask", "Resources", "AI settings"]);
+    // Ask and Resources wait until AI or a resource pool is set up.
+    expect(labels).toEqual(["Overview", "Runs", "Cycles", "Test health", "Releases", "Report", "AI settings"]);
     expect(within(panel).getAllByText(/^(Tests|Releases|Share|Settings)$/, { selector: "p" }).map((p) => p.textContent)).toEqual([
       "Tests",
       "Releases",
@@ -62,6 +63,25 @@ describe("AppShell mobile menu", () => {
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("adds Ask and Resources once AI and a resource pool are set up", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        const body = url.includes("/ai/config/status")
+          ? { enabled: true, configured: true }
+          : url.endsWith("/resources")
+            ? { pools: [{ name: "devices" }] }
+            : {};
+        return Promise.resolve({ ok: !!Object.keys(body).length, status: 200, json: async () => body });
+      })
+    );
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    const panel = screen.getByRole("navigation", { name: "Main" });
+    await waitFor(() => expect(within(panel).getByRole("link", { name: "Ask" })).toBeInTheDocument());
+    expect(within(panel).getByRole("link", { name: "Resources" })).toBeInTheDocument();
   });
 
   it("closes after navigating", async () => {
