@@ -122,3 +122,18 @@ def test_push_run_metrics_pushes_to_each_configured_target(
     assert [t for t, _ok, _msg in out] == ["influxdb", "prometheus"]
     assert pushed[0].total_tests == 2 and pushed[0].failed == 1
     assert pushed[0].run_id == "rid"
+
+
+def test_push_run_metrics_warns_once_that_it_is_deprecated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    import qasight.reporting.integrations as integrations
+
+    monkeypatch.setattr(integrations, "_deprecation_warned", False)
+    monkeypatch.setenv("PROMETHEUS_PUSHGATEWAY_URL", "http://x:9091")
+    with caplog.at_level("WARNING", logger="qasight.reporting.integrations"):
+        integrations.push_run_metrics_if_configured(results_root=tmp_path, run_id="a")
+        integrations.push_run_metrics_if_configured(results_root=tmp_path, run_id="b")
+    warnings = [r for r in caplog.records if "deprecated" in r.getMessage()]
+    assert len(warnings) == 1
+    assert "OpenTelemetry" in warnings[0].getMessage()
