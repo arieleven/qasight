@@ -18,6 +18,7 @@ Putting QASight into a large monorepo on a closed network in about a week: self-
 - Finding result files stopped after 20,000 files of any kind, so in a big checkout it could stop before reaching the result folders.
 - A GitLab job gets earlier stages' artifacts; recording whatever it found would record those tests again under the later job's name.
 - Behave and BehaveX write one JUnit file per feature, so a suite with more than 200 features failed the server's upload limit.
+- The team server ignored `TESTO_AI_*` in its environment (only the CLI read them), so a local model set in `.env` as the guide said left AI off.
 
 ## Decision
 
@@ -26,6 +27,7 @@ Putting QASight into a large monorepo on a closed network in about a week: self-
 - The result search counts only files that could be results.
 - In GitLab, auto-found files older than `CI_JOB_STARTED_AT` (30 s slack) are left out.
 - `qasight ingest --server` packs JUnit XML into a few `<testsuites>` files when there are more than 200; the server and its limits are unchanged.
+- The server builds its AI settings the way the CLI does: `TESTO_AI_PROVIDER` and friends win over the Settings file; an unknown provider is logged and ignored.
 
 ## Consequences
 

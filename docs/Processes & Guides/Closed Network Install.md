@@ -124,7 +124,7 @@ TESTO_AI_MODEL=qwen2.5-coder-32b
 OPENAI_COMPATIBLE_API_KEY=...        # only if the model asks for one
 ```
 
-or pick "OpenAI-compatible" on the Settings › AI page and type the URL. CI jobs take the same `TESTO_AI_*` variables ([`qasight ai`](../CLI%20Commands/Command%20Reference.md#qasight-ai)). Since the model is yours, turning on "share the failing test's source" sends nothing outside.
+or pick "OpenAI-compatible" on the Settings › AI page and type the URL. The `.env` settings win over the page (the server reads them when it starts, default timeout 60 s, `TESTO_AI_TIMEOUT_S` for a slow model); changes made on the page then last until the next restart. CI jobs take the same `TESTO_AI_*` variables ([`qasight ai`](../CLI%20Commands/Command%20Reference.md#qasight-ai)). Since the model is yours, turning on "share the failing test's source" sends nothing outside.
 
 If internal services use certificates from your own CA, give it to both HTTP stacks: `SSL_CERT_FILE=/path/ca.pem` (AI calls) and `REQUESTS_CA_BUNDLE=/path/ca.pem` (GitLab comments, uploads), or add the CA to the image's trust store.
 

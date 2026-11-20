@@ -23,6 +23,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `qasight ci preview`, `qasight lease pools` and `qasight config db`: the new homes of `qasight try`, `qasight pool` and `qasight config-db`, which keep working as aliases
 
 ### Fixed
+- The team server reads the `TESTO_AI_*` settings from its environment (`.env`), as the closed network guide and the compose files already said; before, it ignored them and AI stayed off
 - `qasight init --ci gitlab|circleci`: two folders with the same runner no longer get the same job name, and the GitLab artifacts path includes the folder
 - `qasight ingest` with no files: finds results past a large checkout's first 20,000 files, and in a GitLab job leaves out earlier jobs' artifacts
 - `qasight ingest --server` packs more than 200 JUnit files (one per Behave feature) into a few, under the server's limit

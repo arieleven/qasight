@@ -137,3 +137,27 @@ def test_many_junit_files_are_packed_into_one_upload(tmp_path: Path) -> None:
     root = ElementTree.parse(out[0]).getroot()
     assert root.tag == "testsuites"
     assert len(root.findall("testsuite")) == MAX_FILES + 52
+
+
+def test_the_team_server_takes_its_ai_model_from_the_environment(monkeypatch) -> None:
+    import importlib
+
+    import qasight_api.dependencies as deps
+
+    monkeypatch.setenv("TESTO_AI_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("TESTO_AI_BASE_URL", "http://llm.example.local:8000/v1")
+    monkeypatch.setenv("TESTO_AI_MODEL", "qwen2.5-coder")
+    try:
+        settings = importlib.reload(deps).get_ai_settings_store().get()
+        assert (settings.enabled, settings.provider, settings.model) == (
+            True,
+            "openai_compatible",
+            "qwen2.5-coder",
+        )
+        assert settings.base_url == "http://llm.example.local:8000/v1"
+        assert settings.timeout_s == 60.0
+        monkeypatch.setenv("TESTO_AI_PROVIDER", "nope")
+        assert importlib.reload(deps).get_ai_settings_store().get().enabled is False
+    finally:
+        monkeypatch.delenv("TESTO_AI_PROVIDER", raising=False)
+        importlib.reload(deps)
