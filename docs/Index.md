@@ -2,7 +2,7 @@
 type: index
 status: current
 created: 2026-06-25
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # QASight docs
@@ -33,6 +33,7 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 - [CI-CD Pipeline Setup](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md): GitHub Action, GitLab template, runner image, test tiers
 - [Team Server](Processes%20&%20Guides/Team%20Server.md): one shared history for every CI job, with `qasight ingest --server`, the UI and Postgres in Docker
 - [Stability and Deprecation Policy](Processes%20&%20Guides/Stability%20and%20Deprecation%20Policy.md): what stays stable in 1.x, and how much warning a change gets
+- [Upload Without Python](Processes%20&%20Guides/Upload%20Without%20Python.md): `qasight-upload`, one file with nothing to install, sends a CI job's results to the team server
 - [Closed Network Install](Processes%20&%20Guides/Closed%20Network%20Install.md): run QASight with no internet, with a self-hosted GitLab and an AI model inside the network: one bundle to carry in, your registry and PyPI mirror
 - [Shared Resource Pools](Processes%20&%20Guides/Shared%20Resource%20Pools.md): give each parallel worker its own VM, device or test account with `qasight lease`, safely across laptops
 - [E2E Harness Operations Guide](Processes%20&%20Guides/E2E%20Harness%20Operations%20Guide.md): the external E2E harness
