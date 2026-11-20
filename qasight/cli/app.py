@@ -56,7 +56,13 @@ class CommandSpec:
 COMMANDS: list[CommandSpec] = []
 
 
-def _add(target: Any, spec: CommandSpec, *, group: bool = False) -> None:
+def _add(
+    target: Any,
+    spec: CommandSpec,
+    *,
+    group: bool = False,
+    context_settings: dict[str, Any] | None = None,
+) -> None:
     """Register ``target`` (a function, or a Typer app when ``group``) under ``spec``."""
     COMMANDS.append(spec)
     hidden = not spec.core
@@ -65,9 +71,13 @@ def _add(target: Any, spec: CommandSpec, *, group: bool = False) -> None:
             target, name=spec.name, help=spec.help, hidden=hidden, rich_help_panel=spec.panel
         )
     else:
-        app.command(name=spec.name, help=spec.help, hidden=hidden, rich_help_panel=spec.panel)(
-            target
-        )
+        app.command(
+            name=spec.name,
+            help=spec.help,
+            hidden=hidden,
+            rich_help_panel=spec.panel,
+            context_settings=context_settings,
+        )(target)
 
 
 def _version_callback(show_version: bool) -> None:
@@ -302,25 +312,11 @@ def _register_commands() -> None:
         export_mod.export,
         CommandSpec(
             "export",
-            "Write the manager report as a PDF, PNG, HTML, PowerPoint, Excel, CSV or JSON file.",
+            "Write runs out: the manager report (pdf, pptx, xlsx, html, png, csv, json), a static "
+            "site, a README badge, Markdown or annotations; the format can come from -o.",
             "More: reports and alerts",
         ),
-    )
-    _add(
-        export_site_mod.export_site,
-        CommandSpec(
-            "export-site",
-            "Write the UI and recent runs as a read-only static site (GitHub Pages, any file host).",
-            "More: reports and alerts",
-        ),
-    )
-    _add(
-        badge_mod.badge,
-        CommandSpec(
-            "badge",
-            "Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",
-            "More: reports and alerts",
-        ),
+        context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     )
     _add(
         notify_mod.notify,
@@ -453,6 +449,24 @@ def _register_commands() -> None:
     )
 
     # Old names that keep working; never listed.
+    _add(
+        export_site_mod.export_site,
+        CommandSpec(
+            "export-site",
+            "Alias for `qasight export site`: the UI and recent runs as a read-only static site.",
+            "More: reports and alerts",
+            alias_of="export site",
+        ),
+    )
+    _add(
+        badge_mod.badge,
+        CommandSpec(
+            "badge",
+            "Alias for `qasight export badge`: a README badge for a cycle's latest run.",
+            "More: reports and alerts",
+            alias_of="export badge",
+        ),
+    )
     _add(
         cycles_cmd.app,
         CommandSpec(

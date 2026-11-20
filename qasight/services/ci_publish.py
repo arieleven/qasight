@@ -267,6 +267,39 @@ def _notify(
     return sent
 
 
+PUBLISH_ENV = "TESTO_PUBLISH"
+_OFF = {"0", "false", "no", "off"}
+
+
+def auto_publish_enabled(env: Mapping[str, str]) -> bool:
+    """Whether ``run``/``ingest`` publish by themselves: in CI, unless ``TESTO_PUBLISH=0``."""
+    from qasight.cli.ui.console import is_ci_environment
+
+    if (env.get(PUBLISH_ENV) or "").strip().lower() in _OFF:
+        return False
+    return is_ci_environment(dict(env))
+
+
+def _published_marker(run_id: str) -> Path:
+    from qasight.paths import STATIC_DIR
+
+    return STATIC_DIR / "published" / run_id
+
+
+def already_published(run_id: str) -> bool:
+    """Whether this run was published already (by ``run``/``ingest`` in this job)."""
+    return _published_marker(run_id).exists()
+
+
+def mark_published(run_id: str) -> None:
+    try:
+        marker = _published_marker(run_id)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text("", encoding="utf-8")
+    except OSError:
+        pass
+
+
 def publish(
     *,
     cycle: str | None,
@@ -274,8 +307,12 @@ def publish(
     opts: PublishOptions,
     echo: Callable[[str], None] = print,
     warn: Callable[[str], None] = _warn_stderr,
+    skip_published: bool = True,
 ) -> bool:
     """Publish ``cycle``'s latest recorded run (any cycle's when ``None``).
+
+    A run ``run``/``ingest`` already published in CI is not published twice (the job
+    summary, annotations and alerts would repeat); only ``--out`` is still written.
 
     Returns ``False`` when there is no such run. Annotations and alerts need a cycle.
     """
@@ -286,6 +323,18 @@ def publish(
     if summary is None:
         warn(f"no recorded run of {cycle!r} to publish" if cycle else "no recorded run to publish")
         return False
+    if skip_published and already_published(summary.run.run_id):
+        if opts.out is not None:
+            opts.out.parent.mkdir(parents=True, exist_ok=True)
+            opts.out.write_text(render_markdown(summary, run_url=ctx.run_url), encoding="utf-8")
+        echo(
+            f"run {summary.run.run_id[:8]} was already published when it was recorded "
+            "(TESTO_PUBLISH=0 on the run step publishes here instead)"
+        )
+        return True
+    if not skip_published:
+        # Published by run/ingest itself: a later `qasight ci publish` leaves it alone.
+        mark_published(summary.run.run_id)
     markdown = render_markdown(summary, run_url=ctx.run_url)
     if opts.ai and summary.run.returncode != 0:
         from qasight.services.ai_run_summary import summarize

@@ -173,10 +173,16 @@ def doctor(
 
     # The database every command uses: DATABASE_URL, database.url, else the default
     # SQLite file in the project folder (found upward from here).
+    import os
+
+    from qasight.config.database_section import database_url_from_discovered_config
     from qasight.repository.db_config import resolve_database_url
 
     db_url = resolve_database_url()
-    if db_url.startswith("sqlite:///"):
+    explicit = bool((os.environ.get("DATABASE_URL") or "").strip()) or bool(
+        database_url_from_discovered_config()
+    )
+    if not explicit and db_url.startswith("sqlite:///"):
         db_file = Path(db_url[len("sqlite:///") :])
         if not db_file.is_absolute():
             db_file = (Path.cwd() / db_file).resolve()

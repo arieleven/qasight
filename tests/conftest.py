@@ -26,6 +26,9 @@ os.environ.setdefault("TESTO_NO_UPDATE_CHECK", "1")
 # (CLAUDECODE=1) runs them (qasight/cli/output_mode.py).
 for _agent_var in ("CLAUDECODE", "QASIGHT_AGENT", "QASIGHT_OUTPUT", "TESTO_OUTPUT"):
     os.environ.pop(_agent_var, None)
+# Runs recorded by tests never comment on a pull request or append to the job
+# summary, even when the suite itself runs in CI (qasight/cli/runner.auto_publish).
+os.environ.setdefault("TESTO_PUBLISH", "0")
 
 # Project root is parent of ``tests/``; ``pythonpath = .`` in pytest.ini also applies.
 _ROOT = Path(__file__).resolve().parents[1]

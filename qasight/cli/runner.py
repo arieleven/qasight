@@ -369,7 +369,36 @@ def _execute_one_cycle(
             renderer.finish(news=news)
     if not ci and outcome.run_id and not outcome.skipped:
         emit_run_news(console=console, run_id=outcome.run_id)
+    if outcome.run_id and not outcome.skipped:
+        auto_publish(cycle=plan.name, config_path=cfg.source_path)
     return outcome.exit_code
+
+
+def auto_publish(*, cycle: str, config_path: Path | None) -> None:
+    """In CI, publish the run just recorded: PR/MR comment, job summary, annotations, alerts.
+
+    What ``qasight ci publish`` does, so a pipeline needs only ``qasight run`` (or
+    ``ingest``). Messages go to stderr, so ``--ci`` stdout stays NDJSON. Off with
+    ``TESTO_PUBLISH=0`` (or ``settings: {publish: false}``); never changes the exit code.
+    """
+    import os
+    import sys
+
+    try:
+        from qasight.services.ci_publish import PublishOptions, auto_publish_enabled, publish
+
+        env = dict(os.environ)
+        if not auto_publish_enabled(env):
+            return
+        publish(
+            cycle=cycle,
+            env=env,
+            opts=PublishOptions(config_path=config_path),
+            echo=lambda line: print(f"qasight publish: {line}", file=sys.stderr),
+            skip_published=False,
+        )
+    except Exception as exc:  # noqa: BLE001 — the run is recorded; publishing is best-effort
+        print(f"qasight publish: skipped ({exc})", file=sys.stderr)
 
 
 def _news_enabled() -> bool:

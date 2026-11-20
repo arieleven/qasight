@@ -76,7 +76,18 @@ def diff_reports(
     ),
     as_json: bool = typer.Option(False, "--json", help="Print the comparison as JSON."),
 ) -> None:
-    """Compare two runs; the same as ``qasight summary CURRENT --against BASELINE``."""
+    """Compare two runs; the same as ``qasight summary CURRENT --against BASELINE``.
+
+    Ids from ``qasight report list`` (report archives) still work too.
+    """
+    from qasight.cli.run_ref import RunRefError, resolve_run
+
+    try:
+        resolve_run(current_id)
+        resolve_run(baseline_id)
+    except RunRefError:
+        _diff_archives(baseline_id, current_id, metrics_only=metrics_only)
+        return
     _summary(
         run=current_id,
         against=baseline_id,
@@ -84,6 +95,54 @@ def diff_reports(
         as_json=as_json,
         metrics_only=metrics_only,
     )
+
+
+def _diff_archives(baseline_id: str, current_id: str, *, metrics_only: bool) -> None:
+    """Compare two report archives by id (``qasight report list``), as ``diff`` always did."""
+    from qasight.cli.ui.console import default_console
+    from qasight.repository.db import get_report_archive_repository
+    from qasight.services.report_archive_diff import parse_archive_uuid
+
+    console = default_console()
+    bid = parse_archive_uuid(baseline_id)
+    cid = parse_archive_uuid(current_id)
+    if bid is None or cid is None:
+        console.print("[fail]Each argument must be a run id (a UUID, or its first characters).[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+
+    repo = get_report_archive_repository()
+    base = _archive_for(repo, bid)
+    cur = _archive_for(repo, cid)
+    missing = [i for i, row in ((baseline_id, base), (current_id, cur)) if row is None]
+    if missing:
+        console.print(
+            "[fail]No recorded run with id " + ", ".join(missing) + " (see `qasight runs`).[/]"
+        )
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    _render_diff(console=console, baseline=base, current=cur, metrics_only=metrics_only)
+    raise typer.Exit(code=0)
+
+
+def _summary_from_archives(cycle: str | None, *, metrics_only: bool) -> bool:
+    """The two newest report archives (of *cycle*), for histories with archives only."""
+    from qasight.cli.ui.console import default_console
+    from qasight.repository.db import get_report_archive_repository
+
+    repo = get_report_archive_repository()
+    rows = (
+        repo.list_recent_for_cycle(cycle_name=cycle, limit=2)
+        if cycle
+        else repo.list_recent(limit=2)
+    )
+    if len(rows) < 2:
+        return False
+    current, baseline = rows[0], rows[1]
+    console = default_console()
+    console.print(
+        f"[muted]Comparing[/] [bold]{baseline.id}[/] (baseline) → [bold]{current.id}[/] (current)"
+    )
+    _render_diff(console=console, baseline=baseline, current=current, metrics_only=metrics_only)
+    return True
 
 
 def summary_reports(
@@ -151,6 +210,10 @@ def _summary(
             current = resolve_run("latest", cycle=require_cycle(cycle, quiet=machine))
         baseline = resolve_baseline(current, against)
     except RunRefError as exc:
+        if not machine and not run and not against:
+            picked = (cycle or "").strip() or None
+            if _summary_from_archives(picked, metrics_only=metrics_only):
+                raise typer.Exit(code=0) from None
         fail(f"{exc}.")
         return
 

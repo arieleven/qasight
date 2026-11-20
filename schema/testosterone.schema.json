@@ -85,6 +85,128 @@
         "$ref": "#/definitions/resource_pool"
       }
     },
+    "settings": {
+      "type": "object",
+      "description": "Project behaviour that used to need environment variables (auto-quarantine, flaky issues, schedules, redaction, publishing). Each key maps to a TESTO_* variable; an exported variable wins.",
+      "properties": {
+        "quarantine": {
+          "type": "object",
+          "properties": {
+            "auto": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Flip rate (0-1) at which a failing flaky test is quarantined on its own; 0 is off. Overridden by TESTO_QUARANTINE_AUTO."
+            },
+            "release_after": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Clean runs in a row after which a quarantined test is released. Overridden by TESTO_QUARANTINE_RELEASE_AFTER."
+            }
+          },
+          "additionalProperties": false
+        },
+        "issues": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Open a GitHub issue for each test that turns flaky, close it once stable. Overridden by TESTO_ISSUES."
+            },
+            "repo": {
+              "type": "string",
+              "description": "owner/name for the issues. Overridden by TESTO_ISSUES_REPO."
+            },
+            "labels": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "description": "Labels on each issue. Overridden by TESTO_ISSUES_LABELS."
+            },
+            "assign": {
+              "type": "string",
+              "description": "Assign issues (owners). Overridden by TESTO_ISSUES_ASSIGN."
+            },
+            "close_after": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Passing runs before an issue is closed. Overridden by TESTO_ISSUES_CLOSE_AFTER."
+            }
+          },
+          "additionalProperties": false
+        },
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "digest": {
+              "type": "string",
+              "description": "Server digest: week or day. Overridden by TESTO_SCHEDULE_DIGEST."
+            },
+            "to": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "description": "Where the digest goes. Overridden by TESTO_SCHEDULE_TO."
+            },
+            "hour": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Hour (0-23) it is sent. Overridden by TESTO_SCHEDULE_HOUR."
+            }
+          },
+          "additionalProperties": false
+        },
+        "redact": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Mask secrets in stored output. Overridden by TESTO_REDACT."
+            },
+            "patterns": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "description": "Extra patterns. Overridden by TESTO_REDACT_PATTERNS."
+            }
+          },
+          "additionalProperties": false
+        },
+        "publish": {
+          "type": "boolean",
+          "description": "In CI, run/ingest publish the result (PR comment, job summary, alerts). Overridden by TESTO_PUBLISH."
+        },
+        "run_news": {
+          "type": "boolean",
+          "description": "End each run with what's new. Overridden by TESTO_RUN_NEWS."
+        }
+      },
+      "additionalProperties": false
+    },
     "history": {
       "type": "object",
       "description": "How long run history and report archives are kept. Without it nothing is deleted. Applied by `qasight clean --history` and by the API server on a timer; TESTO_RETENTION_DAYS / TESTO_RETENTION_RUNS_PER_CYCLE override it.",

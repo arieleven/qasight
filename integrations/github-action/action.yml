@@ -11,23 +11,23 @@ inputs:
     required: false
     default: ""
   history:
-    description: "`auto` keeps the run history (SQLite) in the Actions cache between runs unless DATABASE_URL or database.url is set; `off` doesn't."
+    description: "Advanced (most projects leave it alone). `auto` keeps the run history (SQLite) in the Actions cache between runs unless DATABASE_URL or database.url is set; `off` doesn't."
     required: false
     default: auto
   history-artifact:
-    description: "With the cached history: also upload it (the SQLite file) as a `testo-history-...` artifact kept 7 days, so `qasight ui --from-github` can open the CI history on your machine. `false` skips the upload."
+    description: "Advanced (most projects leave it alone). With the cached history: also upload it (the SQLite file) as a `testo-history-...` artifact kept 7 days, so `qasight ui --from-github` can open the CI history on your machine. `false` skips the upload."
     required: false
     default: "true"
   static-site:
-    description: "`true`: after the run, write the history as a read-only site (`qasight export-site`) and upload it with actions/upload-pages-artifact, for an `actions/deploy-pages` job to publish. Needs the UI a released qasight ships."
+    description: "Advanced (most projects leave it alone). `true`: after the run, write the history as a read-only site (`qasight export-site`) and upload it with actions/upload-pages-artifact, for an `actions/deploy-pages` job to publish. Needs the UI a released qasight ships."
     required: false
     default: "false"
   static-site-base-path:
-    description: Path the site is served under (empty = GitHub Pages' path for this repository, `/<repo>/`, or `/` for `<owner>.github.io`; set `/` for a custom domain).
+    description: "Advanced (most projects leave it alone). Path the site is served under (empty = GitHub Pages' path for this repository, `/<repo>/`, or `/` for `<owner>.github.io`; set `/` for a custom domain)."
     required: false
     default: ""
   config-path:
-    description: Path to qasight.yaml (empty = discovery from the workspace root).
+    description: "Advanced (most projects leave it alone). Path to qasight.yaml (empty = discovery from the workspace root)."
     required: false
     default: ""
   cycle:
@@ -35,71 +35,71 @@ inputs:
     required: false
     default: ""
   ci-mode:
-    description: Emit NDJSON events on stdout (`qasight run --ci`).
+    description: "Advanced (most projects leave it alone). Emit NDJSON events on stdout (`qasight run --ci`)."
     required: false
     default: "true"
   persist:
-    description: Persist plan_result.json and the run history record.
+    description: "Advanced (most projects leave it alone). Persist plan_result.json and the run history record."
     required: false
     default: "true"
   python-version:
-    description: Python version used to run testo.
+    description: "Advanced (most projects leave it alone). Python version used to run testo."
     required: false
     default: "3.11"
   package:
-    description: What to pip install for qasight, e.g. `qasight==1.2.0`, `.` for a checkout of this repository, or several requirements separated by spaces (`qasight pytest-xdist`).
+    description: "Advanced (most projects leave it alone). What to pip install for qasight, e.g. `qasight==1.2.0`, `.` for a checkout of this repository, or several requirements separated by spaces (`qasight pytest-xdist`)."
     required: false
     default: qasight
   job-summary:
-    description: Write the run (results, failing tests, changes since the last run) to the job summary.
+    description: "Advanced (most projects leave it alone). Write the run (results, failing tests, changes since the last run) to the job summary."
     required: false
     default: "true"
   comment-on-pr:
-    description: "On pull_request events, keep one comment per cycle on the pull request with the same summary. Needs `permissions: pull-requests: write`. `auto` = on when there is no qasight.yaml (recording results), off when running a cycle."
+    description: "Advanced (most projects leave it alone). On pull_request events, keep one comment per cycle on the pull request with the same summary. Needs `permissions: pull-requests: write`. `auto` = on when there is no qasight.yaml (recording results), off when running a cycle."
     required: false
     default: auto
   annotations:
-    description: Print failing tests as annotations, shown inline on the pull request diff. Needs no permission.
+    description: "Advanced (most projects leave it alone). Print failing tests as annotations, shown inline on the pull request diff. Needs no permission."
     required: false
     default: "true"
   slack-webhook:
-    description: "Slack incoming-webhook URL. Pass a repository secret (secrets.SLACK_WEBHOOK_URL); empty = no Slack alert."
+    description: "Advanced (most projects leave it alone). Slack incoming-webhook URL. Pass a repository secret (secrets.SLACK_WEBHOOK_URL); empty = no Slack alert. Same as the TESTO_SLACK_WEBHOOK_URL variable."
     required: false
     default: ""
   teams-webhook:
-    description: "Microsoft Teams Workflows webhook URL. Pass a secret; empty = no Teams alert."
+    description: "Advanced (most projects leave it alone). Microsoft Teams Workflows webhook URL. Pass a secret; empty = no Teams alert. Same as the TESTO_TEAMS_WEBHOOK_URL variable."
     required: false
     default: ""
   notify-when:
-    description: "When to send the chat alert: `failure` (red run or newly flaky test), `change` (differs from the previous run) or `always`."
+    description: "Advanced (most projects leave it alone). When to send the chat alert: `failure` (red run or newly flaky test), `change` (differs from the previous run) or `always`."
     required: false
     default: failure
   flaky-issues:
-    description: "Open one issue per test that this run made flaky (skipped if an open issue has the same title). Needs `permissions: issues: write`."
+    description: "Advanced (most projects leave it alone). Open one issue per test that this run made flaky (skipped if an open issue has the same title). Needs `permissions: issues: write`. Same as `settings: {issues: {enabled: true}}` in qasight.yaml."
     required: false
     default: "false"
   coverage:
-    description: "Code coverage report(s) the tests write (Cobertura or JaCoCo XML, LCOV, Go cover profile), space-separated. Stored with the run; the summary and PR comment show line coverage and its change."
+    description: "Advanced (most projects leave it alone). Code coverage report(s) the tests write (Cobertura or JaCoCo XML, LCOV, Go cover profile), space-separated. Stored with the run; the summary and PR comment show line coverage and its change."
     required: false
     default: ""
   environment:
-    description: "What this job tests on, as KEY=VALUE pairs separated by commas (for a matrix, browser=firefox, os=linux from the matrix values). Flaky detection and the test page keep environments apart. Default: the TESTO_ENV variable."
+    description: "Advanced (most projects leave it alone). What this job tests on, as KEY=VALUE pairs separated by commas (for a matrix, browser=firefox, os=linux from the matrix values). Flaky detection and the test page keep environments apart. Default: the TESTO_ENV variable. QASight also fills in the runner OS and language version by itself."
     required: false
     default: ""
   release:
-    description: "The release this job tests (2.3, or the tag from github.ref_name); the Releases page groups runs by it. Default: the TESTO_RELEASE variable."
+    description: "Advanced (most projects leave it alone). The release this job tests (2.3, or the tag from github.ref_name); the Releases page groups runs by it. Default: the TESTO_RELEASE variable. QASight also reads it from a tag ref by itself."
     required: false
     default: ""
   ai-summary:
-    description: "Add an AI summary of the failures to the job summary and comment of a failed run. Set the provider in the step's env: TESTO_AI_PROVIDER (openai, anthropic, openai_compatible), TESTO_AI_MODEL, TESTO_AI_BASE_URL and its key from a secret (OPENAI_API_KEY, ANTHROPIC_API_KEY, or TESTO_AI_KEY_ENV naming another variable)."
+    description: "Advanced (most projects leave it alone). Add an AI summary of the failures to the job summary and comment of a failed run. Set the provider in the step's env: TESTO_AI_PROVIDER (openai, anthropic, openai_compatible), TESTO_AI_MODEL, TESTO_AI_BASE_URL and its key from a secret (OPENAI_API_KEY, ANTHROPIC_API_KEY, or TESTO_AI_KEY_ENV naming another variable)."
     required: false
     default: "false"
   comment-artifact:
-    description: "Fork-safe comments: on pull_request events, upload the comment as a `testo-comment` artifact instead of posting it, for a `workflow_run` workflow that runs this action with `post-comments-from` (a fork's pull request gets a read-only token). `qasight init --forks` writes both workflows."
+    description: "Advanced (most projects leave it alone). Fork-safe comments: on pull_request events, upload the comment as a `testo-comment` artifact instead of posting it, for a `workflow_run` workflow that runs this action with `post-comments-from` (a fork's pull request gets a read-only token). `qasight init --forks` writes both workflows."
     required: false
     default: "false"
   post-comments-from:
-    description: "Only post the comments a `comment-artifact` run left in this folder (download the `testo-comment` artifact there first), on the pull request whose head is the triggering run's commit. Runs nothing else. For `workflow_run` workflows."
+    description: "Advanced (most projects leave it alone). Only post the comments a `comment-artifact` run left in this folder (download the `testo-comment` artifact there first), on the pull request whose head is the triggering run's commit. Runs nothing else. For `workflow_run` workflows."
     required: false
     default: ""
   server-url:
@@ -111,27 +111,27 @@ inputs:
     required: false
     default: ""
   scorecard:
-    description: "Score the repository with `qasight scorecard scan` (MegaLinter in Docker, OSV-Scanner and the other tools that fit): `true` after the tests, `only` instead of them, `false` (default) not at all. Writes the scorecard to the job summary and one pull request comment, and SARIF (`scorecard_sarif` output, for github/codeql-action/upload-sarif), an HTML page and a badge. The history cache keeps earlier scores, so the summary compares with the last one."
+    description: "Advanced (most projects leave it alone). Score the repository with `qasight scorecard scan` (MegaLinter in Docker, OSV-Scanner and the other tools that fit): `true` after the tests, `only` instead of them, `false` (default) not at all. Writes the scorecard to the job summary and one pull request comment, and SARIF (`scorecard_sarif` output, for github/codeql-action/upload-sarif), an HTML page and a badge. The history cache keeps earlier scores, so the summary compares with the last one."
     required: false
     default: "false"
   scorecard-path:
-    description: Folder or git URL to score (default the workspace).
+    description: "Advanced (most projects leave it alone). Folder or git URL to score (default the workspace)."
     required: false
     default: "."
   scorecard-min-score:
-    description: Fail the step when the overall score is below this (0-100). Empty = no threshold.
+    description: "Advanced (most projects leave it alone). Fail the step when the overall score is below this (0-100). Empty = no threshold."
     required: false
     default: ""
   scorecard-no-new:
-    description: "`true`: fail the step when a tool has findings the last scored version didn't have (new code only, like SonarQube's quality gate)."
+    description: "Advanced (most projects leave it alone). `true`: fail the step when a tool has findings the last scored version didn't have (new code only, like SonarQube's quality gate)."
     required: false
     default: "false"
   scorecard-tools:
-    description: Run only these scorecard tools (comma-separated ids from `qasight scorecard tools`). Empty = every switched-on tool that fits.
+    description: "Advanced (most projects leave it alone). Run only these scorecard tools (comma-separated ids from `qasight scorecard tools`). Empty = every switched-on tool that fits."
     required: false
     default: ""
   setup:
-    description: "`true` sets QASight up in this repository instead of recording a run: it finds the test runners (`qasight init --scan --attach`), then pushes a `qasight-setup` branch and opens a pull request with the config and the workflow change. Needs `contents: write` and `pull-requests: write`; Getting Started has the one-time workflow that does this."
+    description: "Advanced (most projects leave it alone). `true` sets QASight up in this repository instead of recording a run: it finds the test runners (`qasight init --scan --attach`), then pushes a `qasight-setup` branch and opens a pull request with the config and the workflow change. Needs `contents: write` and `pull-requests: write`; Getting Started has the one-time workflow that does this."
     required: false
     default: "false"
   github-token:

@@ -796,6 +796,9 @@ def main(argv: list[str] | None = None) -> int:
 
     server = os.environ.get("TESTO_INPUT_SERVER_URL", "").strip()
     run_env = os.environ.copy()
+    # The action publishes after the run with its own inputs (comment-on-pr,
+    # annotations, notify-when), so the run step doesn't publish by itself too.
+    run_env.setdefault("TESTO_PUBLISH", "0")
     if _parse_bool(args.flaky_issues, default=False):
         # Every recorded run opens an issue per newly flaky test and closes fixed ones
         # (qasight.services.flaky_issues), with the token the action passes in.
