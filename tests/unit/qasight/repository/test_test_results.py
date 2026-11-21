@@ -101,3 +101,64 @@ def test_a_non_integer_duration_is_stored_as_unknown(tmp_path: Path) -> None:
 
     assert store.cases("r")["a"]["duration_ms"] is None
     assert store.cases("r")["b"]["duration_ms"] is None
+
+
+def test_concurrent_reads_return_the_same_rows(tmp_path: Path) -> None:
+    # SQLite reads of a run's rows are taken one at a time per process (the sqlite3
+    # module's per-row GIL hand-off made concurrent reads ~90x slower); they must still
+    # all finish and agree.
+    from concurrent.futures import ThreadPoolExecutor
+
+    store = _store(tmp_path)
+    cases = {
+        f"t{i}": _case("failed" if i % 7 == 0 else "passed", labels=[{"name": "tag", "value": "x"}])
+        for i in range(300)
+    }
+    store.replace("run-1", cases)
+    with ThreadPoolExecutor(8) as pool:
+        results = list(pool.map(lambda _: store.cases("run-1"), range(16)))
+    assert all(r == results[0] for r in results)
+    assert results[0]["t7"]["status"] == "failed"
+    assert results[0]["t1"]["labels"] == [{"name": "tag", "value": "x"}]
+    assert len(results[0]) == 300
+
+
+def test_cached_runs_follow_replace_and_delete(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.replace("run-1", {"a": _case("passed")})
+    assert store.cases("run-1")["a"]["status"] == "passed"  # now cached
+    store.replace("run-1", {"a": _case("failed")})
+    assert store.cases("run-1")["a"]["status"] == "failed"
+    store.delete_runs(["run-1"])
+    assert store.cases("run-1") == {}
+
+
+def test_callers_can_change_the_map_they_get(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.replace("run-1", {"a": _case("passed"), "b": _case("passed")})
+    store.cases("run-1").pop("a")
+    assert set(store.cases("run-1")) == {"a", "b"}
+
+
+def test_cache_budget_zero_turns_it_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from qasight.repository import test_results
+
+    monkeypatch.setenv("TESTO_CASE_CACHE_ROWS", "0")
+    test_results.clear_cache()
+    store = _store(tmp_path)
+    store.replace("run-1", {"a": _case("passed")})
+    store.cases("run-1")
+    assert test_results._cache_rows == 0
+
+
+def test_cases_for_keys_reads_only_the_named_tests(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.replace("r1", {"a": _case("failed"), "b": _case("passed")})
+    store.replace("r2", {"b": _case("passed")})
+    store.replace("r3", {"a": _case("passed", labels=[{"name": "tag", "value": "x"}])})
+    store.cases("r3")  # one from the cache, the rest from the database
+    found = store.cases_for_keys(["r1", "r2", "r3", "nope"], ["a"])
+    assert set(found) == {"r1", "r3"}
+    assert found["r1"]["a"]["status"] == "failed"
+    assert found["r3"]["a"]["labels"] == [{"name": "tag", "value": "x"}]
+    assert store.runs_with_rows(["r1", "r2", "r3", "nope"]) == {"r1", "r2", "r3"}

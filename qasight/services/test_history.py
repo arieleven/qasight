@@ -8,7 +8,7 @@ each run's own Allure ``*-result.json`` snapshot, so it needs no schema change.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -139,6 +139,21 @@ def _observations(
     return analysed, per_test
 
 
+def _observations_of(
+    cycle: str, window: int, key: str
+) -> list[tuple[CompletedRunView, dict[str, Any]]]:
+    """One test's ``(run, case)`` pairs oldest first: only its rows, not the whole window's."""
+    from qasight.history.cases import history_of
+
+    runs = flaky_service._cycle_runs(cycle)[: max(1, int(window))]
+    history = history_of(runs, {key})
+    return [
+        (run, history[run.run_id][key])
+        for run in reversed(runs)
+        if key in history.get(run.run_id, {})
+    ]
+
+
 def _slowdown(durations: list[int]) -> tuple[int | None, float | None]:
     """Change of the recent median over the earlier one, when it is more than noise."""
     if len(durations) < RECENT_RUNS + 2:
@@ -242,18 +257,29 @@ def list_cycle_tests(
     """
     analysed, per_test = _observations(cycle, window)
     tests = [_summarise(key, observed) for key, observed in per_test.items()]
+    tests.sort(key=lambda t: (t.last_status not in _FAIL, not t.flaky, t.name, t.key))
+    return filter_cycle_tests(
+        CycleTests(cycle=cycle, runs_considered=analysed, tests=tuple(tests)),
+        query=query,
+        label=label,
+    )
+
+
+def filter_cycle_tests(
+    found: CycleTests, *, query: str | None = None, label: str | None = None
+) -> CycleTests:
+    """``found`` cut to the tests matching ``query`` and carrying ``label`` (see :func:`list_cycle_tests`)."""
+    tests = list(found.tests)
     if query and query.strip():
         tests = [t for t in tests if _matches(t, query.strip())]
     if label and label.strip():
         tests = [t for t in tests if has_label(t.labels, label)]
-    tests.sort(key=lambda t: (t.last_status not in _FAIL, not t.flaky, t.name, t.key))
-    return CycleTests(cycle=cycle, runs_considered=analysed, tests=tuple(tests))
+    return replace(found, tests=tuple(tests))
 
 
 def load_test_history(cycle: str, key: str, *, window: int = DEFAULT_WINDOW) -> TestHistory | None:
     """``key``'s outcome in each of ``cycle``'s last ``window`` runs; ``None`` if it never ran."""
-    _, per_test = _observations(cycle, window)
-    observed = per_test.get(key)
+    observed = _observations_of(cycle, window, key)
     if not observed:
         return None
     rates = _flip_rates([str(case["status"]) for _, case in observed])

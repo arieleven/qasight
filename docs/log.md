@@ -296,3 +296,7 @@ New note [Merge and Automate - 2026-11-20](Specs%20&%20ADRs/Merge%20and%20Automa
 ## 2026-11-20: added Closed-Network Monorepo Rollout
 
 New note [Closed-Network Monorepo Rollout - 2026-11-20](Specs%20&%20ADRs/Closed-Network%20Monorepo%20Rollout%20-%202026-11-20.md): one GitLab include that records every job of a monorepo, Behave and BehaveX in `qasight init --scan`, and the fixes a monorepo trial showed. Linked from the Specs README and the docs site menu.
+
+## 2026-11-20: added Stress Test
+
+New note [Stress Test - 2026-11-20](Specs%20&%20ADRs/Stress%20Test%20-%202026-11-20.md): where QASight slows down or fails under load, two fixes and six proposals. Linked from the Specs README and the docs site menu.

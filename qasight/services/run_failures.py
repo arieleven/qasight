@@ -23,7 +23,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from qasight.history.cases import cases_for_run
+from qasight.history.cases import cases_for_run, history_of
 from qasight.history.read_model import get_run, list_cycle_runs
 from qasight.history.views import CompletedRunView
 from qasight.services import flaky_service
@@ -184,10 +184,16 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
     # The same for the environment: a firefox run's streak counts firefox runs only.
     if run.environment:
         lineage = [r for r in lineage if r.environment in (run.environment, None)]
-    earlier_cases = [(r, _cases(r)) for r in lineage[: window - 1]]
-    earlier_cases = [(r, c) for r, c in earlier_cases if c]
     baseline = _baseline(run, earlier, lineage)
-    baseline_cases = _cases(baseline) if baseline is not None else {}
+    # Only the failing tests' rows from the earlier runs: one query, not every row of
+    # every run (docs/Specs & ADRs/Stress Test - 2026-11-20.md).
+    window_runs = lineage[: window - 1]
+    wanted = [*window_runs, *([baseline] if baseline is not None else [])]
+    history = history_of(wanted, set(failing))
+    earlier_cases = [(r, history[r.run_id]) for r in window_runs if r.run_id in history]
+    baseline_cases = history.get(baseline.run_id, {}) if baseline is not None else {}
+    # The baseline counts when it recorded tests at all, even none of these failing ones.
+    has_baseline = baseline is not None and baseline.run_id in history
 
     # Flaky over the same window, ending at this run (oldest first for flaky_service).
     observations: dict[str, list[dict[str, Any]]] = {}
@@ -210,7 +216,7 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
             if prev is None or prev["status"] not in _FAILED:
                 break
             streak, since = streak + 1, older.run_id
-        if baseline_cases:
+        if has_baseline:
             on_baseline = baseline_cases.get(key)
             new = on_baseline is None or on_baseline["status"] not in _FAILED
         else:
@@ -255,11 +261,9 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
                 repo=Path(run.target_repo) if run.target_repo else None,
             )
         ),
-        baseline_run_id=baseline.run_id if baseline_cases and baseline else None,
+        baseline_run_id=baseline.run_id if has_baseline and baseline else None,
         # Named only when it is another branch (a PR's target), so the UI can say "new since main".
         baseline_branch=(
-            baseline.branch
-            if baseline_cases and baseline and baseline.branch != run.branch
-            else None
+            baseline.branch if has_baseline and baseline and baseline.branch != run.branch else None
         ),
     )

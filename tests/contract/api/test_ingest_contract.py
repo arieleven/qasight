@@ -144,6 +144,37 @@ def test_oversized_file_is_400(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "larger than" in resp.json()["error"]["message"]
 
 
+def test_upload_over_the_total_is_refused_while_reading(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Each file is under the per-file limit; the total is checked as the files are read,
+    # so the server never holds the whole upload in memory before refusing it.
+    monkeypatch.setattr("qasight_api.routes.ingest.MAX_TOTAL_BYTES", len(PASSING) + 10)
+    read: list[int] = []
+    real_read = junit_ingest.ingest_uploaded_reports
+    monkeypatch.setattr(
+        "qasight_api.routes.ingest.ingest_uploaded_reports",
+        lambda **kw: read.append(1) or real_read(**kw),
+    )
+    resp = TestClient(create_app()).post(
+        "/api/v1/ingest",
+        data={"cycle": "web"},
+        files=_files(("a.xml", PASSING), ("b.xml", PASSING), ("c.xml", PASSING)),
+    )
+    assert resp.status_code == 400
+    assert "in total" in resp.json()["error"]["message"]
+    assert read == []  # refused before anything was recorded
+
+
+def test_too_many_files_is_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("qasight_api.routes.ingest.MAX_FILES", 1)
+    resp = TestClient(create_app()).post(
+        "/api/v1/ingest",
+        data={"cycle": "web"},
+        files=_files(("a.xml", PASSING), ("b.xml", PASSING)),
+    )
+    assert resp.status_code == 400
+    assert "too many files" in resp.json()["error"]["message"]
+
+
 # --- UI served by the API ----------------------------------------------------------
 
 
@@ -255,3 +286,24 @@ def test_cli_upload_exit_codes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
         result = runner.invoke(app, ["ingest", "a.xml", "--cycle", "web", "--server", "http://x"])
     assert result.exit_code == 3
     assert "down" in result.output
+
+
+def test_upload_recorded_in_the_worker_process(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The team server records uploads in a spawned worker; it sees the same database
+    # (the environment) and the run lands like one recorded in-process.
+    monkeypatch.setenv("TESTO_INGEST_PROCESS", "1")
+    monkeypatch.setenv("TESTO_HOME", str(tmp_path))
+    try:
+        resp = TestClient(create_app()).post(
+            "/api/v1/ingest", data={"cycle": "web"}, files=_files(("ok.xml", FAILING))
+        )
+        assert junit_ingest._pool is not None  # recorded by the worker, not in-process
+    finally:
+        junit_ingest.shutdown_worker()
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert (body["tests"], body["failed"], body["exit_code"]) == (1, 1, 1)
+    reset_repository_cache()
+    assert get_repository().get_run(body["run_id"]) is not None

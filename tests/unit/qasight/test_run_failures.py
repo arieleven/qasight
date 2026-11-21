@@ -265,3 +265,23 @@ def test_stack_overflows_and_crashes_are_named_on_failing_tests(history) -> None
     assert result is not None
     kinds = {t.name: t.crash_kind for t in result.tests}
     assert kinds == {"test_tree": "stack_overflow", "test_native": "crash", "test_math": None}
+
+
+def test_a_baseline_without_the_failing_tests_still_counts(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+    # The failures page reads only the failing tests' rows from earlier runs; a target
+    # branch run that has tests, but none of these, is still the baseline (so: new).
+    pr = replace(_run("pr1", created_at=2), branch="feat", base_branch="main")
+    main = replace(_run("m1", created_at=1), branch="main")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
+    reset_engine_cache()
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(run_failures, "list_cycle_runs", cycle_runs_from([pr, main]))
+    monkeypatch.setattr(run_failures, "get_run", lambda *, run_id: pr if run_id == "pr1" else None)
+    _write(tmp_path, pr, {"test_added_in_pr": ("failed", "boom")})
+    _write(tmp_path, main, {"test_old": ("passed", "")})
+
+    found = run_failures.load_run_failures("pr1")
+
+    assert found is not None
+    assert (found.baseline_run_id, found.baseline_branch) == ("m1", "main")
+    assert [t.new for t in found.tests] == [True]

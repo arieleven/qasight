@@ -426,6 +426,9 @@ def run(argv: list[str] | None = None) -> int:
         logger.warning(
             "TESTO_PROTECT_READS has no effect without TESTO_API_TOKEN; reads stay open."
         )
+    # Uploads are recorded in a worker process, so they don't take turns with page
+    # requests in this one (qasight/services/junit_ingest.py). TESTO_INGEST_PROCESS=0 opts out.
+    os.environ.setdefault("TESTO_INGEST_PROCESS", "1")
     # A factory, so the app reads the environment as it is now: ``qasight ui`` sets
     # TESTO_CORS_ORIGINS after ``qasight_api`` (and its module-level ``app``) was imported.
     uvicorn.run("qasight_api.main:create_app", factory=True, host=host, port=port, reload=reload)

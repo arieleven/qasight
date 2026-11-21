@@ -38,3 +38,6 @@ def reset_repository_cache() -> None:
     get_repository.cache_clear()
     get_report_archive_repository.cache_clear()
     get_test_result_store.cache_clear()
+    from qasight.repository.test_results import clear_cache
+
+    clear_cache()

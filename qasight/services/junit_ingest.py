@@ -14,15 +14,22 @@ request, because the server's own environment says nothing about it.
 from __future__ import annotations
 
 import json
+import logging
+import multiprocessing
+import os
 import re
 import tempfile
 import threading
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
 from pathlib import Path
 
 from qasight.config.errors import ConfigValidationError
 from qasight.config.schema import QASightConfig
+
+logger = logging.getLogger(__name__)
 
 # Upload limits: plenty for real suites, small enough that one request can't fill a disk.
 MAX_FILES = 200
@@ -95,12 +102,6 @@ def ingest_uploaded_reports(
     Raises :class:`ConfigValidationError` for an empty or oversized upload, or
     an unsafe cycle or stage name.
     """
-    from qasight.services.cycle_run import (
-        CycleRunOptions,
-        CycleRunService,
-        junit_ingest_plan,
-    )
-
     if not reports:
         raise ConfigValidationError("no test result files in the upload.")
     if len(reports) > MAX_FILES:
@@ -117,10 +118,7 @@ def ingest_uploaded_reports(
             f"upload is larger than {MAX_TOTAL_BYTES // (1024 * 1024)} MB in total."
         )
 
-    with _INGEST_LOCK, tempfile.TemporaryDirectory(prefix="testo-ingest-") as scratch:
-        root = Path(scratch)
-        reports_dir = root / "reports"
-        reports_dir.mkdir()
+    def write(reports_dir: Path) -> None:
         used: set[str] = set()
         for index, (name, content) in enumerate(reports):
             # Client file names are only a label; what a file is comes from its content
@@ -130,30 +128,124 @@ def ingest_uploaded_reports(
             used.add(filename)
             (reports_dir / filename).write_bytes(content)
 
-        plan = junit_ingest_plan(
-            cycle=cycle,
-            reports=["reports/*"],
-            target_repo=root,
-            stage_name=stage,
-            tier=tier,
-        )
-        # The scratch path means nothing after this call; record the client's repository instead.
-        metadata: dict[str, str | None] = {**(run_metadata or {})}
-        metadata["target_repo"] = metadata.get("repository")
-        outcome = CycleRunService().run(
-            cfg=cfg,
-            plan=plan,
-            renderer=_SilentRenderer(),
-            options=CycleRunOptions(
-                artifacts_root=root / "artifacts",
-                run_metadata=metadata,
-                force=True,
-            ),
-        )
-        # The DB backend copied the artifacts to static/history/<run_id>/; the
-        # scratch directory goes when this block ends.
-        counts = _status_counts(root / "artifacts" / plan.name / stage / "allure-results" / "junit")
+    return ingest_report_files(
+        cfg=cfg, cycle=cycle, write=write, stage=stage, tier=tier, run_metadata=run_metadata
+    )
 
+
+def ingest_report_files(
+    *,
+    cfg: QASightConfig,
+    cycle: str,
+    write: Callable[[Path], None],
+    stage: str = "junit",
+    tier: str = "unit",
+    run_metadata: Mapping[str, str] | None = None,
+) -> IngestOutcome:
+    """Record the result files ``write`` puts in the folder it is given as one run of *cycle*.
+
+    One ``junit`` stage, the same engine, run record and reporters as ``qasight ingest``.
+    On the team server (:func:`separate_process`) the recording runs in a worker process,
+    so a big upload doesn't hold up the API's other requests. Raises
+    :class:`ConfigValidationError` for an unsafe cycle or stage name.
+    """
+    with _INGEST_LOCK, tempfile.TemporaryDirectory(prefix="testo-ingest-") as scratch:
+        root = Path(scratch)
+        reports_dir = root / "reports"
+        reports_dir.mkdir()
+        write(reports_dir)
+        metadata = dict(run_metadata or {})
+        if not separate_process():
+            return _record(root, cfg, cycle, stage, tier, metadata)
+        return _in_worker(root, cfg, cycle, stage, tier, metadata)
+
+
+def separate_process() -> bool:
+    """Whether uploads are recorded in a worker process (``TESTO_INGEST_PROCESS``).
+
+    ``qasight-api`` and ``qasight ui`` turn it on: recording is CPU-bound Python, and in
+    the API's own process it took turns with every page request (8 uploads of 5,000
+    tests: 16 s alone, minutes next to a busy UI; docs/Specs & ADRs/Stress Test -
+    2026-11-20.md). ``0`` records in the request's thread, as the CLI and tests do.
+    """
+    return os.environ.get("TESTO_INGEST_PROCESS", "0").strip().lower() in ("1", "true", "yes")
+
+
+_pool_lock = threading.Lock()
+_pool: ProcessPoolExecutor | None = None
+# A fresh worker after this many uploads gives back the memory a big one took.
+_TASKS_PER_WORKER = 50
+
+
+def _worker_pool() -> ProcessPoolExecutor:
+    global _pool
+    with _pool_lock:
+        if _pool is None:
+            # spawn: the API process has threads, which fork would copy mid-flight.
+            _pool = ProcessPoolExecutor(
+                max_workers=1,
+                mp_context=multiprocessing.get_context("spawn"),
+                max_tasks_per_child=_TASKS_PER_WORKER,
+            )
+        return _pool
+
+
+def _in_worker(
+    root: Path, cfg: QASightConfig, cycle: str, stage: str, tier: str, metadata: dict[str, str]
+) -> IngestOutcome:
+    global _pool
+    try:
+        return _worker_pool().submit(_record, root, cfg, cycle, stage, tier, metadata).result()
+    except BrokenProcessPool:
+        # The worker died (killed, out of memory): start a new one for the next upload.
+        logger.error("the upload worker stopped; recording this upload in the API process")
+        with _pool_lock:
+            _pool = None
+        return _record(root, cfg, cycle, stage, tier, metadata)
+
+
+def shutdown_worker() -> None:
+    """Stop the upload worker (server shutdown, tests)."""
+    global _pool
+    with _pool_lock:
+        pool, _pool = _pool, None
+    if pool is not None:
+        pool.shutdown(wait=True, cancel_futures=True)
+
+
+def _record(
+    root: Path, cfg: QASightConfig, cycle: str, stage: str, tier: str, metadata: dict[str, str]
+) -> IngestOutcome:
+    """Record ``root/reports`` as one run (in the API process or the upload worker)."""
+    from qasight.services.cycle_run import (
+        CycleRunOptions,
+        CycleRunService,
+        junit_ingest_plan,
+    )
+
+    plan = junit_ingest_plan(
+        cycle=cycle,
+        reports=["reports/*"],
+        target_repo=root,
+        stage_name=stage,
+        tier=tier,
+    )
+    # The scratch path means nothing after this call; record the client's repository instead.
+    run_metadata: dict[str, str | None] = {**metadata}
+    run_metadata["target_repo"] = run_metadata.get("repository")
+    outcome = CycleRunService().run(
+        cfg=cfg,
+        plan=plan,
+        renderer=_SilentRenderer(),
+        options=CycleRunOptions(
+            artifacts_root=root / "artifacts",
+            run_metadata=run_metadata,
+            force=True,
+        ),
+    )
+    # The DB backend copied the artifacts to static/history/<run_id>/; the
+    # scratch directory goes when the caller's block ends.
+    counts = _status_counts(root / "artifacts" / plan.name / stage / "allure-results" / "junit")
     return IngestOutcome(
         run_id=outcome.run_id,
         cycle=plan.name,

@@ -8,6 +8,8 @@ from qasight.config.errors import ConfigError, ConfigValidationError
 from qasight.config.loader import load_config_or_defaults
 from qasight.services.junit_ingest import (
     MAX_FILE_BYTES,
+    MAX_FILES,
+    MAX_TOTAL_BYTES,
     clean_run_metadata,
     ingest_uploaded_reports,
 )
@@ -49,11 +51,7 @@ def ingest_reports(
     except ConfigError as exc:
         raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
 
-    reports: list[tuple[str, bytes]] = []
-    for upload in files:
-        # Read one byte past the limit so an oversized file is rejected, not truncated.
-        content = upload.file.read(MAX_FILE_BYTES + 1)
-        reports.append((upload.filename or "report.xml", content))
+    reports = _read_uploads(files)
 
     metadata = clean_run_metadata(
         {
@@ -94,3 +92,34 @@ def ingest_reports(
         # A page link only when this process serves the UI (the team server does).
         run_url=f"{base}/runs/{outcome.run_id}" if outcome.run_id and ui_dir() else None,
     )
+
+
+def _read_uploads(files: list[UploadFile]) -> list[tuple[str, bytes]]:
+    """The uploaded files as ``(filename, content)``, refusing an oversized upload as it is read.
+
+    The limits are checked while reading, so a request of many files just under the
+    per-file limit is refused at the total limit instead of being held in memory first.
+    """
+    if len(files) > MAX_FILES:
+        raise HTTPException(
+            status_code=400, detail=f"too many files ({len(files)}; the limit is {MAX_FILES})."
+        )
+    reports: list[tuple[str, bytes]] = []
+    total = 0
+    for upload in files:
+        # Read one byte past the limit so an oversized file is rejected, not truncated.
+        content = upload.file.read(MAX_FILE_BYTES + 1)
+        name = upload.filename or "report.xml"
+        if len(content) > MAX_FILE_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{name!r} is larger than {MAX_FILE_BYTES // (1024 * 1024)} MB.",
+            )
+        total += len(content)
+        if total > MAX_TOTAL_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"upload is larger than {MAX_TOTAL_BYTES // (1024 * 1024)} MB in total.",
+            )
+        reports.append((name, content))
+    return reports

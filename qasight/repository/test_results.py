@@ -7,16 +7,118 @@ produces, so the services never see rows.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import json
+import os
+import threading
+from collections import OrderedDict
+from collections.abc import Iterable, Mapping
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import String, delete, insert, type_coerce
+from sqlalchemy import select as sa_select
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
 from qasight.repository.models import TestResult
 
-_WRITE_BATCH = 500
+_WRITE_BATCH = 2000
+
+# One SQLite read of a run's rows at a time per process. The sqlite3 module gives up the
+# GIL for every row it steps, so threads reading thousands of rows at once take turns on
+# each row: eight concurrent reads of 20 runs x 5,000 rows took 156 s instead of 1.7 s
+# one after another (docs/Specs & ADRs/Stress Test - 2026-11-20.md). Postgres and MySQL
+# drivers fetch a result in one call, so they don't take it.
+_SQLITE_READ_LOCK = threading.Lock()
+_CASE_COLUMNS = (
+    "key",
+    "name",
+    "full_name",
+    "group",
+    "status",
+    "duration_ms",
+    "message",
+    "stage",
+    "framework",
+    "crash",
+    "retried",
+    "labels",
+    "links",
+)
+_IN_CHUNK = 400  # bound parameters per IN list (SQLite allows 999 on old builds)
+
+# Finished runs' rows, kept in memory: a run's tests don't change once it is recorded, and
+# the flaky, failures and test search views read the same 20 runs on every request. The
+# budget is in rows (about 1 KB each); TESTO_CASE_CACHE_ROWS changes it, 0 turns it off.
+DEFAULT_CACHE_ROWS = 100_000
+_cache_lock = threading.Lock()
+_cache: OrderedDict[tuple[str, str], dict[str, dict[str, Any]]] = OrderedDict()
+_cache_rows = 0
+
+
+def cache_budget() -> int:
+    """Rows the in-memory cache of runs' tests may hold (``TESTO_CASE_CACHE_ROWS``)."""
+    raw = os.environ.get("TESTO_CASE_CACHE_ROWS", "").strip()
+    if not raw:
+        return DEFAULT_CACHE_ROWS
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return DEFAULT_CACHE_ROWS
+
+
+def clear_cache() -> None:
+    """Forget every cached run (tests, and after a restore from backup)."""
+    global _cache_rows
+    with _cache_lock:
+        _cache.clear()
+        _cache_rows = 0
+
+
+def _cache_get(key: tuple[str, str]) -> dict[str, dict[str, Any]] | None:
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit is not None:
+            _cache.move_to_end(key)
+        return hit
+
+
+def _cache_put(key: tuple[str, str], cases: dict[str, dict[str, Any]]) -> None:
+    global _cache_rows
+    budget = cache_budget()
+    if not cases or len(cases) > budget:
+        return
+    with _cache_lock:
+        old = _cache.pop(key, None)
+        if old is not None:
+            _cache_rows -= len(old)
+        _cache[key] = cases
+        _cache_rows += len(cases)
+        while _cache_rows > budget and _cache:
+            _, evicted = _cache.popitem(last=False)
+            _cache_rows -= len(evicted)
+
+
+def _cache_drop(keys: Iterable[tuple[str, str]]) -> None:
+    global _cache_rows
+    with _cache_lock:
+        for key in keys:
+            old = _cache.pop(key, None)
+            if old is not None:
+                _cache_rows -= len(old)
+
+
+def _json_list(value: Any) -> list[Any]:
+    """A ``labels`` / ``links`` value read as text: most rows hold none, so skip the parser."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        if value in ("null", "[]", ""):
+            return []
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return []
+    return list(value) if isinstance(value, list) else []
 
 
 def _pairs(value: Any) -> list[dict[str, str]] | None:
@@ -27,9 +129,10 @@ def _pairs(value: Any) -> list[dict[str, str]] | None:
     return out or None
 
 
-def _row(run_id: str, key: str, case: Mapping[str, Any]) -> TestResult:
+def _values(run_id: str, key: str, case: Mapping[str, Any]) -> dict[str, Any]:
+    """One ``test_result`` row as column values."""
     duration = case.get("duration_ms")
-    return TestResult(
+    return dict(
         run_id=run_id[:64],
         key=key[:200],
         name=str(case.get("name") or "")[:120],
@@ -47,20 +150,23 @@ def _row(run_id: str, key: str, case: Mapping[str, Any]) -> TestResult:
     )
 
 
-def _case(row: TestResult) -> dict[str, Any]:
+def _case(row: Any) -> dict[str, Any]:
+    """A plain row of :data:`_CASE_COLUMNS` as the case map entry callers get."""
+    (_, name, full_name, group, status, duration, message, stage, framework, crash) = row[:10]
+    retried, labels, links = row[10:13]
     return {
-        "name": row.name,
-        "full_name": row.full_name,
-        "group": row.group,
-        "status": row.status,
-        "duration_ms": row.duration_ms,
-        "message": row.message,
-        "stage": row.stage,
-        "framework": row.framework,
-        "crash": row.crash,
-        "retried": bool(row.retried),
-        "labels": list(row.labels or []),
-        "links": list(row.links or []),
+        "name": name,
+        "full_name": full_name,
+        "group": group,
+        "status": status,
+        "duration_ms": duration,
+        "message": message,
+        "stage": stage,
+        "framework": framework,
+        "crash": crash,
+        "retried": bool(retried),
+        "labels": _json_list(labels),
+        "links": _json_list(links),
     }
 
 
@@ -74,19 +180,96 @@ class TestResultStore:
 
     def replace(self, run_id: str, cases: Mapping[str, Mapping[str, Any]]) -> int:
         """Store ``cases`` as ``run_id``'s rows, replacing any it had; returns the row count."""
-        rows = [_row(run_id, key, case) for key, case in cases.items()]
-        with Session(self._engine) as session:
-            session.exec(delete(TestResult).where(col(TestResult.run_id) == run_id[:64]))  # type: ignore[call-overload]
+        # Plain dicts and one executemany per batch: building model objects took most of
+        # the time of recording a big run (10 s of 50 s for 50,000 tests).
+        rows = [_values(run_id, key, case) for key, case in cases.items()]
+        _cache_drop([self._key(run_id)])
+        table = TestResult.__table__  # type: ignore[attr-defined]
+        with self._engine.begin() as conn:
+            conn.execute(delete(table).where(table.c.run_id == run_id[:64]))
             for start in range(0, len(rows), _WRITE_BATCH):
-                session.add_all(rows[start : start + _WRITE_BATCH])
-            session.commit()
+                conn.execute(insert(table), rows[start : start + _WRITE_BATCH])
         return len(rows)
 
+    def _key(self, run_id: str) -> tuple[str, str]:
+        return (str(self._engine.url), run_id[:64])
+
+    def _select(self, stmt: Any) -> list[Any]:
+        if self._engine.dialect.name == "sqlite":
+            with _SQLITE_READ_LOCK, self._engine.connect() as conn:
+                return list(conn.execute(stmt).all())
+        with self._engine.connect() as conn:
+            return list(conn.execute(stmt).all())
+
+    @staticmethod
+    def _columns() -> list[Any]:
+        table = TestResult.__table__  # type: ignore[attr-defined]
+        # labels and links come back as text and are parsed only when a row has some.
+        return [
+            type_coerce(table.c[name], String) if name in ("labels", "links") else table.c[name]
+            for name in _CASE_COLUMNS
+        ]
+
     def cases(self, run_id: str) -> dict[str, dict[str, Any]]:
-        """``run_id``'s tests as a case map; ``{}`` when none are stored."""
-        stmt = select(TestResult).where(col(TestResult.run_id) == run_id[:64])
-        with Session(self._engine) as session:
-            return {row.key: _case(row) for row in session.exec(stmt)}
+        """``run_id``'s tests as a case map; ``{}`` when none are stored.
+
+        Plain rows rather than ORM objects, kept in memory after the first read (see
+        :data:`DEFAULT_CACHE_ROWS`). The map is the caller's to change; the cases in it
+        are shared, so treat them as read-only.
+        """
+        key = self._key(run_id)
+        hit = _cache_get(key)
+        if hit is not None:
+            return dict(hit)
+        table = TestResult.__table__  # type: ignore[attr-defined]
+        stmt = sa_select(*self._columns()).where(table.c.run_id == run_id[:64])
+        cases = {row[0]: _case(row) for row in self._select(stmt)}
+        _cache_put(key, cases)
+        return dict(cases)
+
+    def cases_for_keys(
+        self, run_ids: list[str], keys: Iterable[str]
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        """The given tests' rows in the given runs, as ``{run_id: {key: case}}``.
+
+        For views that follow a few tests back through history (a run's failures): one
+        query on the primary key instead of every row of every run. A run with none of
+        the tests is left out, so callers that need to know a run has rows at all ask
+        :meth:`runs_with_rows`.
+        """
+        wanted = sorted({k[:200] for k in keys})
+        ids = [r[:64] for r in run_ids]
+        out: dict[str, dict[str, dict[str, Any]]] = {}
+        missing: list[str] = []
+        for run_id in ids:
+            hit = _cache_get(self._key(run_id))
+            if hit is None:
+                missing.append(run_id)
+                continue
+            found = {k: hit[k] for k in wanted if k in hit}
+            if found:
+                out[run_id] = found
+        if not missing or not wanted:
+            return out
+        table = TestResult.__table__  # type: ignore[attr-defined]
+        columns = [table.c.run_id, *self._columns()]
+        for start in range(0, len(wanted), _IN_CHUNK):
+            chunk = wanted[start : start + _IN_CHUNK]
+            stmt = sa_select(*columns).where(table.c.run_id.in_(missing), table.c.key.in_(chunk))
+            for row in self._select(stmt):
+                out.setdefault(row[0], {})[row[1]] = _case(row[1:])
+        return out
+
+    def runs_with_rows(self, run_ids: list[str]) -> set[str]:
+        """Which of ``run_ids`` have any rows stored."""
+        ids = [r[:64] for r in run_ids]
+        have = {r for r in ids if _cache_get(self._key(r)) is not None}
+        table = TestResult.__table__  # type: ignore[attr-defined]
+        for run_id in (r for r in ids if r not in have):
+            stmt = sa_select(table.c.key).where(table.c.run_id == run_id).limit(1)
+            if self._select(stmt):
+                have.add(run_id)
+        return have
 
     def has_rows(self, run_id: str) -> bool:
         stmt = select(TestResult.key).where(col(TestResult.run_id) == run_id[:64]).limit(1)
@@ -97,6 +280,7 @@ class TestResultStore:
         """Drop every row of the given runs (retention); returns how many were deleted."""
         if not run_ids:
             return 0
+        _cache_drop(self._key(r) for r in run_ids)
         with Session(self._engine) as session:
             result = session.exec(  # type: ignore[call-overload]
                 delete(TestResult).where(col(TestResult.run_id).in_([r[:64] for r in run_ids]))

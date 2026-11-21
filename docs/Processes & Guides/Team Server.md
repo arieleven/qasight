@@ -61,7 +61,9 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_HISTORY_MAX_FILE_MB` | unset (`100` from `qasight server init`) | Files bigger than this (videos, traces) aren't kept in a run's history copy or report archive. Overrides `history.max_file_mb` |
 | `TESTO_LOW_DISK_PCT` | `10` | Below this share of free disk, `/api/v1/health/ready` reports a `disk` warning and the Runs page says the disk is getting full |
 | `TESTO_PROTECT_READS` | `1` (set in the image) | `1`: reads need the token or the `/login` cookie too. `0`: anyone who can reach the server can read runs, logs and reports |
-| `TESTO_READ_CACHE_S` | `60` | Seconds the manager report, Needs attention and project health are kept in memory. A new, finished, changed or deleted run makes them recompute at once, so this only bounds staleness from other changes (config, triage). `0` turns the cache off |
+| `TESTO_READ_CACHE_S` | `60` | Seconds the manager report, Needs attention, project health, flaky tests and the cycle's test list are kept in memory. A new, finished, changed or deleted run makes them recompute at once, so this only bounds staleness from other changes (config, triage). `0` turns the cache off |
+| `TESTO_CASE_CACHE_ROWS` | `100000` | Test rows of recorded runs kept in memory per worker (about 1 KB each), so a run's failures, flaky tests, test search and a test's page don't read the same runs again. A recorded run's tests never change. `0` turns it off |
+| `TESTO_INGEST_PROCESS` | `1` under `qasight-api` / `qasight ui` | Record uploads in a worker process instead of the API's own. A new worker starts after 50 uploads, or when one dies, so memory a huge upload took is given back. `0` turns it off |
 | `TESTO_MAX_CONCURRENT_RUNS` | `2` | Runs started from the UI or API that execute at once; the rest wait as `queued` |
 | `TESTO_AUTH` | `token` | `token`: everyone shares `TESTO_API_TOKEN`. `accounts`: people sign in with their own username and password, with roles and an audit log ([Accounts](#accounts)) |
 | `TESTO_LOGIN_MAX_FAILURES` | `5` | With accounts: failed sign-ins per name in 15 minutes before `/login` answers `429` for a while (four times this per client address) |
@@ -229,7 +231,7 @@ It's best effort: results go in batches (every 2 seconds or 50 tests), and the f
 
 ## How it works
 
-`POST /api/v1/ingest` (multipart: `files`, `cycle`, optional `stage`, `tier` and provenance fields) writes the files to a scratch directory and records them through `CycleRunService` as a one-stage `junit` cycle, the same path as a local `qasight ingest` and `qasight run`. Nothing in an upload is executed. Limits: 200 files, 20 MB per file, 100 MB per upload. The response has the `run_id`, the counts, the exit code and a link to the run page.
+`POST /api/v1/ingest` (multipart: `files`, `cycle`, optional `stage`, `tier` and provenance fields) writes the files to a scratch directory and records them through `CycleRunService` as a one-stage `junit` cycle, the same path as a local `qasight ingest` and `qasight run`. `qasight-api` and `qasight ui` record it in a worker process (one at a time), so a big upload doesn't slow the pages people have open; `TESTO_INGEST_PROCESS=0` records it in the API's own process instead. Nothing in an upload is executed. Limits: 200 files, 20 MB per file, 100 MB per upload. The response has the `run_id`, the counts, the exit code and a link to the run page.
 
 The database schema is upgraded in place when the server starts: the API runs the Alembic revisions in `qasight/repository/migrations/` against its Postgres (or SQLite), adopting a database from 1.5.0 or earlier without dropping anything. Upgrade the image, restart, done; see [Repository Pattern § Schema migrations](../Specs%20&%20ADRs/Repository%20Pattern%20-%20Database-Agnostic%20Refactor.md#schema-migrations-2026-11-01).
 
